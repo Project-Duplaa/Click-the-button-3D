@@ -20,18 +20,68 @@ func _physics_process(delta):
 	var input_dir = Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	var entrada = Vector3(input_dir.x, 0.0, input_dir.y)
 
-	# Giro horizontal con la camara
 	var giro_cam = camara.global_rotation.y
 	var direction = entrada.rotated(Vector3.UP, giro_cam).normalized()
 
-	var speed = speed_caminar
+	var corre = Input.is_action_pressed("correr")
+	var speed = speed_correr if corre else speed_caminar
+
 	velocity.x = direction.x * speed * multiplicador + empuje.x
 	velocity.z = direction.z * speed * multiplicador + empuje.z
 
 	if direction.length() > 0:
 		basis = Basis.looking_at(direction)
+
+	if accion != "":
+		anim.play(accion)
+	elif direction.length() > 0 and corre:
+		anim.play("sprint")
+	elif direction.length() > 0:
 		anim.play("walk")
 	else:
 		anim.play("idle")
 
 	move_and_slide()
+	_prueba()
+
+# ---------------------------------------------------------------------------
+# PRUEBAS AUTOMATICAS
+# ---------------------------------------------------------------------------
+@export_enum("Ninguna", "Avanzar 60 cuadros", "Avanzar 60 y soltar", "Avanzar y la accion desde el cuadro 30", "Mantener la accion 2 s", "Avanzar con la accion 60 cuadros", "Diagonal W+D 60 cuadros") var prueba = 0
+@export var accion_prueba = "correr"
+
+var _cuadro = 0
+var _termino = false
+
+func _prueba():
+	if prueba == 0 or _termino:
+		return
+	_cuadro += 1
+	match prueba:
+		1:
+			if _cuadro == 1: Input.action_press("move_up")
+			elif _cuadro == 60:
+				var r = Vector2(velocity.x, velocity.z).length()
+				print("[prueba] pos: ", global_position.snappedf(0.01), " · vel: ", snappedf(r, 0.01), " · anim: ", anim.current_animation)
+				Input.action_release("move_up")
+				_termino = true
+		5:
+			if _cuadro == 1:
+				Input.action_press("move_up")
+				if InputMap.has_action(accion_prueba): Input.action_press(accion_prueba)
+			elif _cuadro == 60:
+				var r = Vector2(velocity.x, velocity.z).length()
+				print("[prueba] pos: ", global_position.snappedf(0.01), " · vel: ", snappedf(r, 0.01), " · anim: ", anim.current_animation)
+				Input.action_release("move_up")
+				if InputMap.has_action(accion_prueba): Input.action_release(accion_prueba)
+				_termino = true
+		6:
+			if _cuadro == 1:
+				Input.action_press("move_up")
+				Input.action_press("move_right")
+			elif _cuadro == 60:
+				var r = Vector2(velocity.x, velocity.z).length()
+				print("[prueba] pos: ", global_position.snappedf(0.01), " · vel: ", snappedf(r, 0.01), " · anim: ", anim.current_animation)
+				Input.action_release("move_up")
+				Input.action_release("move_right")
+				_termino = true
