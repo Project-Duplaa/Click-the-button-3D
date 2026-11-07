@@ -6,6 +6,8 @@
 out_*.txt
 log_*.txt
 test_*.txt
+__pycache__/
+generador*.py
 generar*.py
 automatizar*.py
 reconstruir*.py
