@@ -4,6 +4,8 @@
 [ext_resource type="PackedScene" path="res://personaje/character-male-a.glb" id="2_modelo"]
 [ext_resource type="Script" path="res://camara_sigue.gd" id="3_cam"]
 [ext_resource type="PackedScene" path="res://guardia.tscn" id="4_guardia"]
+[ext_resource type="PackedScene" path="res://click_hud.tscn" id="5_hud"]
+[ext_resource type="Script" path="res://oleadas_spawner.gd" id="6_spawner"]
 
 [sub_resource type="ProceduralSkyMaterial" id="CieloMat"]
 
@@ -100,3 +102,8 @@ transform = Transform3D(-2.6, 0, 0, 0, 2.6, 0, 0, 0, -2.6, 0, 0, 0)
 
 [node name="Guardia" parent="." instance=ExtResource("4_guardia")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, 3)
+
+[node name="ClickHUD" parent="." instance=ExtResource("5_hud")]
+
+[node name="OleadasSpawner" type="Node3D" parent="."]
+script = ExtResource("6_spawner")

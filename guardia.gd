@@ -11,6 +11,10 @@ enum Estado { PATRULLAR, ESPERAR, PERSEGUIR, ATACAR, BUSCAR }
 # Desplazamientos desde donde se colocó el NPC, no posiciones absolutas.
 @export var ruta: Array[Vector3] = [Vector3.ZERO, Vector3(0, 0, -6)]
 
+@export var vida_maxima: float = 25.0
+@export var dano_ataque: float = 8.0
+@export var cadencia_ataque: float = 1.0
+
 var estado = Estado.PATRULLAR
 var puntos: Array[Vector3] = []
 var indice = 0
@@ -18,11 +22,15 @@ var reloj = 0.0
 var jugador = null
 var ultimo_visto = Vector3.ZERO
 var busca = 0.0
+var vida: float = 25.0
+var _reloj_ataque: float = 0.0
 
 @onready var anim = $Modelo/AnimationPlayer
 @onready var vision = $Vision
 
 func _ready():
+	add_to_group("enemigos")
+	vida = vida_maxima
 	jugador = get_tree().get_first_node_in_group("jugador")
 	for d in ruta:
 		puntos.append(global_position + d)
@@ -31,6 +39,7 @@ func _physics_process(delta):
 	velocity += get_gravity() * delta
 	reloj = maxf(reloj - delta, 0.0)
 	busca = maxf(busca - delta, 0.0)
+	_reloj_ataque = maxf(_reloj_ataque - delta, 0.0)
 	
 	# 1. MEDIR
 	var d = distancia_a(jugador.global_position)
@@ -56,6 +65,10 @@ func _physics_process(delta):
 		Estado.ATACAR:
 			frenar()
 			anim.play("attack-melee-right")
+			if _reloj_ataque <= 0.001 and d <= rango_ataque + 0.3:
+				_reloj_ataque = cadencia_ataque
+				if jugador != null and jugador.has_method("recibir_dano"):
+					jugador.recibir_dano(dano_ataque)
 		Estado.BUSCAR:
 			if distancia_a(ultimo_visto) > 0.1:
 				ir_a(ultimo_visto)
@@ -118,3 +131,18 @@ func frenar():
 func distancia_a(p):
 	var o = global_position
 	return Vector2(p.x - o.x, p.z - o.z).length()
+
+func recibir_dano(cantidad: float):
+	vida -= cantidad
+	if vida <= 0:
+		morir()
+
+func morir():
+	var drop_escena = load("res://drop_item.tscn")
+	if drop_escena != null:
+		var drop = drop_escena.instantiate()
+		drop.global_position = global_position + Vector3(0, 0.4, 0)
+		get_parent().add_child(drop)
+	if jugador != null and jugador.has_method("registrar_baja"):
+		jugador.registrar_baja()
+	queue_free()

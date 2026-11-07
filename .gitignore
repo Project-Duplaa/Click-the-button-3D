@@ -3,6 +3,9 @@
 *.docx
 *.pdf
 *_extracted.txt
+out_*.txt
+log_*.txt
+test_*.txt
 generar*.py
 automatizar*.py
 reconstruir*.py

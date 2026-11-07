@@ -3,11 +3,30 @@ extends CharacterBody3D
 enum Estado { QUIETO, CAMINAR, CORRER, AIRE }
 const RUIDO = [0.0, 2.5, 6.5, 0.0]
 
+signal stats_actualizadas(vida, max_vida, xp, xp_sig, nivel, oro, bajas)
+signal nivel_subido(nuevo_nivel)
+
 @export var camara: Camera3D
 @export var speed_caminar = 3.2
 @export var speed_correr = 5.8
 @export var tiempo_arranque = 0.20
 @onready var anim = $Modelo/AnimationPlayer
+
+# Estadísticas RPG / Autobattler
+var clase: String = "Guerrero"
+var vida_maxima: float = 120.0
+var vida: float = 120.0
+var dano: float = 15.0
+var rango_ataque: float = 3.0
+var cadencia_ataque: float = 0.8
+var oro: int = 0
+var xp: int = 0
+var xp_siguiente_nivel: int = 25
+var nivel: int = 1
+var bajas: int = 0
+
+var _reloj_ataque: float = 0.0
+var _reloj_anim_accion: float = 0.0
 
 var multiplicador = 1.0
 var empuje = Vector3.ZERO
@@ -18,8 +37,15 @@ var estado = Estado.QUIETO
 var ruido = 0.0
 
 func _ready():
+	add_to_group("jugador")
 	if camara == null:
 		camara = get_viewport().get_camera_3d()
+	aplicar_clase("Guerrero")
+	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
+
+func _unhandled_input(event):
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		click_attack()
 
 func _physics_process(delta):
 	if not is_on_floor():
@@ -28,7 +54,7 @@ func _physics_process(delta):
 	var input_dir = Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	var entrada = Vector3(input_dir.x, 0.0, input_dir.y)
 
-	var giro_cam = camara.global_rotation.y
+	var giro_cam = camara.global_rotation.y if camara != null else 0.0
 	var direction = entrada.rotated(Vector3.UP, giro_cam).normalized()
 
 	var corre = Input.is_action_pressed("correr")
@@ -49,10 +75,147 @@ func _physics_process(delta):
 	var antes = estado
 	estado = elegir_estado()
 	ruido = RUIDO[estado]
-	if estado != antes:
+	if estado != antes and prueba != 0:
 		print("estado ", Estado.keys()[estado], " · ruido ", ruido, " m")
+		
+	# Manejo de animación de ataque / acción
+	if _reloj_anim_accion > 0.0:
+		_reloj_anim_accion -= delta
+		if _reloj_anim_accion <= 0.0:
+			accion = ""
+			
 	animar()
+	_procesar_autobattler(delta)
 	_prueba()
+
+func _procesar_autobattler(delta: float):
+	_reloj_ataque = maxf(_reloj_ataque - delta, 0.0)
+	if _reloj_ataque <= 0.001:
+		var objetivo = _obtener_enemigo_cercano()
+		if objetivo != null:
+			var d = global_position.distance_to(objetivo.global_position)
+			if d <= rango_ataque:
+				_ejecutar_ataque(objetivo)
+				_reloj_ataque = cadencia_ataque
+
+func _obtener_enemigo_cercano() -> Node3D:
+	var enemigos = get_tree().get_nodes_in_group("enemigos")
+	var mas_cercano: Node3D = null
+	var menor_dist = 9999.0
+	for e in enemigos:
+		if is_instance_valid(e) and e is Node3D:
+			var dist = global_position.distance_to(e.global_position)
+			if dist < menor_dist:
+				menor_dist = dist
+				mas_cercano = e
+	return mas_cercano
+
+func _ejecutar_ataque(enemigo: Node3D):
+	if clase == "Guerrero":
+		# Corte melee directo
+		accion = "attack-melee-right"
+		_reloj_anim_accion = 0.35
+		var dir = (enemigo.global_position - global_position).normalized()
+		dir.y = 0.0
+		if dir.length() > 0.01:
+			basis = Basis.looking_at(dir)
+		if enemigo.has_method("recibir_dano"):
+			enemigo.recibir_dano(dano)
+	else:
+		# Disparo o hechizo
+		accion = "attack-melee-right"
+		_reloj_anim_accion = 0.25
+		var proyectil_escena = load("res://proyectil.tscn")
+		if proyectil_escena != null:
+			var p = proyectil_escena.instantiate()
+			var origen = global_position + Vector3(0, 0.9, 0)
+			var dir = (enemigo.global_position + Vector3(0, 0.9, 0) - origen).normalized()
+			get_parent().add_child(p)
+			p.iniciar(origen, dir, dano, 15.0 if clase == "Cazador" else 10.0)
+
+func click_attack():
+	# Click manual tipo clicker
+	var objetivo = _obtener_enemigo_cercano()
+	accion = "attack-melee-right"
+	_reloj_anim_accion = 0.2
+	if objetivo != null and global_position.distance_to(objetivo.global_position) <= rango_ataque + 2.0:
+		if objetivo.has_method("recibir_dano"):
+			objetivo.recibir_dano(dano * 0.75)
+	# Bono incremental de click
+	oro += 1
+	recoger_drop(0, 1) # +1 XP por click
+
+func recibir_dano(cantidad: float):
+	vida = maxf(vida - cantidad, 0.0)
+	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
+	if vida <= 0.0:
+		print("¡Jugador caído! Reiniciando salud...")
+		vida = vida_maxima
+
+func recoger_drop(tipo: int, valor: int):
+	match tipo:
+		0: # ORO
+			oro += valor
+		1: # EXP
+			xp += valor
+			if xp >= xp_siguiente_nivel:
+				subir_nivel()
+		2: # CORAZON
+			vida = minf(vida + valor, vida_maxima)
+	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
+
+func registrar_baja():
+	bajas += 1
+	recoger_drop(1, 10) # 10 XP por baja
+	recoger_drop(0, 5)  # 5 Oro por baja
+
+func subir_nivel():
+	xp -= xp_siguiente_nivel
+	nivel += 1
+	xp_siguiente_nivel = int(xp_siguiente_nivel * 1.4)
+	vida = vida_maxima # Cura completa al subir nivel
+	emit_signal("nivel_subido", nivel)
+	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
+
+func aplicar_clase(nombre: String):
+	clase = nombre
+	match nombre:
+		"Guerrero":
+			vida_maxima = 140.0
+			vida = 140.0
+			dano = 18.0
+			rango_ataque = 2.8
+			cadencia_ataque = 0.75
+			speed_caminar = 3.2
+		"Cazador":
+			vida_maxima = 90.0
+			vida = 90.0
+			dano = 14.0
+			rango_ataque = 7.0
+			cadencia_ataque = 0.60
+			speed_caminar = 3.8
+		"Mago":
+			vida_maxima = 80.0
+			vida = 80.0
+			dano = 24.0
+			rango_ataque = 5.5
+			cadencia_ataque = 0.95
+			speed_caminar = 3.3
+	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
+
+func aplicar_mejora(tipo_mejora: String):
+	match tipo_mejora:
+		"dano":
+			dano *= 1.25
+		"velocidad":
+			speed_caminar *= 1.20
+			speed_correr *= 1.20
+		"vida":
+			vida_maxima += 30.0
+			vida = minf(vida + 30.0, vida_maxima)
+		"cadencia":
+			cadencia_ataque = maxf(cadencia_ataque * 0.80, 0.2)
+	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
 
 func elegir_estado():
 	if not is_on_floor():
