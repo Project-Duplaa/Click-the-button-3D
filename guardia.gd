@@ -67,8 +67,11 @@ func _physics_process(delta):
 			anim.play("attack-melee-right")
 			if _reloj_ataque <= 0.001 and d <= rango_ataque + 0.3:
 				_reloj_ataque = cadencia_ataque
-				if jugador != null and jugador.has_method("recibir_dano"):
-					jugador.recibir_dano(dano_ataque)
+				if jugador != null:
+					if jugador.has_node("Salud"):
+						jugador.get_node("Salud").recibir_golpe(int(dano_ataque))
+					if jugador.has_method("recibir_dano"):
+						jugador.recibir_dano(dano_ataque)
 		Estado.BUSCAR:
 			if distancia_a(ultimo_visto) > 0.1:
 				ir_a(ultimo_visto)

@@ -6,6 +6,10 @@
 [ext_resource type="PackedScene" path="res://guardia.tscn" id="4_guardia"]
 [ext_resource type="PackedScene" path="res://click_hud.tscn" id="5_hud"]
 [ext_resource type="Script" path="res://oleadas_spawner.gd" id="6_spawner"]
+[ext_resource type="Script" path="res://partida.gd" id="7_partida"]
+[ext_resource type="Script" path="res://salud.gd" id="8_salud"]
+[ext_resource type="PackedScene" path="res://cofre.tscn" id="9_cofre"]
+[ext_resource type="PackedScene" path="res://salida.tscn" id="10_salida"]
 
 [sub_resource type="ProceduralSkyMaterial" id="CieloMat"]
 
@@ -100,8 +104,32 @@ shape = SubResource("Capsula")
 [node name="Modelo" parent="Personaje" instance=ExtResource("2_modelo")]
 transform = Transform3D(-2.6, 0, 0, 0, 2.6, 0, 0, 0, -2.6, 0, 0, 0)
 
+[node name="Salud" type="Node" parent="Personaje"]
+script = ExtResource("8_salud")
+vida = 120
+invulnerable = 0.5
+reapariciones = 0
+
 [node name="Guardia" parent="." instance=ExtResource("4_guardia")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, 3)
+
+[node name="Partida" type="Node" parent="."]
+script = ExtResource("7_partida")
+tiempo_limite = 900.0
+gana_con_tiempo = true
+metas = 3
+
+[node name="Cofre1" parent="." instance=ExtResource("9_cofre")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 1)
+
+[node name="Cofre2" parent="." instance=ExtResource("9_cofre")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0, 2)
+
+[node name="Cofre3" parent="." instance=ExtResource("9_cofre")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, -4)
+
+[node name="Salida" parent="." instance=ExtResource("10_salida")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -10)
 
 [node name="ClickHUD" parent="." instance=ExtResource("5_hud")]
 
