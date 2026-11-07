@@ -18,3 +18,5 @@ crear_talleres*.py
 *.docx
 !talleres/**/*.docx
 !talleres/**/*.md
+
+!Plan_de_Proyecto_Clicklike_3D.docx
