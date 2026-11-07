@@ -11,3 +11,4 @@ generador*.py
 generar*.py
 automatizar*.py
 reconstruir*.py
+*.uid
