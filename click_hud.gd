@@ -17,6 +17,7 @@ var jugador: Node = null
 var tiempo_total: float = 0.0
 var oleada: int = 1
 var clicks_boton: int = 0
+var vel_boton: float = 2.8
 
 func _ready():
 	modal_mejora.visible = false
@@ -31,23 +32,27 @@ func _ready():
 	btn_opc2.pressed.connect(func(): _elegir_mejora("velocidad"))
 	btn_opc3.pressed.connect(func(): _elegir_mejora("vida"))
 	
-	# Conectar con el Botón Móvil
 	call_deferred("_conectar_boton_movil")
 
 func _conectar_boton_movil():
 	var b = get_tree().get_first_node_in_group("boton_movil")
 	if b != null:
 		b.click_presionado.connect(_on_click_boton_presionado)
+		if "rapidez_movimiento" in b:
+			vel_boton = b.rapidez_movimiento
 
 func _on_click_boton_presionado(total: int):
 	clicks_boton = total
+	var b = get_tree().get_first_node_in_group("boton_movil")
+	if b != null and "rapidez_movimiento" in b:
+		vel_boton = b.rapidez_movimiento
 
 func _process(delta):
 	tiempo_total += delta
 	var minutos = int(tiempo_total) / 60
 	var segundos = int(tiempo_total) % 60
 	var bajas_cnt = jugador.bajas if jugador != null else 0
-	label_info.text = "Oleada %d  |  %02d:%02d  |  Bajas: %d  |  Clics Botón: %d" % [oleada, minutos, segundos, bajas_cnt, clicks_boton]
+	label_info.text = "Oleada %d  |  %02d:%02d  |  Bajas: %d  |  Clics: %d (Vel: %.1f m/s)" % [oleada, minutos, segundos, bajas_cnt, clicks_boton, vel_boton]
 
 func _on_stats_actualizadas(vida, max_vida, xp, xp_sig, nivel, oro, bajas):
 	if label_clase != null and jugador != null:

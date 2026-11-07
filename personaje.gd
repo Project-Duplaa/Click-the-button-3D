@@ -21,7 +21,7 @@ var rango_ataque: float = 3.0
 var cadencia_ataque: float = 0.8
 var oro: int = 0
 var xp: int = 0
-var xp_siguiente_nivel: int = 25
+var xp_siguiente_nivel: int = 60
 var nivel: int = 1
 var bajas: int = 0
 
@@ -173,14 +173,14 @@ func recoger_drop(tipo: int, valor: int):
 
 func registrar_baja():
 	bajas += 1
-	recoger_drop(1, 10) # 10 XP por baja
-	recoger_drop(0, 5)  # 5 Oro por baja
+	recoger_drop(1, 6) # 6 XP por baja
+	recoger_drop(0, 3) # 3 Oro por baja
 
 func subir_nivel():
 	xp -= xp_siguiente_nivel
 	nivel += 1
-	xp_siguiente_nivel = int(xp_siguiente_nivel * 1.4)
-	vida = vida_maxima # Cura completa al subir nivel
+	xp_siguiente_nivel = int(xp_siguiente_nivel * 1.55)
+	vida = minf(vida + 30.0, vida_maxima) # Cura parcial +30 HP para mayor tension de supervivencia
 	emit_signal("nivel_subido", nivel)
 	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
 
