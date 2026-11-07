@@ -87,6 +87,7 @@ script = ExtResource("3_cam")
 objetivo = NodePath("../Personaje")
 
 [node name="Personaje" type="CharacterBody3D" parent="." node_paths=PackedStringArray("camara") groups=["jugador"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 3)
 script = ExtResource("1_pj")
 camara = NodePath("../Camera3D")
 
