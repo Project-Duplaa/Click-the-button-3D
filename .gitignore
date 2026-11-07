@@ -1,4 +1,8 @@
 .godot/
 *.tmp
 *.docx
-generar_documentos.py
+*.pdf
+*_extracted.txt
+generar*.py
+automatizar*.py
+reconstruir*.py
