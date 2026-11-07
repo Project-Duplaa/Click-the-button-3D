@@ -30,7 +30,7 @@ func iniciar(cantidad: float, es_critico: bool = false, es_jugador: bool = false
 	var offset_x = randf_range(-0.4, 0.4)
 	var offset_z = randf_range(-0.4, 0.4)
 	
-	tw.tween_property(self, "position:y", final_y, 0.75).set_trans(Tween.TRANS_OUT).set_ease(Tween.EASE_OUT)
+	tw.tween_property(self, "position:y", final_y, 0.75).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tw.tween_property(self, "position:x", position.x + offset_x, 0.75).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.tween_property(self, "position:z", position.z + offset_z, 0.75).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.tween_property(self, "scale", Vector3(1.15, 1.15, 1.15), 0.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
