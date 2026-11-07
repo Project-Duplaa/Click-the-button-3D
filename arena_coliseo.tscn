@@ -1,0 +1,152 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://pilar_antorcha.tscn" id="1_pilar"]
+
+[sub_resource type="StandardMaterial3D" id="MatArenaPiso"]
+albedo_color = Color(0.48, 0.42, 0.35, 1)
+roughness = 0.92
+
+[sub_resource type="PlaneMesh" id="MeshPiso"]
+material = SubResource("MatArenaPiso")
+size = Vector2(32, 32)
+
+[sub_resource type="BoxShape3D" id="ColPiso"]
+size = Vector3(32, 0.2, 32)
+
+[sub_resource type="StandardMaterial3D" id="MatAltar"]
+albedo_color = Color(0.26, 0.3, 0.36, 1)
+roughness = 0.8
+emission_enabled = true
+emission = Color(0.12, 0.35, 0.55, 1)
+emission_energy_multiplier = 0.5
+
+[sub_resource type="CylinderMesh" id="MeshAltar"]
+material = SubResource("MatAltar")
+top_radius = 4.5
+bottom_radius = 4.6
+height = 0.05
+
+[sub_resource type="StandardMaterial3D" id="MatMuro"]
+albedo_color = Color(0.32, 0.33, 0.37, 1)
+roughness = 0.88
+
+[sub_resource type="BoxMesh" id="MeshMuroNS"]
+material = SubResource("MatMuro")
+size = Vector3(32, 3.6, 1.4)
+
+[sub_resource type="BoxShape3D" id="ColMuroNS"]
+size = Vector3(32, 3.6, 1.4)
+
+[sub_resource type="BoxMesh" id="MeshMuroEO"]
+material = SubResource("MatMuro")
+size = Vector3(1.4, 3.6, 32)
+
+[sub_resource type="BoxShape3D" id="ColMuroEO"]
+size = Vector3(1.4, 3.6, 32)
+
+[sub_resource type="StandardMaterial3D" id="MatCornisa"]
+albedo_color = Color(0.24, 0.25, 0.28, 1)
+roughness = 0.85
+
+[sub_resource type="BoxMesh" id="MeshCornisaNS"]
+material = SubResource("MatCornisa")
+size = Vector3(32.4, 0.4, 1.8)
+
+[sub_resource type="BoxMesh" id="MeshCornisaEO"]
+material = SubResource("MatCornisa")
+size = Vector3(1.8, 0.4, 32.4)
+
+[node name="ArenaColiseo" type="Node3D"]
+
+[node name="Piso" type="StaticBody3D" parent="."]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Piso"]
+mesh = SubResource("MeshPiso")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Piso"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0)
+shape = SubResource("ColPiso")
+
+[node name="AltarCentral" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, 0)
+mesh = SubResource("MeshAltar")
+
+[node name="Muros" type="Node3D" parent="."]
+
+[node name="MuroNorte" type="StaticBody3D" parent="Muros"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, -15.5)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Muros/MuroNorte"]
+mesh = SubResource("MeshMuroNS")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Muros/MuroNorte"]
+shape = SubResource("ColMuroNS")
+
+[node name="Cornisa" type="MeshInstance3D" parent="Muros/MuroNorte"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.9, 0)
+mesh = SubResource("MeshCornisaNS")
+
+[node name="MuroSur" type="StaticBody3D" parent="Muros"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 15.5)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Muros/MuroSur"]
+mesh = SubResource("MeshMuroNS")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Muros/MuroSur"]
+shape = SubResource("ColMuroNS")
+
+[node name="Cornisa" type="MeshInstance3D" parent="Muros/MuroSur"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.9, 0)
+mesh = SubResource("MeshCornisaNS")
+
+[node name="MuroEste" type="StaticBody3D" parent="Muros"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15.5, 1.8, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Muros/MuroEste"]
+mesh = SubResource("MeshMuroEO")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Muros/MuroEste"]
+shape = SubResource("ColMuroEO")
+
+[node name="Cornisa" type="MeshInstance3D" parent="Muros/MuroEste"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.9, 0)
+mesh = SubResource("MeshCornisaEO")
+
+[node name="MuroOeste" type="StaticBody3D" parent="Muros"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15.5, 1.8, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Muros/MuroOeste"]
+mesh = SubResource("MeshMuroEO")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Muros/MuroOeste"]
+shape = SubResource("ColMuroEO")
+
+[node name="Cornisa" type="MeshInstance3D" parent="Muros/MuroOeste"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.9, 0)
+mesh = SubResource("MeshCornisaEO")
+
+[node name="Pilares" type="Node3D" parent="."]
+
+[node name="Pilar_NO" parent="Pilares" instance=ExtResource("1_pilar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.5, 0, -10.5)
+
+[node name="Pilar_NE" parent="Pilares" instance=ExtResource("1_pilar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 0, -10.5)
+
+[node name="Pilar_SO" parent="Pilares" instance=ExtResource("1_pilar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.5, 0, 10.5)
+
+[node name="Pilar_SE" parent="Pilares" instance=ExtResource("1_pilar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 0, 10.5)
+
+[node name="Pilar_N" parent="Pilares" instance=ExtResource("1_pilar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -13)
+
+[node name="Pilar_S" parent="Pilares" instance=ExtResource("1_pilar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 13)
+
+[node name="Pilar_E" parent="Pilares" instance=ExtResource("1_pilar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13, 0, 0)
+
+[node name="Pilar_O" parent="Pilares" instance=ExtResource("1_pilar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13, 0, 0)
