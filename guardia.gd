@@ -28,9 +28,13 @@ var _reloj_ataque: float = 0.0
 @onready var anim = $Modelo/AnimationPlayer
 @onready var vision = $Vision
 
+var _escala_base: Vector3 = Vector3(-2.6, 2.6, -2.6)
+
 func _ready():
 	add_to_group("enemigos")
 	vida = vida_maxima
+	if has_node("Modelo"):
+		_escala_base = $Modelo.scale
 	jugador = get_tree().get_first_node_in_group("jugador")
 	for d in ruta:
 		puntos.append(global_position + d)
@@ -135,8 +139,22 @@ func distancia_a(p):
 	var o = global_position
 	return Vector2(p.x - o.x, p.z - o.z).length()
 
-func recibir_dano(cantidad: float):
+func recibir_dano(cantidad: float, es_critico: bool = false):
 	vida -= cantidad
+	
+	if has_node("Modelo"):
+		var tw = create_tween()
+		tw.tween_property($Modelo, "scale", _escala_base * 1.15, 0.05)
+		tw.tween_property($Modelo, "scale", _escala_base, 0.08)
+		
+	var escena = load("res://damage_number_3d.tscn")
+	if escena != null:
+		var num = escena.instantiate()
+		var pos_num = global_position + Vector3(randf_range(-0.25, 0.25), 1.8, randf_range(-0.25, 0.25))
+		get_parent().add_child(num)
+		num.global_position = pos_num
+		num.iniciar(cantidad, es_critico, false)
+		
 	if vida <= 0:
 		morir()
 
@@ -144,8 +162,9 @@ func morir():
 	var drop_escena = load("res://drop_item.tscn")
 	if drop_escena != null:
 		var drop = drop_escena.instantiate()
-		drop.global_position = global_position + Vector3(0, 0.4, 0)
+		var pos_drop = global_position + Vector3(0, 0.4, 0)
 		get_parent().add_child(drop)
+		drop.global_position = pos_drop
 	if jugador != null and jugador.has_method("registrar_baja"):
 		jugador.registrar_baja()
 	queue_free()

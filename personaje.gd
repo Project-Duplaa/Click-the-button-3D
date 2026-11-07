@@ -138,15 +138,22 @@ func click_attack():
 	var objetivo = _obtener_enemigo_cercano()
 	accion = "attack-melee-right"
 	_reloj_anim_accion = 0.2
-	if objetivo != null and global_position.distance_to(objetivo.global_position) <= rango_ataque + 2.0:
+	if objetivo != null and global_position.distance_to(objetivo.global_position) <= rango_ataque + 2.5:
 		if objetivo.has_method("recibir_dano"):
-			objetivo.recibir_dano(dano * 0.75)
+			objetivo.recibir_dano(dano * 0.75, true)
 	# Bono incremental de click
 	oro += 1
 	recoger_drop(0, 1) # +1 XP por click
 
 func recibir_dano(cantidad: float):
 	vida = maxf(vida - cantidad, 0.0)
+	var escena = load("res://damage_number_3d.tscn")
+	if escena != null:
+		var num = escena.instantiate()
+		var pos_num = global_position + Vector3(randf_range(-0.2, 0.2), 2.0, randf_range(-0.2, 0.2))
+		get_parent().add_child(num)
+		num.global_position = pos_num
+		num.iniciar(cantidad, false, true)
 	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
 	if vida <= 0.0:
 		print("¡Jugador caído! Reiniciando salud...")

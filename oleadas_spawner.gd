@@ -1,15 +1,20 @@
 extends Node3D
 
 @export var guardia_escena: PackedScene = preload("res://guardia.tscn")
-@export var intervalo_oleada: float = 25.0
-@export var radio_spawn: float = 12.0
+@export var espectro_escena: PackedScene = preload("res://espectro.tscn")
+@export var bruto_escena: PackedScene = preload("res://bruto.tscn")
 
-var _reloj_oleada: float = 25.0
+@export var intervalo_oleada: float = 22.0
+@export var radio_spawn: float = 12.5
+
+var _reloj_oleada: float = 22.0
 var oleada_actual: int = 1
 var hud: Node = null
 
 func _ready():
 	hud = get_parent().get_node_or_null("ClickHUD")
+	# Generar una primera horda inicial de calentamiento
+	call_deferred("_generar_oleada", 1)
 
 func _process(delta):
 	_reloj_oleada -= delta
@@ -20,16 +25,40 @@ func _process(delta):
 			hud.oleada = oleada_actual
 		_generar_oleada(oleada_actual)
 
-func _generar_oleada(num_oleada: int):
-	var cantidad = min(2 + num_oleada, 6)
-	for i in range(cantidad):
-		if guardia_escena != null:
-			var g = guardia_escena.instantiate()
-			var angulo = randf() * TAU
-			var pos = Vector3(cos(angulo) * radio_spawn, 0.0, sin(angulo) * radio_spawn)
-			g.global_position = pos
-			# Ruta aleatoria cercana
-			g.ruta = [Vector3.ZERO, Vector3(randf_range(-4, 4), 0, randf_range(-4, 4))]
-			g.vida_maxima = 25.0 + (num_oleada * 5.0)
-			g.dano_ataque = 8.0 + (num_oleada * 1.5)
-			get_parent().add_child(g)
+func _generar_oleada(num: int):
+	print("--- INICIANDO OLEADA ", num, " ---")
+	
+	if num <= 2:
+		# Fase 1: Enjambres rápidos de espectros (3 a 4)
+		var cant = 3 + num
+		for i in range(cant):
+			_spawn_enemigo(espectro_escena, 0.0)
+	elif num <= 4:
+		# Fase 2: Mezcla de infantería gladiador y enjambres
+		for i in range(2):
+			_spawn_enemigo(guardia_escena, (num - 2) * 5.0)
+		for i in range(3):
+			_spawn_enemigo(espectro_escena, (num - 2) * 3.0)
+	else:
+		# Fase 3+: Aparición de Bruto Ancestral + Escolta
+		_spawn_enemigo(bruto_escena, (num - 5) * 20.0)
+		for i in range(2):
+			_spawn_enemigo(guardia_escena, (num - 4) * 6.0)
+		for i in range(3):
+			_spawn_enemigo(espectro_escena, (num - 4) * 4.0)
+
+func _spawn_enemigo(escena: PackedScene, vida_extra: float):
+	if escena == null:
+		return
+	var angulo = randf() * TAU
+	var pos = Vector3(cos(angulo) * radio_spawn, 0.0, sin(angulo) * radio_spawn)
+	# Mantener dentro de los muros de la arena (clamp [-12.5, 12.5])
+	pos.x = clampf(pos.x, -12.5, 12.5)
+	pos.z = clampf(pos.z, -12.5, 12.5)
+	
+	var enemigo = escena.instantiate()
+	get_parent().add_child(enemigo)
+	enemigo.global_position = pos
+	if "vida_maxima" in enemigo:
+		enemigo.vida_maxima += vida_extra
+		enemigo.vida = enemigo.vida_maxima
