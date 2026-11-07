@@ -5,7 +5,7 @@ extends Node3D
 @export var bruto_escena: PackedScene = preload("res://bruto.tscn")
 
 @export var intervalo_oleada: float = 22.0
-@export var radio_spawn: float = 12.5
+@export var radio_spawn: float = 26.0
 
 var _reloj_oleada: float = 22.0
 var oleada_actual: int = 1
@@ -26,25 +26,25 @@ func _process(delta):
 		_generar_oleada(oleada_actual)
 
 func _generar_oleada(num: int):
-	print("--- INICIANDO OLEADA ", num, " ---")
+	print("--- INICIANDO OLEADA ", num, " EN ARENA 60x60 ---")
 	
 	if num <= 2:
-		# Fase 1: Enjambres rápidos de espectros (3 a 4)
-		var cant = 3 + num
+		# Fase 1: Enjambres rápidos de espectros (4 a 6)
+		var cant = 4 + (num * 2)
 		for i in range(cant):
 			_spawn_enemigo(espectro_escena, 0.0)
 	elif num <= 4:
 		# Fase 2: Mezcla de infantería gladiador y enjambres
-		for i in range(2):
-			_spawn_enemigo(guardia_escena, (num - 2) * 5.0)
 		for i in range(3):
+			_spawn_enemigo(guardia_escena, (num - 2) * 5.0)
+		for i in range(5):
 			_spawn_enemigo(espectro_escena, (num - 2) * 3.0)
 	else:
 		# Fase 3+: Aparición de Bruto Ancestral + Escolta
 		_spawn_enemigo(bruto_escena, (num - 5) * 20.0)
-		for i in range(2):
-			_spawn_enemigo(guardia_escena, (num - 4) * 6.0)
 		for i in range(3):
+			_spawn_enemigo(guardia_escena, (num - 4) * 6.0)
+		for i in range(6):
 			_spawn_enemigo(espectro_escena, (num - 4) * 4.0)
 
 func _spawn_enemigo(escena: PackedScene, vida_extra: float):
@@ -52,9 +52,9 @@ func _spawn_enemigo(escena: PackedScene, vida_extra: float):
 		return
 	var angulo = randf() * TAU
 	var pos = Vector3(cos(angulo) * radio_spawn, 0.0, sin(angulo) * radio_spawn)
-	# Mantener dentro de los muros de la arena (clamp [-12.5, 12.5])
-	pos.x = clampf(pos.x, -12.5, 12.5)
-	pos.z = clampf(pos.z, -12.5, 12.5)
+	# Mantener dentro de los muros de la arena 60x60
+	pos.x = clampf(pos.x, -27.0, 27.0)
+	pos.z = clampf(pos.z, -27.0, 27.0)
 	
 	var enemigo = escena.instantiate()
 	get_parent().add_child(enemigo)

@@ -16,6 +16,7 @@ extends CanvasLayer
 var jugador: Node = null
 var tiempo_total: float = 0.0
 var oleada: int = 1
+var clicks_boton: int = 0
 
 func _ready():
 	modal_mejora.visible = false
@@ -29,13 +30,24 @@ func _ready():
 	btn_opc1.pressed.connect(func(): _elegir_mejora("dano"))
 	btn_opc2.pressed.connect(func(): _elegir_mejora("velocidad"))
 	btn_opc3.pressed.connect(func(): _elegir_mejora("vida"))
+	
+	# Conectar con el Botón Móvil
+	call_deferred("_conectar_boton_movil")
+
+func _conectar_boton_movil():
+	var b = get_tree().get_first_node_in_group("boton_movil")
+	if b != null:
+		b.click_presionado.connect(_on_click_boton_presionado)
+
+func _on_click_boton_presionado(total: int):
+	clicks_boton = total
 
 func _process(delta):
 	tiempo_total += delta
 	var minutos = int(tiempo_total) / 60
 	var segundos = int(tiempo_total) % 60
 	var bajas_cnt = jugador.bajas if jugador != null else 0
-	label_info.text = "Oleada %d  |  %02d:%02d  |  Bajas: %d" % [oleada, minutos, segundos, bajas_cnt]
+	label_info.text = "Oleada %d  |  %02d:%02d  |  Bajas: %d  |  Clics Botón: %d" % [oleada, minutos, segundos, bajas_cnt, clicks_boton]
 
 func _on_stats_actualizadas(vida, max_vida, xp, xp_sig, nivel, oro, bajas):
 	if label_clase != null and jugador != null:
@@ -49,14 +61,13 @@ func _on_stats_actualizadas(vida, max_vida, xp, xp_sig, nivel, oro, bajas):
 		bar_xp.value = xp
 		label_xp.text = "XP: %d / %d" % [xp, xp_sig]
 	if label_oro != null:
-		label_oro.text = "🪙 Oro: %d" % oro
+		label_oro.text = "Oro: %d" % oro
 
 func _on_btn_click_pressed():
 	if jugador != null and jugador.has_method("click_attack"):
 		jugador.click_attack()
 
 func _on_nivel_subido(nuevo_nivel: int):
-	# Mostrar modal de draft de 3 cartas
 	modal_mejora.visible = true
 
 func _elegir_mejora(tipo: String):
