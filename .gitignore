@@ -1,6 +1,6 @@
+# Godot cache & temporales
 .godot/
 *.tmp
-*.docx
 *.pdf
 *_extracted.txt
 out_*.txt
@@ -11,4 +11,10 @@ generador*.py
 generar*.py
 automatizar*.py
 reconstruir*.py
+crear_talleres*.py
 *.uid
+
+# Documentos en la raiz ignorados, pero permitidos dentro de talleres/
+*.docx
+!talleres/**/*.docx
+!talleres/**/*.md
