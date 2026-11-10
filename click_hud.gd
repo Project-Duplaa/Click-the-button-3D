@@ -27,6 +27,8 @@ func _ready():
 	if panel_jefe != null:
 		panel_jefe.visible = false
 	modal_mejora.visible = false
+	if btn_click != null:
+		btn_click.visible = false # El combate es 100% automático (estilo Vampire Survivors)
 	jugador = get_tree().get_first_node_in_group("jugador")
 	if jugador != null:
 		jugador.stats_actualizadas.connect(_on_stats_actualizadas)

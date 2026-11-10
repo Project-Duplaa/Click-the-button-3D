@@ -1,0 +1,46 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://anomalia_click.gd" id="1_anom"]
+
+[sub_resource type="CylinderShape3D" id="ColAnomalia"]
+height = 1.6
+radius = 1.1
+
+[sub_resource type="StandardMaterial3D" id="MatCristal"]
+shading_mode = 0
+albedo_color = Color(1, 0.82, 0.2, 1)
+
+[sub_resource type="BoxMesh" id="MeshCristal"]
+material = SubResource("MatCristal")
+size = Vector3(0.5, 0.8, 0.5)
+
+[sub_resource type="StandardMaterial3D" id="MatAnillo"]
+shading_mode = 0
+albedo_color = Color(1, 0.75, 0.15, 0.85)
+transparency = 1
+
+[sub_resource type="TorusMesh" id="MeshAnillo"]
+material = SubResource("MatAnillo")
+inner_radius = 0.9
+outer_radius = 1.1
+
+[node name="AnomaliaClick" type="Area3D"]
+script = ExtResource("1_anom")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+shape = SubResource("ColAnomalia")
+
+[node name="CristalNucleo" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.707107, -0.707107, 0, 0.5, 0.5, -0.707107, 0.5, 0.5, 0.707107, 0, 0.8, 0)
+mesh = SubResource("MeshCristal")
+
+[node name="AnilloTiempo" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+mesh = SubResource("MeshAnillo")
+
+[node name="LuzNucleo" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+light_color = Color(1, 0.85, 0.2, 1)
+light_energy = 2.2
+omni_range = 5.0

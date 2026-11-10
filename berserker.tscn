@@ -1,0 +1,38 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://berserker.gd" id="1_ber"]
+[ext_resource type="PackedScene" path="res://personaje/character-male-d.glb" id="2_mod"]
+
+[sub_resource type="CapsuleShape3D" id="CapsulaBerserker"]
+radius = 0.45
+height = 1.9
+
+[sub_resource type="StandardMaterial3D" id="MatLineaCarga"]
+transparency = 1
+shading_mode = 0
+albedo_color = Color(1, 0.1, 0.1, 0.55)
+
+[sub_resource type="BoxMesh" id="MeshLinea"]
+material = SubResource("MatLineaCarga")
+size = Vector3(0.7, 0.04, 8.5)
+
+[node name="Berserker" type="CharacterBody3D"]
+script = ExtResource("1_ber")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.95, 0)
+shape = SubResource("CapsulaBerserker")
+
+[node name="Modelo" parent="." instance=ExtResource("2_mod")]
+transform = Transform3D(-2.8, 0, 0, 0, 2.8, 0, 0, 0, -2.8, 0, 0, 0)
+
+[node name="LineaCarga" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, -4.25)
+visible = false
+mesh = SubResource("MeshLinea")
+
+[node name="LuzFuria" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+light_color = Color(1, 0.15, 0.1, 1)
+light_energy = 0.8
+omni_range = 4.0
