@@ -1,0 +1,165 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://pantalla_fin_partida.gd" id="1_fin"]
+
+[node name="PantallaFinPartida" type="CanvasLayer"]
+process_mode = 3
+layer = 10
+script = ExtResource("1_fin")
+
+[node name="Control" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CortinaNegra" type="ColorRect" parent="Control"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.04, 0.05, 0.08, 0.82)
+
+[node name="Fondo" type="Panel" parent="Control"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -310.0
+offset_top = -220.0
+offset_right = 310.0
+offset_bottom = 220.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset = Vector2(310, 220)
+
+[node name="VBox" type="VBoxContainer" parent="Control/Fondo"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 25.0
+offset_top = 20.0
+offset_right = -25.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 14
+
+[node name="LabelTitulo" type="Label" parent="Control/Fondo/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "🏆 ¡VICTORIA GLORIOSA EN EL COLISEO!"
+horizontal_alignment = 1
+
+[node name="LabelMotivo" type="Label" parent="Control/Fondo/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "Has conquistado la arena y resistido el poder supremo del Núcleo."
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="HSeparator" type="HSeparator" parent="Control/Fondo/VBox"]
+layout_mode = 2
+
+[node name="LabelSubtitulo" type="Label" parent="Control/Fondo/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "📊 RESUMEN ANALÍTICO DE LA RUN:"
+horizontal_alignment = 1
+
+[node name="Grid" type="GridContainer" parent="Control/Fondo/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/h_separation = 20
+theme_override_constants/v_separation = 8
+columns = 2
+
+[node name="LabelKeyTiempo" type="Label" parent="Control/Fondo/VBox/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "⏱️ Tiempo Sobrevivido:"
+
+[node name="LabelValTiempo" type="Label" parent="Control/Fondo/VBox/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "00:00"
+horizontal_alignment = 2
+
+[node name="LabelKeyClicks" type="Label" parent="Control/Fondo/VBox/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "🎯 Clics al Núcleo Móvil:"
+
+[node name="LabelValClicks" type="Label" parent="Control/Fondo/VBox/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "0 clics"
+horizontal_alignment = 2
+
+[node name="LabelKeyBajas" type="Label" parent="Control/Fondo/VBox/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "⚔️ Gladiadores Abatidos:"
+
+[node name="LabelValBajas" type="Label" parent="Control/Fondo/VBox/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "0 enemigos"
+horizontal_alignment = 2
+
+[node name="LabelKeyNivel" type="Label" parent="Control/Fondo/VBox/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "🧙 Especialidad y Nivel:"
+
+[node name="LabelValNivel" type="Label" parent="Control/Fondo/VBox/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Mago (Nv. 1)"
+horizontal_alignment = 2
+
+[node name="LabelKeyOro" type="Label" parent="Control/Fondo/VBox/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "🪙 Oro Recolectado:"
+
+[node name="LabelValOro" type="Label" parent="Control/Fondo/VBox/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "0 monedas"
+horizontal_alignment = 2
+
+[node name="LabelKeyIntento" type="Label" parent="Control/Fondo/VBox/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "🔄 Intento en el Coliseo:"
+
+[node name="LabelValIntento" type="Label" parent="Control/Fondo/VBox/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "#1"
+horizontal_alignment = 2
+
+[node name="HSeparator2" type="HSeparator" parent="Control/Fondo/VBox"]
+layout_mode = 2
+
+[node name="HBoxBotones" type="HBoxContainer" parent="Control/Fondo/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="BtnReintentar" type="Button" parent="Control/Fondo/VBox/HBoxBotones"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "⚔️ Reintentar Desafío"
+
+[node name="BtnSalir" type="Button" parent="Control/Fondo/VBox/HBoxBotones"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "🚪 Salir al Escritorio"

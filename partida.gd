@@ -27,9 +27,14 @@ func _ready():
 
 func _physics_process(delta):
 	if estado != Estado.JUGANDO:
-		reloj -= delta
-		if reloj <= 0.001:
-			reiniciar()
+		# Si hay pantalla de fin de partida abierta, esperar interacción del usuario
+		var pantalla_fin = get_tree().get_first_node_in_group("pantalla_fin_partida")
+		if pantalla_fin != null and pantalla_fin.visible:
+			return
+		if reloj > 0.001:
+			reloj -= delta
+			if reloj <= 0.001:
+				reiniciar()
 		return
 	tiempo = maxf(tiempo - delta, 0.0)
 	if tiempo <= 0.001:
@@ -48,7 +53,7 @@ func avisar_meta():
 		ganar()
 
 func ganar():
-	terminar(Estado.GANO, "ganó")
+	terminar(Estado.GANO, "¡Has sobrevivido a la prueba del Coliseo!")
 
 func perder(motivo):
 	terminar(Estado.PERDIO, motivo)
@@ -61,10 +66,19 @@ func terminar(nuevo, motivo):
 	print("fin: ", Estado.keys()[estado], " cuadro ",
 		Engine.get_physics_frames(), " (", motivo, ")")
 	get_tree().paused = true
-	reloj = espera_reinicio
 	var usado = tiempo_limite - tiempo
 	if estado == Estado.GANO and (mejor == 0.0 or usado < mejor):
 		mejor = usado
+		
+	# Desplegar pantalla analítica de fin de partida
+	var pantalla_fin = get_tree().get_first_node_in_group("pantalla_fin_partida")
+	if pantalla_fin == null:
+		var escena_fin = load("res://pantalla_fin_partida.tscn")
+		if escena_fin != null:
+			pantalla_fin = escena_fin.instantiate()
+			get_tree().root.add_child(pantalla_fin)
+	if pantalla_fin != null and pantalla_fin.has_method("mostrar"):
+		pantalla_fin.mostrar(estado == Estado.GANO, motivo)
 
 func reiniciar():
 	intentos += 1
