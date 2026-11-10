@@ -1,15 +1,23 @@
 extends Node3D
 
+const AudioManager = preload("res://audio_manager.gd")
+
 @export var guardia_escena: PackedScene = preload("res://guardia.tscn")
 @export var espectro_escena: PackedScene = preload("res://espectro.tscn")
 @export var bruto_escena: PackedScene = preload("res://bruto.tscn")
+@export var mini_jefe_escena: PackedScene = preload("res://mini_jefe.tscn")
+@export var parca_roja_escena: PackedScene = preload("res://parca_roja.tscn")
 
 @export var intervalo_oleada: float = 22.0
 @export var radio_spawn: float = 26.0
 
 var _reloj_oleada: float = 22.0
+var _tiempo_transcurrido: float = 0.0
 var oleada_actual: int = 1
 var hud: Node = null
+
+var _mini_jefe_spawned: bool = false
+var _parca_spawned: bool = false
 
 func _ready():
 	hud = get_parent().get_node_or_null("ClickHUD")
@@ -17,7 +25,17 @@ func _ready():
 	call_deferred("_generar_oleada", 1)
 
 func _process(delta):
+	_tiempo_transcurrido += delta
 	_reloj_oleada -= delta
+	
+	# Spawn Mini-Jefe al minuto 5 (300 s)
+	if _tiempo_transcurrido >= 300.0 and not _mini_jefe_spawned:
+		spawn_mini_jefe()
+		
+	# Spawn Parca Roja al minuto 15 (900 s)
+	if _tiempo_transcurrido >= 900.0 and not _parca_spawned:
+		spawn_parca_roja()
+		
 	if _reloj_oleada <= 0.0:
 		_reloj_oleada = intervalo_oleada
 		oleada_actual += 1
@@ -25,8 +43,28 @@ func _process(delta):
 			hud.oleada = oleada_actual
 		_generar_oleada(oleada_actual)
 
+func spawn_mini_jefe():
+	if _mini_jefe_spawned:
+		return
+	_mini_jefe_spawned = true
+	print(">>> [OleadasSpawner] ¡MINI-JEFE GLADIADOR INVOCADO! <<<")
+	_spawn_enemigo(mini_jefe_escena, 0.0)
+
+func spawn_parca_roja():
+	if _parca_spawned:
+		return
+	_parca_spawned = true
+	print(">>> [OleadasSpawner] ¡LA PARCA ROJA HA SIDO INVOCADA! <<<")
+	_spawn_enemigo(parca_roja_escena, 0.0)
+
 func _generar_oleada(num: int):
 	print("--- INICIANDO OLEADA ", num, " EN ARENA 60x60 ---")
+	AudioManager.play("alerta_oleada")
+	
+	if num == 5 and not _mini_jefe_spawned:
+		spawn_mini_jefe()
+	elif num >= 15 and not _parca_spawned:
+		spawn_parca_roja()
 	
 	if num <= 2:
 		# Fase 1: Enjambres rápidos de espectros (4 a 6)

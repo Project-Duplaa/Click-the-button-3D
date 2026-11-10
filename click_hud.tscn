@@ -96,6 +96,53 @@ text = "🪙 Oro: 0"
 horizontal_alignment = 2
 vertical_alignment = 1
 
+[node name="PanelJefe" type="Panel" parent="Control"]
+visible = false
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -260.0
+offset_top = 72.0
+offset_right = 260.0
+offset_bottom = 125.0
+grow_horizontal = 2
+
+[node name="LabelNombreJefe" type="Label" parent="Control/PanelJefe"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 22.0
+grow_horizontal = 2
+text = "💀 LA PARCA ROJA"
+horizontal_alignment = 1
+
+[node name="BarVidaJefe" type="ProgressBar" parent="Control/PanelJefe"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = -24.0
+offset_right = -10.0
+offset_bottom = -6.0
+grow_horizontal = 2
+grow_vertical = 0
+value = 100.0
+show_percentage = false
+
+[node name="LabelVidaJefe" type="Label" parent="Control/PanelJefe/BarVidaJefe"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "5000 / 5000 HP"
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="BtnClick" type="Button" parent="Control"]
 layout_mode = 1
 anchors_preset = 3
