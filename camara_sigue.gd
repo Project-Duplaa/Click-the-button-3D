@@ -8,9 +8,16 @@ extends Camera3D
 
 func _ready():
 	top_level = true
-	look_at_from_position(objetivo.global_position + distancia, objetivo.global_position)
+	if objetivo == null:
+		objetivo = get_tree().get_first_node_in_group("jugador")
+	if objetivo != null:
+		look_at_from_position(objetivo.global_position + distancia, objetivo.global_position)
 
 func _physics_process(delta):
+	if objetivo == null or not is_instance_valid(objetivo):
+		objetivo = get_tree().get_first_node_in_group("jugador")
+		if objetivo == null:
+			return
 	var foco = objetivo.global_position
 	foco.x = clamp(foco.x, limite_min.x, limite_max.x)
 	foco.z = clamp(foco.z, limite_min.y, limite_max.y)

@@ -71,6 +71,7 @@ func _physics_process(delta):
 
 func _on_input_event(_camera, event, _position, _normal, _shape_idx):
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		get_viewport().set_input_as_handled()
 		activar_click()
 
 func _unhandled_input(event):
@@ -89,6 +90,7 @@ func _unhandled_input(event):
 			query.collide_with_bodies = false
 			var result = space_state.intersect_ray(query)
 			if result and result.collider == self:
+				get_viewport().set_input_as_handled()
 				activar_click()
 
 func activar_click():

@@ -45,6 +45,12 @@ func _physics_process(delta):
 	busca = maxf(busca - delta, 0.0)
 	_reloj_ataque = maxf(_reloj_ataque - delta, 0.0)
 	
+	if jugador == null or not is_instance_valid(jugador):
+		jugador = get_tree().get_first_node_in_group("jugador")
+		if jugador == null:
+			move_and_slide()
+			return
+	
 	# 1. MEDIR
 	var d = distancia_a(jugador.global_position)
 	var ve = lo_ve()

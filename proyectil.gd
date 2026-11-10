@@ -11,12 +11,16 @@ var _tiempo: float = 0.0
 func _ready():
 	body_entered.connect(_on_body_entered)
 
-func iniciar(origen: Vector3, dir: Vector3, dano_in: float, rapidez_in: float = 12.0):
+const AudioManager = preload("res://audio_manager.gd")
+
+func iniciar(origen: Vector3, dir: Vector3, dano_in: float, rapidez_in: float = 12.0, perforaciones_in: int = 1):
 	global_position = origen
 	direccion = dir.normalized()
 	dano = dano_in
 	rapidez = rapidez_in
-	look_at(global_position + direccion, Vector3.UP)
+	perforaciones = perforaciones_in
+	if direccion.length_squared() > 0.001 and absf(direccion.dot(Vector3.UP)) < 0.999:
+		look_at(global_position + direccion, Vector3.UP)
 
 func _physics_process(delta):
 	global_position += direccion * rapidez * delta
@@ -28,6 +32,7 @@ func _on_body_entered(body):
 	if body.is_in_group("enemigos"):
 		if body.has_method("recibir_dano"):
 			body.recibir_dano(dano)
+		AudioManager.play("impacto_flecha", randf_range(1.05, 1.25))
 		perforaciones -= 1
 		if perforaciones <= 0:
 			queue_free()

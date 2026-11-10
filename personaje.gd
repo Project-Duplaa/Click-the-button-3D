@@ -60,10 +60,6 @@ func _ready():
 	aplicar_clase("Novato")
 	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
 
-func _unhandled_input(event):
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-		click_attack()
-
 func _physics_process(delta):
 	if not is_on_floor():
 		velocity += get_gravity() * delta
@@ -130,52 +126,165 @@ func _obtener_enemigo_cercano() -> Node3D:
 	return mas_cercano
 
 func _ejecutar_ataque(enemigo: Node3D):
+	var dir = (enemigo.global_position - global_position).normalized()
+	dir.y = 0.0
+	if dir.length() > 0.01:
+		basis = Basis.looking_at(dir)
+
 	if clase == "Novato" or clase == "Guerrero":
-		# Corte melee directo
+		# Corte melee con barrido en arco frontal (Cleave) y tajo luminoso visible
 		accion = "attack-melee-right"
-		_reloj_anim_accion = 0.35
-		var dir = (enemigo.global_position - global_position).normalized()
-		dir.y = 0.0
-		if dir.length() > 0.01:
-			basis = Basis.looking_at(dir)
-		if enemigo.has_method("recibir_dano"):
-			enemigo.recibir_dano(dano)
+		_reloj_anim_accion = 0.30
+		_ejecutar_animacion_procedural_ataque("melee")
+		_crear_tajo_espada(dir, false)
+		AudioManager.play("corte_espada", randf_range(0.95, 1.15))
+		
+		var dano_melee = dano
+		var rango_cleave = rango_ataque + (0.6 if clase == "Guerrero" else 0.0)
+		var enemigos = get_tree().get_nodes_in_group("enemigos")
+		for e in enemigos:
+			if is_instance_valid(e) and e is Node3D:
+				var dist = global_position.distance_to(e.global_position)
+				if dist <= rango_cleave:
+					var hacia_e = (e.global_position - global_position).normalized()
+					hacia_e.y = 0.0
+					if dir.dot(hacia_e) > 0.35: # Cono frontal de 120 grados
+						if e.has_method("recibir_dano"):
+							e.recibir_dano(dano_melee)
+						AudioManager.play("golpe_impacto", randf_range(0.95, 1.15))
+						
 	elif clase == "Mago":
 		# Especialidad Mago: Orbe Arcano teledirigido con detonación en área AOE
 		accion = "attack-melee-right"
-		_reloj_anim_accion = 0.30
+		_reloj_anim_accion = 0.28
+		_ejecutar_animacion_procedural_ataque("mago")
 		var orbe_escena = load("res://orbe_arcano.tscn")
 		if orbe_escena != null:
 			var orbe = orbe_escena.instantiate()
 			var origen = global_position + Vector3(0, 0.9, 0)
-			var dir = (enemigo.global_position + Vector3(0, 0.9, 0) - origen).normalized()
 			get_parent().add_child(orbe)
 			orbe.iniciar(origen, dir, dano, enemigo)
 	else:
-		# Cazador u otra clase a distancia
+		# Especialidad Cazador: Disparo múltiple de flechas (Multishot) en abanico
 		accion = "attack-melee-right"
-		_reloj_anim_accion = 0.25
+		_reloj_anim_accion = 0.22
+		_ejecutar_animacion_procedural_ataque("arco")
+		AudioManager.play("disparo_arco", randf_range(0.95, 1.15))
+		
+		var cant_flechas = 2
+		var angulo_paso = 12.0
+		if nivel >= 6:
+			cant_flechas = 4
+			angulo_paso = 9.0
+		elif nivel >= 3:
+			cant_flechas = 3
+			angulo_paso = 11.0
+			
+		var perforaciones = 1 if nivel < 5 else 2
+		var vel_flecha = 15.0
+		var dano_flecha = dano * 0.65 # Balance para que el multishot no triplique el daño total
+		var origen = global_position + Vector3(0, 0.9, 0)
 		var proyectil_escena = load("res://proyectil.tscn")
+		
 		if proyectil_escena != null:
-			var p = proyectil_escena.instantiate()
-			var origen = global_position + Vector3(0, 0.9, 0)
-			var dir = (enemigo.global_position + Vector3(0, 0.9, 0) - origen).normalized()
-			get_parent().add_child(p)
-			p.iniciar(origen, dir, dano, 15.0 if clase == "Cazador" else 10.0)
+			var angulo_inicio = -((cant_flechas - 1) * angulo_paso) * 0.5
+			for i in range(cant_flechas):
+				var angulo = angulo_inicio + (i * angulo_paso)
+				var dir_flecha = dir.rotated(Vector3.UP, deg_to_rad(angulo)).normalized()
+				var p = proyectil_escena.instantiate()
+				get_parent().add_child(p)
+				p.iniciar(origen, dir_flecha, dano_flecha, vel_flecha, perforaciones)
 
 func click_attack():
-	# Click manual tipo clicker
+	# Click manual tipo clicker con tajo crítico dorado y sonido contundente
+	var dir_click = -basis.z
 	var objetivo = _obtener_enemigo_cercano()
+	if objetivo != null:
+		var d = (objetivo.global_position - global_position)
+		d.y = 0.0
+		if d.length_squared() > 0.01:
+			dir_click = d.normalized()
+			basis = Basis.looking_at(dir_click)
+			
 	accion = "attack-melee-right"
-	_reloj_anim_accion = 0.2
+	_reloj_anim_accion = 0.20
+	_ejecutar_animacion_procedural_ataque("melee")
+	_crear_tajo_espada(dir_click, true) # Tajo dorado de crítico
+	AudioManager.play("corte_espada", 1.25)
+	AudioManager.play("click", 1.15)
+	
 	if objetivo != null and global_position.distance_to(objetivo.global_position) <= rango_ataque + 2.5:
 		if objetivo.has_method("recibir_dano"):
-			objetivo.recibir_dano(dano * 0.75, true)
+			objetivo.recibir_dano(dano * 0.85, true)
+			AudioManager.play("golpe_impacto", 1.2)
+			
 	# Bono incremental de click
 	oro += 1
 	recoger_drop(0, 1) # +1 XP por click
 	if evolucion_manager != null:
 		evolucion_manager.registrar_click()
+
+func _ejecutar_animacion_procedural_ataque(tipo_ataque: String):
+	var mod = get_node_or_null("Modelo")
+	if mod == null:
+		return
+	var tw = create_tween()
+	match tipo_ataque:
+		"melee":
+			# Embestida / estocada física hacia adelante y retorno elástico
+			tw.tween_property(mod, "position:z", 0.40, 0.06).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			tw.tween_property(mod, "position:z", 0.0, 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		"arco":
+			# Tensión hacia atrás y latigazo hacia adelante
+			tw.tween_property(mod, "position:z", -0.18, 0.04).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			tw.tween_property(mod, "position:z", 0.25, 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			tw.tween_property(mod, "position:z", 0.0, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		"mago":
+			# Elevación de levitación mística
+			tw.tween_property(mod, "position:y", 0.35, 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			tw.tween_property(mod, "position:y", 0.0, 0.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func _crear_tajo_espada(dir_ataque: Vector3, es_critico: bool = false):
+	if not is_inside_tree() or get_parent() == null:
+		return
+	var tajo = Node3D.new()
+	get_parent().add_child(tajo)
+	var altura = global_position.y + 0.9
+	tajo.global_position = Vector3(global_position.x, altura, global_position.z) + dir_ataque * 1.0
+	
+	if dir_ataque.length_squared() > 0.001 and absf(dir_ataque.dot(Vector3.UP)) < 0.999:
+		tajo.look_at(tajo.global_position + dir_ataque, Vector3.UP)
+		
+	var mesh_inst = MeshInstance3D.new()
+	var torus = TorusMesh.new()
+	torus.inner_radius = 0.9
+	torus.outer_radius = 1.45
+	
+	var mat = StandardMaterial3D.new()
+	mat.shading_mode = StandardMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	var color_base = Color(1.0, 0.88, 0.25, 0.95) if es_critico else (Color(1.0, 0.55, 0.15, 0.95) if clase == "Guerrero" else Color(0.35, 0.85, 1.0, 0.95))
+	mat.albedo_color = color_base
+	torus.material = mat
+	mesh_inst.mesh = torus
+	
+	mesh_inst.scale = Vector3(1.4, 0.05, 0.8)
+	mesh_inst.position = Vector3(0, 0, -0.3)
+	tajo.add_child(mesh_inst)
+	
+	var luz = OmniLight3D.new()
+	luz.light_color = color_base
+	luz.light_energy = 2.6
+	luz.omni_range = 3.6
+	tajo.add_child(luz)
+	
+	var tw = create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(mesh_inst, "scale", Vector3(2.6, 0.03, 1.7), 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(mesh_inst, "position:z", -1.2, 0.16)
+	tw.tween_property(mat, "albedo_color:a", 0.0, 0.16)
+	tw.tween_property(luz, "light_energy", 0.0, 0.16)
+	tw.chain().tween_callback(tajo.queue_free)
 
 func recibir_dano(cantidad: float):
 	vida = maxf(vida - cantidad, 0.0)
@@ -189,8 +298,13 @@ func recibir_dano(cantidad: float):
 		num.iniciar(cantidad, false, true)
 	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
 	if vida <= 0.0:
-		print("¡Jugador caído! Reiniciando salud...")
-		vida = vida_maxima
+		if has_node("Salud"):
+			var nodo_salud = get_node("Salud")
+			if nodo_salud.has_method("recibir_golpe"):
+				nodo_salud.recibir_golpe(9999)
+		else:
+			print("¡Jugador caído! Reiniciando salud...")
+			vida = vida_maxima
 
 func recoger_drop(tipo: int, valor: int):
 	match tipo:
@@ -215,6 +329,17 @@ func subir_nivel():
 	nivel += 1
 	xp_siguiente_nivel = int(xp_siguiente_nivel * 1.55)
 	vida = minf(vida + 30.0, vida_maxima) # Cura parcial +30 HP para mayor tension de supervivencia
+	
+	# Escalado de especialidades por clase al subir nivel
+	if clase == "Cazador":
+		cadencia_ataque = maxf(0.18, cadencia_ataque * 0.92) # Velocidad de disparo escalable
+		dano *= 1.08
+	elif clase == "Guerrero":
+		dano *= 1.10
+		rango_ataque = minf(3.6, rango_ataque + 0.05)
+	elif clase == "Mago":
+		dano *= 1.12
+		
 	emit_signal("nivel_subido", nivel)
 	if evolucion_manager != null:
 		evolucion_manager.notificar_nivel(nivel)

@@ -18,8 +18,8 @@ func _on_mouse_entered():
 	recolectar()
 
 func recolectar():
-	# queue_free borra al final del cuadro: aquí todavía cuenta.
-	var faltan = get_tree().get_nodes_in_group("objetivos").size() - 1
+	remove_from_group("objetivos")
+	var faltan = get_tree().get_nodes_in_group("objetivos").size()
 	print(name, " +", valor, " · faltan ", faltan, " · cuadro ",
 		Engine.get_physics_frames())
 	recogido.emit(valor)

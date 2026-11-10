@@ -41,6 +41,11 @@ func _generar_biblioteca_sonidos():
 	_sonidos["enemigo_muerte"] = _sintetizar_pop_muerte()
 	_sonidos["victoria"] = _sintetizar_fanfarria_victoria()
 	_sonidos["derrota"] = _sintetizar_descenso_derrota()
+	_sonidos["corte_espada"] = _sintetizar_corte_espada()
+	_sonidos["disparo_arco"] = _sintetizar_disparo_arco()
+	_sonidos["impacto_flecha"] = _sintetizar_impacto_flecha()
+	_sonidos["disparo_arquero"] = _sintetizar_disparo_arquero()
+	_sonidos["golpe_impacto"] = _sintetizar_golpe_impacto()
 
 func reproducir(nombre_sonido: String, tono: float = 1.0, volumen_db: float = 0.0):
 	if not _sonidos.has(nombre_sonido) or not is_inside_tree():
@@ -204,4 +209,65 @@ func _sintetizar_descenso_derrota() -> AudioStreamWAV:
 		var env = 1.0 - (float(i) / total)
 		var f = 320.0 * (1.0 - (float(i) / total) * 0.7)
 		return sin(TAU * f * t) * env * 0.85
+	)
+
+func _sintetizar_corte_espada() -> AudioStreamWAV:
+	var sr = 22050
+	var dur = 0.15
+	var n = int(sr * dur)
+	return _crear_wav_8bit(n, sr, func(t: float, i: int, total: int):
+		var frac = float(i) / total
+		var env = sin(frac * PI)
+		var noise = (randf() * 2.0 - 1.0) * 0.65
+		var sweep = sin(TAU * (850.0 - frac * 550.0) * t) * 0.35
+		return (sweep + noise) * env
+	)
+
+func _sintetizar_disparo_arco() -> AudioStreamWAV:
+	var sr = 22050
+	var dur = 0.18
+	var n = int(sr * dur)
+	return _crear_wav_8bit(n, sr, func(t: float, i: int, total: int):
+		var frac = float(i) / total
+		var env = pow(1.0 - frac, 1.8)
+		# Tensión de cuerda liberada + silbido aerodinámico
+		var snap = sin(TAU * 520.0 * t) * 0.4
+		var whistle = sin(TAU * (1200.0 - frac * 600.0) * t) * 0.5
+		var noise = (randf() * 2.0 - 1.0) * 0.2
+		return (snap + whistle + noise) * env
+	)
+
+func _sintetizar_impacto_flecha() -> AudioStreamWAV:
+	var sr = 22050
+	var dur = 0.12
+	var n = int(sr * dur)
+	return _crear_wav_8bit(n, sr, func(t: float, i: int, total: int):
+		var frac = float(i) / total
+		var env = exp(-frac * 12.0)
+		var thud = sin(TAU * (280.0 - frac * 180.0) * t) * 0.7
+		var click = (randf() * 2.0 - 1.0) * 0.3
+		return (thud + click) * env
+	)
+
+func _sintetizar_disparo_arquero() -> AudioStreamWAV:
+	var sr = 22050
+	var dur = 0.22
+	var n = int(sr * dur)
+	return _crear_wav_8bit(n, sr, func(t: float, i: int, total: int):
+		var frac = float(i) / total
+		var env = sin(frac * PI)
+		var f = 380.0 + sin(frac * PI * 4.0) * 90.0
+		var noise = (randf() * 2.0 - 1.0) * 0.25
+		return (sin(TAU * f * t) * 0.75 + noise) * env
+	)
+
+func _sintetizar_golpe_impacto() -> AudioStreamWAV:
+	var sr = 22050
+	var dur = 0.14
+	var n = int(sr * dur)
+	return _crear_wav_8bit(n, sr, func(t: float, i: int, total: int):
+		var frac = float(i) / total
+		var env = 1.0 - frac
+		var f = 160.0 - frac * 90.0
+		return (sin(TAU * f * t) * 0.6 + (randf() * 2.0 - 1.0) * 0.4) * env
 	)

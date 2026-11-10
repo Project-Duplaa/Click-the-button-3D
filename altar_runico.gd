@@ -48,6 +48,7 @@ func _on_input_event(_cam, event, _pos, _norm, _shape):
 	if activo:
 		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		get_viewport().set_input_as_handled()
 		activar_altar("Interacción mística directa")
 
 func activar_altar(motivo: String = ""):

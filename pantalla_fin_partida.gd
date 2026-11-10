@@ -21,6 +21,7 @@ const AudioManager = preload("res://audio_manager.gd")
 @onready var btn_salir = $Control/Fondo/VBox/HBoxBotones/BtnSalir
 
 func _ready():
+	add_to_group("pantalla_fin_partida")
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false
 	btn_reintentar.pressed.connect(_on_btn_reintentar_pressed)

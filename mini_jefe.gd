@@ -99,6 +99,8 @@ func _ejecutar_golpe_telegrafiado():
 	if is_instance_valid(jugador) and jugador is Node3D:
 		var dist = global_position.distance_to(jugador.global_position)
 		if dist <= rango_ataque + 1.2:
+			if jugador.has_node("Salud"):
+				jugador.get_node("Salud").recibir_golpe(int(dano_golpe))
 			if jugador.has_method("recibir_dano"):
 				jugador.recibir_dano(dano_golpe)
 

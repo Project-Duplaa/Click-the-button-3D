@@ -109,6 +109,8 @@ func _ejecutar_corte_guadana():
 	if is_instance_valid(jugador) and jugador is Node3D:
 		var dist = global_position.distance_to(jugador.global_position)
 		if dist <= radio_golpe + 1.0:
+			if jugador.has_node("Salud"):
+				jugador.get_node("Salud").recibir_golpe(int(dano_guadana))
 			if jugador.has_method("recibir_dano"):
 				jugador.recibir_dano(dano_guadana)
 

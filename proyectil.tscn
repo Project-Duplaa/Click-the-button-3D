@@ -3,17 +3,17 @@
 [ext_resource type="Script" path="res://proyectil.gd" id="1_proj"]
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_proj"]
-radius = 0.25
+radius = 0.35
 
-[sub_resource type="SphereMesh" id="SphereMesh_proj"]
-radius = 0.2
-height = 0.4
+[sub_resource type="StandardMaterial3D" id="MatFlechaCazador"]
+shading_mode = 0
+albedo_color = Color(0.25, 0.85, 1, 1)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_glow"]
-albedo_color = Color(0.2, 0.7, 1, 1)
-emission_enabled = true
-emission = Color(0.2, 0.7, 1, 1)
-emission_energy_multiplier = 2.0
+[sub_resource type="CylinderMesh" id="MeshFlechaCazador"]
+material = SubResource("MatFlechaCazador")
+top_radius = 0.02
+bottom_radius = 0.07
+height = 0.9
 
 [node name="Proyectil" type="Area3D"]
 script = ExtResource("1_proj")
@@ -22,5 +22,10 @@ script = ExtResource("1_proj")
 shape = SubResource("SphereShape3D_proj")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="."]
-mesh = SubResource("SphereMesh_proj")
-surface_material_override/0 = SubResource("StandardMaterial3D_glow")
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0)
+mesh = SubResource("MeshFlechaCazador")
+
+[node name="OmniLight3D" type="OmniLight3D" parent="."]
+light_color = Color(0.3, 0.85, 1, 1)
+light_energy = 2.0
+omni_range = 3.5

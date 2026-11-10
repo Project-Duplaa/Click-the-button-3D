@@ -1,0 +1,31 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://proyectil_enemigo.gd" id="1_proj_ene"]
+
+[sub_resource type="SphereShape3D" id="SphereShape_ene"]
+radius = 0.35
+
+[sub_resource type="StandardMaterial3D" id="MatFlechaEnemiga"]
+shading_mode = 0
+albedo_color = Color(1, 0.15, 0.2, 1)
+
+[sub_resource type="CylinderMesh" id="MeshFlechaEnemiga"]
+material = SubResource("MatFlechaEnemiga")
+top_radius = 0.03
+bottom_radius = 0.08
+height = 0.85
+
+[node name="ProyectilEnemigo" type="Area3D"]
+script = ExtResource("1_proj_ene")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("SphereShape_ene")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0)
+mesh = SubResource("MeshFlechaEnemiga")
+
+[node name="OmniLight3D" type="OmniLight3D" parent="."]
+light_color = Color(1, 0.2, 0.25, 1)
+light_energy = 1.8
+omni_range = 3.5

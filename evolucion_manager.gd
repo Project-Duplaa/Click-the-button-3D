@@ -179,6 +179,14 @@ func evolucionar_a(nombre_clase: String):
 		personaje_ref.speed_caminar = stats["speed_caminar"]
 		personaje_ref.speed_correr = stats["speed_correr"]
 		
+		# Sincronizar componente desacoplado Salud si existe
+		var nodo_salud = personaje_ref.get_node_or_null("Salud")
+		if nodo_salud != null:
+			if "vida" in nodo_salud:
+				nodo_salud.vida = int(stats["vida_maxima"])
+			if "vida_inicial" in nodo_salud:
+				nodo_salud.vida_inicial = int(stats["vida_maxima"])
+		
 		# 2. Intercambio de malla 3D en tiempo real
 		var ruta_malla = MALLAS_CLASE.get(nombre_clase, "")
 		if ruta_malla != "":
@@ -246,11 +254,7 @@ func _emitir_feedback_metamorfosis(nombre_clase: String):
 			personaje_ref.get_parent().add_child(txt)
 			txt.global_position = pos
 			if txt.has_method("iniciar"):
-				txt.iniciar(0.0, false, false)
-			var label = txt.get_node_or_null("SubViewport/Label") as Label
-			if label != null:
-				label.text = "¡EVOLUCIÓN A %s!" % nombre_clase.to_upper()
-				label.modulate = Color(1.0, 0.85, 0.1)
+				txt.iniciar(0.0, true, false, "¡EVOLUCIÓN A %s!" % nombre_clase.to_upper())
 	
 	var luz = OmniLight3D.new()
 	luz.light_color = Color(1.0, 0.9, 0.4)

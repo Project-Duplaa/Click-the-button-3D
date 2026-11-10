@@ -38,6 +38,10 @@ func _al_quedar_sin_vida():
 		vida = vida_inicial
 		if pj != null and pj is Node3D:
 			pj.global_position = punto
+			if "vida" in pj and "vida_maxima" in pj:
+				pj.vida = pj.vida_maxima
+				if pj.has_signal("stats_actualizadas"):
+					pj.emit_signal("stats_actualizadas", pj.vida, pj.vida_maxima, pj.xp, pj.xp_siguiente_nivel, pj.nivel, pj.oro, pj.bajas)
 		reloj = espera_reaparecer
 		cambio.emit(vida)
 		print("reaparece cuadro ", Engine.get_physics_frames())

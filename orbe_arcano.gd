@@ -26,12 +26,16 @@ func _ready():
 	area_entered.connect(_on_area_entered)
 	AudioManager.play("orbe_lanzar", randf_range(0.9, 1.1))
 
+func _mirar_hacia(dir: Vector3):
+	if dir.length_squared() > 0.001 and absf(dir.dot(Vector3.UP)) < 0.999:
+		look_at(global_position + dir, Vector3.UP)
+
 func iniciar(origen: Vector3, dir: Vector3, dano_in: float, objetivo: Node3D = null):
 	global_position = origen
 	direccion = dir.normalized()
 	dano = dano_in
 	objetivo_enemigo = objetivo
-	look_at(global_position + direccion, Vector3.UP)
+	_mirar_hacia(direccion)
 
 func _physics_process(delta):
 	if _ha_detonado:
@@ -41,7 +45,7 @@ func _physics_process(delta):
 	if is_instance_valid(objetivo_enemigo) and objetivo_enemigo is Node3D:
 		var dir_hacia = (objetivo_enemigo.global_position + Vector3(0, 0.9, 0) - global_position).normalized()
 		direccion = direccion.lerp(dir_hacia, fuerza_teledirigida * delta).normalized()
-		look_at(global_position + direccion, Vector3.UP)
+		_mirar_hacia(direccion)
 		
 	global_position += direccion * rapidez * delta
 	

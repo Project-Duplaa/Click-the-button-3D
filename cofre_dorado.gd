@@ -41,6 +41,7 @@ func abrir_cofre():
 	if _abierto:
 		return
 	_abierto = true
+	remove_from_group("objetivos")
 	print("[CoD Zombies Event] ¡COFRE DORADO ANCESTRAL ABIERTO!")
 	
 	AudioManager.play("puzzle_completo", 1.05)
