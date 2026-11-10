@@ -12,6 +12,10 @@
 [ext_resource type="PackedScene" path="res://salida.tscn" id="10_salida"]
 [ext_resource type="PackedScene" path="res://arena_coliseo.tscn" id="11_arena"]
 [ext_resource type="PackedScene" path="res://boton_movil.tscn" id="12_boton"]
+[ext_resource type="PackedScene" path="res://audio_manager.tscn" id="13_audio"]
+[ext_resource type="PackedScene" path="res://altar_runico.tscn" id="14_altar"]
+[ext_resource type="Script" path="res://gestor_altares.gd" id="15_gestor_altares"]
+[ext_resource type="PackedScene" path="res://pantalla_fin_partida.tscn" id="16_pantalla_fin"]
 
 [sub_resource type="Environment" id="EntornoColiseo"]
 background_mode = 1
@@ -141,7 +145,30 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0, -16)
 [node name="Salida" parent="." instance=ExtResource("10_salida")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -26)
 
+[node name="AudioManager" parent="." instance=ExtResource("13_audio")]
+
 [node name="ClickHUD" parent="." instance=ExtResource("5_hud")]
 
 [node name="OleadasSpawner" type="Node3D" parent="."]
 script = ExtResource("6_spawner")
+
+[node name="GestorAltares" type="Node" parent="."]
+script = ExtResource("15_gestor_altares")
+
+[node name="AltarNoroeste" parent="." instance=ExtResource("14_altar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 0, -18)
+id_altar = 1
+nombre_altar = "Altar Arcano del Noroeste"
+
+[node name="AltarNoreste" parent="." instance=ExtResource("14_altar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, 0, -18)
+id_altar = 2
+nombre_altar = "Altar Solar del Noreste"
+
+[node name="AltarSuroeste" parent="." instance=ExtResource("14_altar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 0, 18)
+id_altar = 3
+nombre_altar = "Altar Rúnico del Suroeste"
+
+[node name="PantallaFinPartida" parent="." instance=ExtResource("16_pantalla_fin")]
+

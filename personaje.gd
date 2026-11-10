@@ -1,5 +1,8 @@
 extends CharacterBody3D
 
+const AudioManager = preload("res://audio_manager.gd")
+const EvolucionManager = preload("res://evolucion_manager.gd")
+
 enum Estado { QUIETO, CAMINAR, CORRER, AIRE }
 const RUIDO = [0.0, 2.5, 6.5, 0.0]
 
@@ -13,17 +16,19 @@ signal nivel_subido(nuevo_nivel)
 @onready var anim = $Modelo/AnimationPlayer
 
 # Estadísticas RPG / Autobattler
-var clase: String = "Guerrero"
-var vida_maxima: float = 120.0
-var vida: float = 120.0
-var dano: float = 15.0
-var rango_ataque: float = 3.0
-var cadencia_ataque: float = 0.8
+var clase: String = "Novato"
+var vida_maxima: float = 100.0
+var vida: float = 100.0
+var dano: float = 12.0
+var rango_ataque: float = 2.8
+var cadencia_ataque: float = 0.80
 var oro: int = 0
 var xp: int = 0
 var xp_siguiente_nivel: int = 60
 var nivel: int = 1
 var bajas: int = 0
+
+var evolucion_manager: EvolucionManager = null
 
 var _reloj_ataque: float = 0.0
 var _reloj_anim_accion: float = 0.0
@@ -38,9 +43,21 @@ var ruido = 0.0
 
 func _ready():
 	add_to_group("jugador")
-	if camara == null:
+	if camara == null and get_viewport() != null:
 		camara = get_viewport().get_camera_3d()
-	aplicar_clase("Guerrero")
+	
+	if anim == null and has_node("Modelo/AnimationPlayer"):
+		anim = $Modelo/AnimationPlayer
+	
+	if has_node("EvolucionManager"):
+		evolucion_manager = $EvolucionManager
+	else:
+		evolucion_manager = EvolucionManager.new()
+		evolucion_manager.name = "EvolucionManager"
+		add_child(evolucion_manager)
+	
+	evolucion_manager.configurar_con_personaje(self)
+	aplicar_clase("Novato")
 	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
 
 func _unhandled_input(event):
@@ -99,6 +116,8 @@ func _procesar_autobattler(delta: float):
 				_reloj_ataque = cadencia_ataque
 
 func _obtener_enemigo_cercano() -> Node3D:
+	if not is_inside_tree() or get_tree() == null:
+		return null
 	var enemigos = get_tree().get_nodes_in_group("enemigos")
 	var mas_cercano: Node3D = null
 	var menor_dist = 9999.0
@@ -111,7 +130,7 @@ func _obtener_enemigo_cercano() -> Node3D:
 	return mas_cercano
 
 func _ejecutar_ataque(enemigo: Node3D):
-	if clase == "Guerrero":
+	if clase == "Novato" or clase == "Guerrero":
 		# Corte melee directo
 		accion = "attack-melee-right"
 		_reloj_anim_accion = 0.35
@@ -121,8 +140,19 @@ func _ejecutar_ataque(enemigo: Node3D):
 			basis = Basis.looking_at(dir)
 		if enemigo.has_method("recibir_dano"):
 			enemigo.recibir_dano(dano)
+	elif clase == "Mago":
+		# Especialidad Mago: Orbe Arcano teledirigido con detonación en área AOE
+		accion = "attack-melee-right"
+		_reloj_anim_accion = 0.30
+		var orbe_escena = load("res://orbe_arcano.tscn")
+		if orbe_escena != null:
+			var orbe = orbe_escena.instantiate()
+			var origen = global_position + Vector3(0, 0.9, 0)
+			var dir = (enemigo.global_position + Vector3(0, 0.9, 0) - origen).normalized()
+			get_parent().add_child(orbe)
+			orbe.iniciar(origen, dir, dano, enemigo)
 	else:
-		# Disparo o hechizo
+		# Cazador u otra clase a distancia
 		accion = "attack-melee-right"
 		_reloj_anim_accion = 0.25
 		var proyectil_escena = load("res://proyectil.tscn")
@@ -144,9 +174,12 @@ func click_attack():
 	# Bono incremental de click
 	oro += 1
 	recoger_drop(0, 1) # +1 XP por click
+	if evolucion_manager != null:
+		evolucion_manager.registrar_click()
 
 func recibir_dano(cantidad: float):
 	vida = maxf(vida - cantidad, 0.0)
+	AudioManager.play("danio_jugador", randf_range(0.9, 1.1))
 	var escena = load("res://damage_number_3d.tscn")
 	if escena != null:
 		var num = escena.instantiate()
@@ -173,6 +206,7 @@ func recoger_drop(tipo: int, valor: int):
 
 func registrar_baja():
 	bajas += 1
+	AudioManager.play("enemigo_muerte", randf_range(0.9, 1.2))
 	recoger_drop(1, 6) # 6 XP por baja
 	recoger_drop(0, 3) # 3 Oro por baja
 
@@ -182,32 +216,45 @@ func subir_nivel():
 	xp_siguiente_nivel = int(xp_siguiente_nivel * 1.55)
 	vida = minf(vida + 30.0, vida_maxima) # Cura parcial +30 HP para mayor tension de supervivencia
 	emit_signal("nivel_subido", nivel)
+	if evolucion_manager != null:
+		evolucion_manager.notificar_nivel(nivel)
 	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
 
 func aplicar_clase(nombre: String):
 	clase = nombre
 	match nombre:
-		"Guerrero":
-			vida_maxima = 140.0
-			vida = 140.0
-			dano = 18.0
+		"Novato":
+			vida_maxima = 100.0
+			vida = 100.0
+			dano = 12.0
 			rango_ataque = 2.8
-			cadencia_ataque = 0.75
+			cadencia_ataque = 0.80
 			speed_caminar = 3.2
+			speed_correr = 5.5
+		"Guerrero":
+			vida_maxima = 160.0
+			vida = 160.0
+			dano = 22.0
+			rango_ataque = 3.0
+			cadencia_ataque = 0.70
+			speed_caminar = 3.2
+			speed_correr = 5.6
 		"Cazador":
-			vida_maxima = 90.0
-			vida = 90.0
+			vida_maxima = 100.0
+			vida = 100.0
 			dano = 14.0
-			rango_ataque = 7.0
-			cadencia_ataque = 0.60
+			rango_ataque = 7.5
+			cadencia_ataque = 0.45
 			speed_caminar = 3.8
+			speed_correr = 6.4
 		"Mago":
-			vida_maxima = 80.0
-			vida = 80.0
-			dano = 24.0
+			vida_maxima = 85.0
+			vida = 85.0
+			dano = 28.0
 			rango_ataque = 5.5
-			cadencia_ataque = 0.95
+			cadencia_ataque = 0.90
 			speed_caminar = 3.3
+			speed_correr = 5.7
 	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
 
 func aplicar_mejora(tipo_mejora: String):

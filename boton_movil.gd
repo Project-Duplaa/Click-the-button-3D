@@ -1,5 +1,7 @@
 extends Area3D
 
+const AudioManager = preload("res://audio_manager.gd")
+
 signal click_presionado(total_clicks: int)
 
 @export var rapidez_base: float = 2.8
@@ -95,6 +97,7 @@ func activar_click():
 		
 	total_clicks += 1
 	_esta_presionado = true
+	AudioManager.play("click", 1.0 + (total_clicks % 10) * 0.03)
 	emit_signal("click_presionado", total_clicks)
 	
 	# 1. Escalado de Dificultad: Aumento progresivo de velocidad
