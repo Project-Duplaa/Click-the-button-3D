@@ -1,5 +1,7 @@
 extends CharacterBody3D
 
+const AudioManager = preload("res://audio_manager.gd")
+
 enum Estado { QUIETO, CAMINAR, CORRER, AIRE }
 const RUIDO = [0.0, 2.5, 6.5, 0.0]
 
@@ -121,8 +123,19 @@ func _ejecutar_ataque(enemigo: Node3D):
 			basis = Basis.looking_at(dir)
 		if enemigo.has_method("recibir_dano"):
 			enemigo.recibir_dano(dano)
+	elif clase == "Mago":
+		# Especialidad Mago: Orbe Arcano teledirigido con detonación en área AOE
+		accion = "attack-melee-right"
+		_reloj_anim_accion = 0.30
+		var orbe_escena = load("res://orbe_arcano.tscn")
+		if orbe_escena != null:
+			var orbe = orbe_escena.instantiate()
+			var origen = global_position + Vector3(0, 0.9, 0)
+			var dir = (enemigo.global_position + Vector3(0, 0.9, 0) - origen).normalized()
+			get_parent().add_child(orbe)
+			orbe.iniciar(origen, dir, dano, enemigo)
 	else:
-		# Disparo o hechizo
+		# Cazador u otra clase a distancia
 		accion = "attack-melee-right"
 		_reloj_anim_accion = 0.25
 		var proyectil_escena = load("res://proyectil.tscn")
@@ -147,6 +160,7 @@ func click_attack():
 
 func recibir_dano(cantidad: float):
 	vida = maxf(vida - cantidad, 0.0)
+	AudioManager.play("danio_jugador", randf_range(0.9, 1.1))
 	var escena = load("res://damage_number_3d.tscn")
 	if escena != null:
 		var num = escena.instantiate()
@@ -173,6 +187,7 @@ func recoger_drop(tipo: int, valor: int):
 
 func registrar_baja():
 	bajas += 1
+	AudioManager.play("enemigo_muerte", randf_range(0.9, 1.2))
 	recoger_drop(1, 6) # 6 XP por baja
 	recoger_drop(0, 3) # 3 Oro por baja
 
