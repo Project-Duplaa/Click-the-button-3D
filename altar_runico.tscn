@@ -1,31 +1,26 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene format=3]
 
 [ext_resource type="Script" path="res://altar_runico.gd" id="1_altar"]
+[ext_resource type="PackedScene" path="res://assets/modelos/hazard_altar.glb" id="2_altar_model"]
 
 [sub_resource type="CylinderShape3D" id="CilindroColision"]
 height = 2.4
 radius = 2.0
 
-[sub_resource type="StandardMaterial3D" id="MatColumna"]
-albedo_color = Color(0.25, 0.23, 0.28, 1)
-roughness = 0.85
-
-[sub_resource type="CylinderMesh" id="MeshColumna"]
-material = SubResource("MatColumna")
-top_radius = 0.75
-bottom_radius = 0.95
-height = 1.2
-
-[sub_resource type="StandardMaterial3D" id="MatRuna"]
+[sub_resource type="StandardMaterial3D" id="MatRunaHolo"]
 resource_local_to_scene = true
-albedo_color = Color(0.85, 0.2, 0.2, 1)
+albedo_color = Color(0.1, 0.95, 0.85, 1)
+roughness = 0.2
 emission_enabled = true
-emission = Color(0.9, 0.15, 0.15, 1)
-emission_energy_multiplier = 1.2
+emission = Color(0.15, 0.98, 0.9, 1)
+emission_energy_multiplier = 2.5
 
 [sub_resource type="PrismMesh" id="MeshRuna"]
-material = SubResource("MatRuna")
-size = Vector3(0.55, 0.65, 0.55)
+material = SubResource("MatRunaHolo")
+size = Vector3(0.35, 0.45, 0.35)
+
+[sub_resource type="BoxMesh" id="MeshColumnaVacia"]
+size = Vector3(0.01, 0.01, 0.01)
 
 [node name="AltarRunico" type="Area3D"]
 script = ExtResource("1_altar")
@@ -36,16 +31,19 @@ shape = SubResource("CilindroColision")
 
 [node name="Pedestal" type="Node3D" parent="."]
 
+[node name="ModeloHazardAltar" parent="Pedestal" instance=ExtResource("2_altar_model")]
+
 [node name="Columna" type="MeshInstance3D" parent="Pedestal"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
-mesh = SubResource("MeshColumna")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
+visible = false
+mesh = SubResource("MeshColumnaVacia")
 
 [node name="RunaCristal" type="MeshInstance3D" parent="Pedestal"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.35, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.15, 1.6, 0.18)
 mesh = SubResource("MeshRuna")
 
 [node name="LuzRuna" type="OmniLight3D" parent="Pedestal"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
-light_color = Color(0.9, 0.25, 0.2, 1)
-light_energy = 1.2
-omni_range = 3.5
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.15, 1.6, 0.18)
+light_color = Color(0.1, 0.95, 0.85, 1)
+light_energy = 2.0
+omni_range = 4.5

@@ -1,10 +1,38 @@
 [gd_scene format=3]
 
-[ext_resource type="PackedScene" path="res://pilar_antorcha.tscn" id="1_pilar"]
+[ext_resource type="Texture2D" uid="uid://cbdpea2408u6b" path="res://assets/modelos/floor_concrete_tile_ConcreteTile_Tex.png" id="1_floor_tex"]
+[ext_resource type="PackedScene" path="res://pilar_antorcha.tscn" id="2_pilar"]
+[ext_resource type="PackedScene" path="res://assets/modelos/core_biocontainer.glb" id="3_core"]
+[ext_resource type="PackedScene" path="res://assets/modelos/floor_center_pad.glb" id="4_pad"]
+[ext_resource type="PackedScene" path="res://assets/modelos/ring_grate_segment.glb" id="5_grate"]
+[ext_resource type="PackedScene" path="res://assets/modelos/wall_bunker_panel.glb" id="6_wall_panel"]
+[ext_resource type="PackedScene" path="res://assets/modelos/wall_blast_door.glb" id="7_wall_door"]
+[ext_resource type="PackedScene" path="res://assets/modelos/wall_light_pipes.glb" id="8_wall_pipes"]
+[ext_resource type="PackedScene" path="res://assets/modelos/prop_military_crate.glb" id="9_crate"]
+[ext_resource type="PackedScene" path="res://assets/modelos/prop_hazard_barrier.glb" id="10_barrier"]
+[ext_resource type="PackedScene" path="res://assets/modelos/prop_pressure_tank.glb" id="11_tank"]
+[ext_resource type="PackedScene" path="res://assets/modelos/prop_medical_stretcher.glb" id="12_stretcher"]
 
 [sub_resource type="StandardMaterial3D" id="MatArenaPiso"]
-albedo_color = Color(0.46, 0.4, 0.33, 1)
-roughness = 0.92
+albedo_color = Color(0.68, 0.72, 0.76, 1)
+albedo_texture = ExtResource("1_floor_tex")
+metallic = 0.35
+roughness = 0.65
+uv1_scale = Vector3(32, 32, 1)
+
+[sub_resource type="StandardMaterial3D" id="MatNieblaBaja"]
+transparency = 1
+albedo_color = Color(0.35, 0.55, 0.42, 0.10)
+roughness = 0.95
+
+[sub_resource type="PlaneMesh" id="MeshNiebla"]
+material = SubResource("MatNieblaBaja")
+size = Vector2(26, 26)
+
+[sub_resource type="StandardMaterial3D" id="MatMuroSolido"]
+albedo_color = Color(0.12, 0.13, 0.15, 1)
+metallic = 0.25
+roughness = 0.75
 
 [sub_resource type="PlaneMesh" id="MeshPiso"]
 material = SubResource("MatArenaPiso")
@@ -13,62 +41,23 @@ size = Vector2(64, 64)
 [sub_resource type="BoxShape3D" id="ColPiso"]
 size = Vector3(64, 0.2, 64)
 
-[sub_resource type="StandardMaterial3D" id="MatAltar"]
-albedo_color = Color(0.24, 0.28, 0.35, 1)
-roughness = 0.8
-emission_enabled = true
-emission = Color(0.12, 0.35, 0.55, 1)
-emission_energy_multiplier = 0.6
-
-[sub_resource type="CylinderMesh" id="MeshAltar"]
-material = SubResource("MatAltar")
-top_radius = 7.0
-bottom_radius = 7.2
-height = 0.06
-
-[sub_resource type="StandardMaterial3D" id="MatAnillo"]
-albedo_color = Color(0.35, 0.32, 0.28, 1)
-roughness = 0.9
-
-[sub_resource type="TorusMesh" id="MeshAnilloMedio"]
-material = SubResource("MatAnillo")
-inner_radius = 17.6
-outer_radius = 18.2
-
-[sub_resource type="TorusMesh" id="MeshAnilloExterior"]
-material = SubResource("MatAnillo")
-inner_radius = 27.4
-outer_radius = 28.2
-
-[sub_resource type="StandardMaterial3D" id="MatMuro"]
-albedo_color = Color(0.3, 0.31, 0.35, 1)
-roughness = 0.88
+[sub_resource type="CylinderShape3D" id="ColNucleoCentral"]
+height = 4.2
+radius = 1.55
 
 [sub_resource type="BoxMesh" id="MeshMuroNS"]
-material = SubResource("MatMuro")
-size = Vector3(64, 4.5, 1.8)
+material = SubResource("MatMuroSolido")
+size = Vector3(64, 5.0, 1.8)
 
 [sub_resource type="BoxShape3D" id="ColMuroNS"]
-size = Vector3(64, 4.5, 1.8)
+size = Vector3(64, 5.0, 1.8)
 
 [sub_resource type="BoxMesh" id="MeshMuroEO"]
-material = SubResource("MatMuro")
-size = Vector3(1.8, 4.5, 64)
+material = SubResource("MatMuroSolido")
+size = Vector3(1.8, 5.0, 64)
 
 [sub_resource type="BoxShape3D" id="ColMuroEO"]
-size = Vector3(1.8, 4.5, 64)
-
-[sub_resource type="StandardMaterial3D" id="MatCornisa"]
-albedo_color = Color(0.22, 0.23, 0.26, 1)
-roughness = 0.85
-
-[sub_resource type="BoxMesh" id="MeshCornisaNS"]
-material = SubResource("MatCornisa")
-size = Vector3(64.6, 0.5, 2.4)
-
-[sub_resource type="BoxMesh" id="MeshCornisaEO"]
-material = SubResource("MatCornisa")
-size = Vector3(2.4, 0.5, 64.6)
+size = Vector3(1.8, 5.0, 64)
 
 [node name="ArenaColiseo" type="Node3D"]
 
@@ -81,106 +70,466 @@ mesh = SubResource("MeshPiso")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0)
 shape = SubResource("ColPiso")
 
-[node name="AltarCentral" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, 0)
-mesh = SubResource("MeshAltar")
+[node name="NieblaBajaSuelo" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.22, 0)
+mesh = SubResource("MeshNiebla")
 
-[node name="AnilloMedio" type="MeshInstance3D" parent="."]
+[node name="PlataformaCentral" parent="." instance=ExtResource("4_pad")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, 0)
-mesh = SubResource("MeshAnilloMedio")
 
-[node name="AnilloExterior" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, 0)
-mesh = SubResource("MeshAnilloExterior")
+[node name="NucleoBioEstatico" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.38, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NucleoBioEstatico"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.9, 0)
+shape = SubResource("ColNucleoCentral")
+
+[node name="ModeloBiocontenedor" parent="NucleoBioEstatico" instance=ExtResource("3_core")]
+
+[node name="LuzRadioactivaCentral" type="OmniLight3D" parent="NucleoBioEstatico"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 0)
+light_color = Color(0.12, 1.0, 0.28, 1)
+light_energy = 5.0
+shadow_enabled = false
+omni_range = 14.5
+omni_attenuation = 1.15
+
+[node name="AnilloRejillas" type="Node3D" parent="."]
+
+[node name="Grate_0" parent="AnilloRejillas" instance=ExtResource("5_grate")]
+
+[node name="Grate_1" parent="AnilloRejillas" instance=ExtResource("5_grate")]
+transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, 0, 0, 0)
+
+[node name="Grate_2" parent="AnilloRejillas" instance=ExtResource("5_grate")]
+transform = Transform3D(0.000000, 0, 1.000000, 0, 1, 0, -1.000000, 0, 0.000000, 0, 0, 0)
+
+[node name="Grate_3" parent="AnilloRejillas" instance=ExtResource("5_grate")]
+transform = Transform3D(-0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, -0.707107, 0, 0, 0)
+
+[node name="Grate_4" parent="AnilloRejillas" instance=ExtResource("5_grate")]
+transform = Transform3D(-1.000000, 0, 0.000000, 0, 1, 0, -0.000000, 0, -1.000000, 0, 0, 0)
+
+[node name="Grate_5" parent="AnilloRejillas" instance=ExtResource("5_grate")]
+transform = Transform3D(-0.707107, 0, -0.707107, 0, 1, 0, 0.707107, 0, -0.707107, 0, 0, 0)
+
+[node name="Grate_6" parent="AnilloRejillas" instance=ExtResource("5_grate")]
+transform = Transform3D(-0.000000, 0, -1.000000, 0, 1, 0, 1.000000, 0, -0.000000, 0, 0, 0)
+
+[node name="Grate_7" parent="AnilloRejillas" instance=ExtResource("5_grate")]
+transform = Transform3D(0.707107, 0, -0.707107, 0, 1, 0, 0.707107, 0, 0.707107, 0, 0, 0)
+
+[node name="DetallesCentro" type="Node3D" parent="."]
+
+[node name="CajaMockup_1" parent="DetallesCentro" instance=ExtResource("9_crate")]
+transform = Transform3D(0.906308, 0, 0.422618, 0, 1, 0, -0.422618, 0, 0.906308, -2.50, 0, -2.40)
+
+[node name="CajaMockup_2" parent="DetallesCentro" instance=ExtResource("9_crate")]
+transform = Transform3D(0.965926, 0, -0.258819, 0, 1, 0, 0.258819, 0, 0.965926, 2.40, 0, -2.00)
+
+[node name="CajaMockup_3" parent="DetallesCentro" instance=ExtResource("9_crate")]
+transform = Transform3D(0.984808, 0, 0.173648, 0, 1, 0, -0.173648, 0, 0.984808, 0.00, 0, 3.80)
+
+[node name="CajaMockup_4" parent="DetallesCentro" instance=ExtResource("9_crate")]
+transform = Transform3D(0.990268, 0, -0.139173, 0, 1, 0, 0.139173, 0, 0.990268, -0.60, 0, -4.80)
+
+[node name="BarreraMockup_1" parent="DetallesCentro" instance=ExtResource("10_barrier")]
+transform = Transform3D(0.819152, 0, 0.573576, 0, 1, 0, -0.573576, 0, 0.819152, -5.20, 0, -4.50)
+
+[node name="BarreraMockup_2" parent="DetallesCentro" instance=ExtResource("10_barrier")]
+transform = Transform3D(0.766044, 0, -0.642788, 0, 1, 0, 0.642788, 0, 0.766044, 5.00, 0, 4.00)
+
+[node name="TanqueMockup_1" parent="DetallesCentro" instance=ExtResource("11_tank")]
+transform = Transform3D(0.500000, 0, -0.866025, 0, 1, 0, 0.866025, 0, 0.500000, 6.20, 0, -2.40)
+
+[node name="TanqueMockup_2" parent="DetallesCentro" instance=ExtResource("11_tank")]
+transform = Transform3D(-0.500000, 0, 0.866025, 0, 1, 0, -0.866025, 0, -0.500000, -5.80, 0, 2.20)
+
+[node name="CamillaMockup_1" parent="DetallesCentro" instance=ExtResource("12_stretcher")]
+transform = Transform3D(0.906308, 0, 0.422618, 0, 1, 0, -0.422618, 0, 0.906308, 4.20, 0, -3.40)
+
+[node name="CamillaMockup_2" parent="DetallesCentro" instance=ExtResource("12_stretcher")]
+transform = Transform3D(0.866025, 0, -0.500000, 0, 1, 0, 0.500000, 0, 0.866025, -4.50, 0, -3.00)
+
+[node name="CamillaMockup_3" parent="DetallesCentro" instance=ExtResource("12_stretcher")]
+transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, 3.80, 0, 3.60)
+
+[node name="Pilares" type="Node3D" parent="."]
+
+[node name="Pilar_N" parent="Pilares" instance=ExtResource("2_pilar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.00, 0, -5.10)
+
+[node name="Pilar_Mid_NE" parent="Pilares" instance=ExtResource("2_pilar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.41, 0, -2.55)
+
+[node name="Pilar_Mid_SE" parent="Pilares" instance=ExtResource("2_pilar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.41, 0, 2.55)
+
+[node name="Pilar_S" parent="Pilares" instance=ExtResource("2_pilar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.00, 0, 5.10)
+
+[node name="Pilar_Mid_SO" parent="Pilares" instance=ExtResource("2_pilar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.41, 0, 2.55)
+
+[node name="Pilar_Mid_NO" parent="Pilares" instance=ExtResource("2_pilar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.41, 0, -2.55)
+
+[node name="Pilar_NO" parent="Pilares" instance=ExtResource("2_pilar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.00, 0, -22.00)
+
+[node name="Pilar_NE" parent="Pilares" instance=ExtResource("2_pilar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22.00, 0, -22.00)
+
+[node name="Pilar_SO" parent="Pilares" instance=ExtResource("2_pilar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.00, 0, 22.00)
+
+[node name="Pilar_SE" parent="Pilares" instance=ExtResource("2_pilar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22.00, 0, 22.00)
+
+[node name="Pilar_E" parent="Pilares" instance=ExtResource("2_pilar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25.00, 0, 0.00)
+
+[node name="Pilar_O" parent="Pilares" instance=ExtResource("2_pilar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25.00, 0, 0.00)
 
 [node name="Muros" type="Node3D" parent="."]
 
 [node name="MuroNorte" type="StaticBody3D" parent="Muros"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.25, -31)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, -31)
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Muros/MuroNorte"]
+[node name="MeshSolidoN" type="MeshInstance3D" parent="Muros/MuroNorte"]
 mesh = SubResource("MeshMuroNS")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Muros/MuroNorte"]
 shape = SubResource("ColMuroNS")
 
-[node name="Cornisa" type="MeshInstance3D" parent="Muros/MuroNorte"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.4, 0)
-mesh = SubResource("MeshCornisaNS")
+[node name="N_0" parent="Muros/MuroNorte" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30.0, -2.5, 0.4)
+
+[node name="N_1" parent="Muros/MuroNorte" instance=ExtResource("8_wall_pipes")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -26.0, -2.5, 0.4)
+
+[node name="LuzN_1" type="OmniLight3D" parent="Muros/MuroNorte"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24.9, 0.3, 0.8)
+light_color = Color(1, 0.15, 0.1, 1)
+light_energy = 1.0
+shadow_enabled = false
+omni_range = 6.0
+
+[node name="N_2" parent="Muros/MuroNorte" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.0, -2.5, 0.4)
+
+[node name="N_3" parent="Muros/MuroNorte" instance=ExtResource("7_wall_door")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18.0, -2.5, 0.4)
+
+[node name="N_4" parent="Muros/MuroNorte" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14.0, -2.5, 0.4)
+
+[node name="N_5" parent="Muros/MuroNorte" instance=ExtResource("8_wall_pipes")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.0, -2.5, 0.4)
+
+[node name="LuzN_5" type="OmniLight3D" parent="Muros/MuroNorte"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.9, 0.3, 0.8)
+light_color = Color(1, 0.15, 0.1, 1)
+light_energy = 1.0
+shadow_enabled = false
+omni_range = 6.0
+
+[node name="N_6" parent="Muros/MuroNorte" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.0, -2.5, 0.4)
+
+[node name="N_7" parent="Muros/MuroNorte" instance=ExtResource("7_wall_door")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.0, -2.5, 0.4)
+
+[node name="N_8" parent="Muros/MuroNorte" instance=ExtResource("7_wall_door")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.0, -2.5, 0.4)
+
+[node name="N_9" parent="Muros/MuroNorte" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.0, -2.5, 0.4)
+
+[node name="N_10" parent="Muros/MuroNorte" instance=ExtResource("8_wall_pipes")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.0, -2.5, 0.4)
+
+[node name="LuzN_10" type="OmniLight3D" parent="Muros/MuroNorte"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.1, 0.3, 0.8)
+light_color = Color(1, 0.15, 0.1, 1)
+light_energy = 1.0
+shadow_enabled = false
+omni_range = 6.0
+
+[node name="N_11" parent="Muros/MuroNorte" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.0, -2.5, 0.4)
+
+[node name="N_12" parent="Muros/MuroNorte" instance=ExtResource("7_wall_door")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18.0, -2.5, 0.4)
+
+[node name="N_13" parent="Muros/MuroNorte" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22.0, -2.5, 0.4)
+
+[node name="N_14" parent="Muros/MuroNorte" instance=ExtResource("8_wall_pipes")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 26.0, -2.5, 0.4)
+
+[node name="LuzN_14" type="OmniLight3D" parent="Muros/MuroNorte"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 27.1, 0.3, 0.8)
+light_color = Color(1, 0.15, 0.1, 1)
+light_energy = 1.0
+shadow_enabled = false
+omni_range = 6.0
+
+[node name="N_15" parent="Muros/MuroNorte" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30.0, -2.5, 0.4)
 
 [node name="MuroSur" type="StaticBody3D" parent="Muros"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.25, 31)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 31)
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Muros/MuroSur"]
+[node name="MeshSolidoS" type="MeshInstance3D" parent="Muros/MuroSur"]
 mesh = SubResource("MeshMuroNS")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Muros/MuroSur"]
 shape = SubResource("ColMuroNS")
 
-[node name="Cornisa" type="MeshInstance3D" parent="Muros/MuroSur"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.4, 0)
-mesh = SubResource("MeshCornisaNS")
+[node name="S_0" parent="Muros/MuroSur" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -30.0, -2.5, -0.4)
+
+[node name="S_1" parent="Muros/MuroSur" instance=ExtResource("8_wall_pipes")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -26.0, -2.5, -0.4)
+
+[node name="LuzS_1" type="OmniLight3D" parent="Muros/MuroSur"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -27.1, 0.3, -0.8)
+light_color = Color(1, 0.15, 0.1, 1)
+light_energy = 1.0
+shadow_enabled = false
+omni_range = 6.0
+
+[node name="S_2" parent="Muros/MuroSur" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -22.0, -2.5, -0.4)
+
+[node name="S_3" parent="Muros/MuroSur" instance=ExtResource("7_wall_door")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -18.0, -2.5, -0.4)
+
+[node name="S_4" parent="Muros/MuroSur" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -14.0, -2.5, -0.4)
+
+[node name="S_5" parent="Muros/MuroSur" instance=ExtResource("8_wall_pipes")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -10.0, -2.5, -0.4)
+
+[node name="LuzS_5" type="OmniLight3D" parent="Muros/MuroSur"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.1, 0.3, -0.8)
+light_color = Color(1, 0.15, 0.1, 1)
+light_energy = 1.0
+shadow_enabled = false
+omni_range = 6.0
+
+[node name="S_6" parent="Muros/MuroSur" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -6.0, -2.5, -0.4)
+
+[node name="S_7" parent="Muros/MuroSur" instance=ExtResource("7_wall_door")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -2.0, -2.5, -0.4)
+
+[node name="S_8" parent="Muros/MuroSur" instance=ExtResource("7_wall_door")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 2.0, -2.5, -0.4)
+
+[node name="S_9" parent="Muros/MuroSur" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 6.0, -2.5, -0.4)
+
+[node name="S_10" parent="Muros/MuroSur" instance=ExtResource("8_wall_pipes")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 10.0, -2.5, -0.4)
+
+[node name="LuzS_10" type="OmniLight3D" parent="Muros/MuroSur"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.9, 0.3, -0.8)
+light_color = Color(1, 0.15, 0.1, 1)
+light_energy = 1.0
+shadow_enabled = false
+omni_range = 6.0
+
+[node name="S_11" parent="Muros/MuroSur" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 14.0, -2.5, -0.4)
+
+[node name="S_12" parent="Muros/MuroSur" instance=ExtResource("7_wall_door")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 18.0, -2.5, -0.4)
+
+[node name="S_13" parent="Muros/MuroSur" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 22.0, -2.5, -0.4)
+
+[node name="S_14" parent="Muros/MuroSur" instance=ExtResource("8_wall_pipes")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 26.0, -2.5, -0.4)
+
+[node name="LuzS_14" type="OmniLight3D" parent="Muros/MuroSur"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24.9, 0.3, -0.8)
+light_color = Color(1, 0.15, 0.1, 1)
+light_energy = 1.0
+shadow_enabled = false
+omni_range = 6.0
+
+[node name="S_15" parent="Muros/MuroSur" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 30.0, -2.5, -0.4)
 
 [node name="MuroEste" type="StaticBody3D" parent="Muros"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 31, 2.25, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 31, 2.5, 0)
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Muros/MuroEste"]
+[node name="MeshSolidoE" type="MeshInstance3D" parent="Muros/MuroEste"]
 mesh = SubResource("MeshMuroEO")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Muros/MuroEste"]
 shape = SubResource("ColMuroEO")
 
-[node name="Cornisa" type="MeshInstance3D" parent="Muros/MuroEste"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.4, 0)
-mesh = SubResource("MeshCornisaEO")
+[node name="E_0" parent="Muros/MuroEste" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -0.4, -2.5, -30.0)
+
+[node name="E_1" parent="Muros/MuroEste" instance=ExtResource("8_wall_pipes")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -0.4, -2.5, -26.0)
+
+[node name="LuzE_1" type="OmniLight3D" parent="Muros/MuroEste"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.8, 0.3, -24.9)
+light_color = Color(1, 0.15, 0.1, 1)
+light_energy = 1.0
+shadow_enabled = false
+omni_range = 6.0
+
+[node name="E_2" parent="Muros/MuroEste" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -0.4, -2.5, -22.0)
+
+[node name="E_3" parent="Muros/MuroEste" instance=ExtResource("7_wall_door")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -0.4, -2.5, -18.0)
+
+[node name="E_4" parent="Muros/MuroEste" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -0.4, -2.5, -14.0)
+
+[node name="E_5" parent="Muros/MuroEste" instance=ExtResource("8_wall_pipes")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -0.4, -2.5, -10.0)
+
+[node name="LuzE_5" type="OmniLight3D" parent="Muros/MuroEste"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.8, 0.3, -8.9)
+light_color = Color(1, 0.15, 0.1, 1)
+light_energy = 1.0
+shadow_enabled = false
+omni_range = 6.0
+
+[node name="E_6" parent="Muros/MuroEste" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -0.4, -2.5, -6.0)
+
+[node name="E_7" parent="Muros/MuroEste" instance=ExtResource("7_wall_door")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -0.4, -2.5, -2.0)
+
+[node name="E_8" parent="Muros/MuroEste" instance=ExtResource("7_wall_door")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -0.4, -2.5, 2.0)
+
+[node name="E_9" parent="Muros/MuroEste" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -0.4, -2.5, 6.0)
+
+[node name="E_10" parent="Muros/MuroEste" instance=ExtResource("8_wall_pipes")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -0.4, -2.5, 10.0)
+
+[node name="LuzE_10" type="OmniLight3D" parent="Muros/MuroEste"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.8, 0.3, 11.1)
+light_color = Color(1, 0.15, 0.1, 1)
+light_energy = 1.0
+shadow_enabled = false
+omni_range = 6.0
+
+[node name="E_11" parent="Muros/MuroEste" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -0.4, -2.5, 14.0)
+
+[node name="E_12" parent="Muros/MuroEste" instance=ExtResource("7_wall_door")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -0.4, -2.5, 18.0)
+
+[node name="E_13" parent="Muros/MuroEste" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -0.4, -2.5, 22.0)
+
+[node name="E_14" parent="Muros/MuroEste" instance=ExtResource("8_wall_pipes")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -0.4, -2.5, 26.0)
+
+[node name="LuzE_14" type="OmniLight3D" parent="Muros/MuroEste"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.8, 0.3, 27.1)
+light_color = Color(1, 0.15, 0.1, 1)
+light_energy = 1.0
+shadow_enabled = false
+omni_range = 6.0
+
+[node name="E_15" parent="Muros/MuroEste" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -0.4, -2.5, 30.0)
 
 [node name="MuroOeste" type="StaticBody3D" parent="Muros"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -31, 2.25, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -31, 2.5, 0)
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Muros/MuroOeste"]
+[node name="MeshSolidoW" type="MeshInstance3D" parent="Muros/MuroOeste"]
 mesh = SubResource("MeshMuroEO")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Muros/MuroOeste"]
 shape = SubResource("ColMuroEO")
 
-[node name="Cornisa" type="MeshInstance3D" parent="Muros/MuroOeste"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.4, 0)
-mesh = SubResource("MeshCornisaEO")
+[node name="W_0" parent="Muros/MuroOeste" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0.4, -2.5, -30.0)
 
-[node name="Pilares" type="Node3D" parent="."]
+[node name="W_1" parent="Muros/MuroOeste" instance=ExtResource("8_wall_pipes")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0.4, -2.5, -26.0)
 
-[node name="Pilar_NO" parent="Pilares" instance=ExtResource("1_pilar")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25, 0, -25)
+[node name="LuzW_1" type="OmniLight3D" parent="Muros/MuroOeste"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.8, 0.3, -27.1)
+light_color = Color(1, 0.15, 0.1, 1)
+light_energy = 1.0
+shadow_enabled = false
+omni_range = 6.0
 
-[node name="Pilar_NE" parent="Pilares" instance=ExtResource("1_pilar")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25, 0, -25)
+[node name="W_2" parent="Muros/MuroOeste" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0.4, -2.5, -22.0)
 
-[node name="Pilar_SO" parent="Pilares" instance=ExtResource("1_pilar")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25, 0, 25)
+[node name="W_3" parent="Muros/MuroOeste" instance=ExtResource("7_wall_door")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0.4, -2.5, -18.0)
 
-[node name="Pilar_SE" parent="Pilares" instance=ExtResource("1_pilar")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25, 0, 25)
+[node name="W_4" parent="Muros/MuroOeste" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0.4, -2.5, -14.0)
 
-[node name="Pilar_N" parent="Pilares" instance=ExtResource("1_pilar")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -28)
+[node name="W_5" parent="Muros/MuroOeste" instance=ExtResource("8_wall_pipes")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0.4, -2.5, -10.0)
 
-[node name="Pilar_S" parent="Pilares" instance=ExtResource("1_pilar")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 28)
+[node name="LuzW_5" type="OmniLight3D" parent="Muros/MuroOeste"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.8, 0.3, -11.1)
+light_color = Color(1, 0.15, 0.1, 1)
+light_energy = 1.0
+shadow_enabled = false
+omni_range = 6.0
 
-[node name="Pilar_E" parent="Pilares" instance=ExtResource("1_pilar")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 28, 0, 0)
+[node name="W_6" parent="Muros/MuroOeste" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0.4, -2.5, -6.0)
 
-[node name="Pilar_O" parent="Pilares" instance=ExtResource("1_pilar")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -28, 0, 0)
+[node name="W_7" parent="Muros/MuroOeste" instance=ExtResource("7_wall_door")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0.4, -2.5, -2.0)
 
-[node name="Pilar_Mid_NO" parent="Pilares" instance=ExtResource("1_pilar")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0, -12)
+[node name="W_8" parent="Muros/MuroOeste" instance=ExtResource("7_wall_door")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0.4, -2.5, 2.0)
 
-[node name="Pilar_Mid_NE" parent="Pilares" instance=ExtResource("1_pilar")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0, -12)
+[node name="W_9" parent="Muros/MuroOeste" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0.4, -2.5, 6.0)
 
-[node name="Pilar_Mid_SO" parent="Pilares" instance=ExtResource("1_pilar")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0, 12)
+[node name="W_10" parent="Muros/MuroOeste" instance=ExtResource("8_wall_pipes")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0.4, -2.5, 10.0)
 
-[node name="Pilar_Mid_SE" parent="Pilares" instance=ExtResource("1_pilar")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0, 12)
+[node name="LuzW_10" type="OmniLight3D" parent="Muros/MuroOeste"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.8, 0.3, 8.9)
+light_color = Color(1, 0.15, 0.1, 1)
+light_energy = 1.0
+shadow_enabled = false
+omni_range = 6.0
+
+[node name="W_11" parent="Muros/MuroOeste" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0.4, -2.5, 14.0)
+
+[node name="W_12" parent="Muros/MuroOeste" instance=ExtResource("7_wall_door")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0.4, -2.5, 18.0)
+
+[node name="W_13" parent="Muros/MuroOeste" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0.4, -2.5, 22.0)
+
+[node name="W_14" parent="Muros/MuroOeste" instance=ExtResource("8_wall_pipes")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0.4, -2.5, 26.0)
+
+[node name="LuzW_14" type="OmniLight3D" parent="Muros/MuroOeste"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.8, 0.3, 24.9)
+light_color = Color(1, 0.15, 0.1, 1)
+light_energy = 1.0
+shadow_enabled = false
+omni_range = 6.0
+
+[node name="W_15" parent="Muros/MuroOeste" instance=ExtResource("6_wall_panel")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0.4, -2.5, 30.0)
