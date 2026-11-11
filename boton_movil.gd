@@ -123,17 +123,27 @@ func activar_click():
 		tw_luz.tween_property(luz_nucleo, "light_energy", 3.8, 0.05)
 		tw_luz.tween_property(luz_nucleo, "light_energy", 1.2, 0.22)
 
-	# 5. Recompensas directas al héroe (más equilibradas)
+	# 5. Recompensas directas al héroe (Sincronizado con economía incremental de Clics y Monedas)
 	if jugador == null:
 		jugador = get_tree().get_first_node_in_group("jugador")
-	if jugador != null and jugador.has_method("recoger_drop"):
-		jugador.recoger_drop(0, 2) # +2 Oro
-		jugador.recoger_drop(1, 2) # +2 XP (curva más exigente)
-		
-	# 6. Texto flotante 3D sobre el botón
-	_spawn_floating_text("¡CLIC! +2💰 +2✨")
+	if jugador != null:
+		if jugador.has_method("registrar_click_jugador"):
+			jugador.registrar_click_jugador(false)
+			if jugador.has_method("recoger_drop"):
+				jugador.recoger_drop(0, 2) # +2 Oro base por pulsación
+				jugador.recoger_drop(1, 2) # +2 XP
+			var lvl_pot = jugador.mejoras_arbol.get("clk_potencia", 0) if "mejoras_arbol" in jugador else 0
+			var clics_ganados = 1 + lvl_pot
+			var oro_ganado = 2 + lvl_pot
+			_spawn_floating_text("¡CLIC! +%d⚡ +%d🪙" % [clics_ganados, oro_ganado])
+		elif jugador.has_method("recoger_drop"):
+			jugador.recoger_drop(0, 2)
+			jugador.recoger_drop(1, 2)
+			_spawn_floating_text("¡CLIC! +2💰 +2✨")
+	else:
+		_spawn_floating_text("¡CLIC! ⚡")
 	
-	# 7. Onda de choque expansiva
+	# 6. Onda de choque expansiva
 	_detonar_onda_choque()
 	
 	# 8. Escalado de Dificultad: Teletransporte cada 5 clicks
@@ -190,16 +200,24 @@ func _spawn_floating_text(txt: String):
 		num.iniciar(0, true, false, txt)
 
 func _detonar_onda_choque():
+	var mult_radio = 1.0
+	var mult_dano = 1.0
+	if jugador != null and jugador.has_method("obtener_bonus_onda_clic"):
+		var bon = jugador.obtener_bonus_onda_clic()
+		mult_radio = bon.get("radio_mult", 1.0)
+		mult_dano = bon.get("dano_mult", 1.0)
+		
+	var radio_efectivo = radio_onda_choque * mult_radio
 	var enemigos = get_tree().get_nodes_in_group("enemigos")
 	for e in enemigos:
 		if e is Node3D:
 			var dist = global_position.distance_to(e.global_position)
-			if dist <= radio_onda_choque:
+			if dist <= radio_efectivo:
 				if e.has_method("recibir_dano"):
 					var dano_onda = 14.0
 					if jugador != null and "dano" in jugador:
 						dano_onda = jugador.dano * 0.75
-					e.recibir_dano(dano_onda, true)
+					e.recibir_dano(dano_onda * mult_dano, true)
 				var dir_empuje = (e.global_position - global_position).normalized()
 				dir_empuje.y = 0.0
 				if "velocity" in e:

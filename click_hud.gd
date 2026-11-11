@@ -1,7 +1,7 @@
 extends CanvasLayer
 
 # ClickHUD Modernizado - Clicklike 3D: El Coliseo del Núcleo Móvil
-# Fusiona las referencias de interfaz RPG / Coliseo con tarjetas modulares flotantes,
+# Fusiona las referencias de interfaz RPG / Coliseo con tarjetas modulares de forja,
 # busto 3D de avatar en vivo, placa ornamental de oleada y barra de XP estilizada.
 
 const MALLAS_AVATAR = {
@@ -17,6 +17,7 @@ const MALLAS_AVATAR = {
 @onready var label_vida: Label = $Control/TarjetaHeroe/BarVida/LabelVida
 @onready var subviewport_avatar: SubViewport = $Control/TarjetaHeroe/AvatarFrame/SubViewportContainer/SubViewport
 @onready var modelo_avatar_nodo: Node3D = $Control/TarjetaHeroe/AvatarFrame/SubViewportContainer/SubViewport/ModeloAvatar
+@onready var camara_avatar: Camera3D = $Control/TarjetaHeroe/AvatarFrame/SubViewportContainer/SubViewport/CamaraAvatar
 
 @onready var label_oleada: Label = $Control/TarjetaOleada/PlacaOleada/LabelOleada
 @onready var label_tiempo: Label = $Control/TarjetaOleada/PanelEstado/LabelTiempo
@@ -54,6 +55,8 @@ func _ready():
 	if btn_click != null:
 		btn_click.visible = false # El combate es 100% automático
 		
+	_calibrar_avatar()
+		
 	jugador = get_tree().get_first_node_in_group("jugador")
 	if jugador != null:
 		jugador.stats_actualizadas.connect(_on_stats_actualizadas)
@@ -70,6 +73,14 @@ func _ready():
 		btn_opc3.pressed.connect(func(): _elegir_mejora("vida"))
 	
 	call_deferred("_conectar_boton_movil")
+
+func _calibrar_avatar():
+	if camara_avatar != null:
+		camara_avatar.position = Vector3(0.0, 0.47, 0.42)
+		camara_avatar.look_at_from_position(Vector3(0.0, 0.47, 0.42), Vector3(0.0, 0.45, 0.0), Vector3.UP)
+		camara_avatar.fov = 30.0
+	if modelo_avatar_nodo != null:
+		modelo_avatar_nodo.rotation_degrees.y = 165.0
 
 func _conectar_boton_movil():
 	var b = get_tree().get_first_node_in_group("boton_movil")
@@ -147,11 +158,11 @@ func _actualizar_avatar_clase(nombre_clase: String):
 	if MALLAS_AVATAR.has(nombre_clase):
 		var escena_malla: PackedScene = MALLAS_AVATAR[nombre_clase]
 		if escena_malla != null:
-			# Reemplazar modelo en el SubViewport del Avatar
 			if is_instance_valid(modelo_avatar_nodo):
 				modelo_avatar_nodo.queue_free()
 			var nuevo_modelo = escena_malla.instantiate()
 			nuevo_modelo.name = "ModeloAvatar"
+			nuevo_modelo.rotation_degrees.y = 165.0
 			subviewport_avatar.add_child(nuevo_modelo)
 			modelo_avatar_nodo = nuevo_modelo
 
