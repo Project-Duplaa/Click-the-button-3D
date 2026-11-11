@@ -59,10 +59,10 @@ func _impactar_jugador(jugador: Node):
 	_impactado = true
 	AudioManager.play("impacto_flecha", 0.95)
 	
-	if jugador.has_node("Salud"):
-		jugador.get_node("Salud").recibir_golpe(int(dano))
 	if jugador.has_method("recibir_dano"):
 		jugador.recibir_dano(dano)
+	elif jugador.has_node("Salud"):
+		jugador.get_node("Salud").recibir_golpe(int(dano))
 		
 	_desaparecer_con_efecto()
 

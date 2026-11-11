@@ -116,10 +116,10 @@ func detonar():
 	if jugador != null and is_instance_valid(jugador):
 		var dist_j = global_position.distance_to(jugador.global_position)
 		if dist_j <= radio_explosion:
-			if jugador.has_node("Salud"):
-				jugador.get_node("Salud").recibir_golpe(int(dano_a_jugador))
 			if jugador.has_method("recibir_dano"):
 				jugador.recibir_dano(dano_a_jugador)
+			elif jugador.has_node("Salud"):
+				jugador.get_node("Salud").recibir_golpe(int(dano_a_jugador))
 				
 	# Daño a otros enemigos (Fuego amigo táctico)
 	var enemigos = get_tree().get_nodes_in_group("enemigos")

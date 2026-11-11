@@ -137,10 +137,10 @@ func _ejecutar_carga():
 
 func _impactar_jugador_en_carga():
 	if jugador != null:
-		if jugador.has_node("Salud"):
-			jugador.get_node("Salud").recibir_golpe(int(dano_carga))
 		if jugador.has_method("recibir_dano"):
 			jugador.recibir_dano(dano_carga)
+		elif jugador.has_node("Salud"):
+			jugador.get_node("Salud").recibir_golpe(int(dano_carga))
 			
 	AudioManager.play("golpe_impacto", 1.25)
 	_finalizar_carga_aturdido()
