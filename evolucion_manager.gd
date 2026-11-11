@@ -151,6 +151,7 @@ func abrir_modal_evolucion():
 				radial = escena_radial.instantiate()
 				radial.name = "EvolucionRadial"
 				personaje_ref.add_child(radial)
+				radial.personaje_padre = personaje_ref
 		if radial != null:
 			modal_instancia = radial
 			if not radial.evolucion_seleccionada.is_connected(_on_clase_elegida_en_modal):

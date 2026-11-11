@@ -1,7 +1,8 @@
-[gd_scene load_steps=6 format=3 uid="uid://bevolucionradial3d"]
+[gd_scene load_steps=7 format=3 uid="uid://bevolucionradial3d"]
 
 [ext_resource type="Script" path="res://evolucion_radial.gd" id="1_radial"]
 [ext_resource type="Script" path="res://control_radial.gd" id="2_control"]
+[ext_resource type="Script" path="res://dibujador_cola.gd" id="3_cola"]
 
 [sub_resource type="ViewportTexture" id="ViewportTexture_Radial"]
 viewport_path = NodePath("SubViewport")
@@ -28,14 +29,13 @@ shadow_size = 8
 script = ExtResource("1_radial")
 
 [node name="Sprite3D" type="Sprite3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.025, 0)
 axis = 1
 texture = SubResource("ViewportTexture_Radial")
 pixel_size = 0.0055
 render_priority = 2
 transparent = true
 shaded = false
-double_sided = false
+double_sided = true
 
 [node name="SubViewport" type="SubViewport" parent="."]
 transparent_bg = true
@@ -54,61 +54,69 @@ grow_vertical = 2
 mouse_filter = 1
 script = ExtResource("2_control")
 
-[node name="TooltipFlotante" type="PanelContainer" parent="SubViewport/ControlRadial"]
-layout_mode = 0
-offset_left = 460.0
-offset_top = 230.0
-offset_right = 690.0
-offset_bottom = 330.0
+[node name="LuzFlash" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+light_color = Color(1, 1, 1, 1)
+light_energy = 0.0
+omni_range = 4.5
+
+[node name="CapaUI" type="CanvasLayer" parent="."]
+layer = 50
+
+[node name="DibujadorCola" type="Control" parent="CapaUI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("3_cola")
+
+[node name="TooltipFlotante" type="PanelContainer" parent="CapaUI"]
+visible = false
+offset_right = 240.0
+offset_bottom = 110.0
+mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBox_TooltipBocadillo")
 
-[node name="Margin" type="MarginContainer" parent="SubViewport/ControlRadial/TooltipFlotante"]
+[node name="Margin" type="MarginContainer" parent="CapaUI/TooltipFlotante"]
 layout_mode = 2
+mouse_filter = 2
 
-[node name="VBox" type="VBoxContainer" parent="SubViewport/ControlRadial/TooltipFlotante/Margin"]
+[node name="VBox" type="VBoxContainer" parent="CapaUI/TooltipFlotante/Margin"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/separation = 3
 
-[node name="LabelTitulo" type="Label" parent="SubViewport/ControlRadial/TooltipFlotante/Margin/VBox"]
+[node name="LabelTitulo" type="Label" parent="CapaUI/TooltipFlotante/Margin/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.98, 0.82, 0.35, 1)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.95)
 theme_override_constants/shadow_offset_x = 1
 theme_override_constants/shadow_offset_y = 1
-theme_override_font_sizes/font_size = 15
+theme_override_font_sizes/font_size = 16
 text = "MAGO"
 horizontal_alignment = 1
 
-[node name="LabelLinea1" type="Label" parent="SubViewport/ControlRadial/TooltipFlotante/Margin/VBox"]
+[node name="RichTextoStats" type="RichTextLabel" parent="CapaUI/TooltipFlotante/Margin/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.9)
-theme_override_constants/shadow_offset_x = 1
-theme_override_constants/shadow_offset_y = 1
-theme_override_font_sizes/font_size = 12
-text = "• Arcanista / Alto Impacto"
+mouse_filter = 2
+theme_override_colors/default_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/normal_font_size = 12
+bbcode_enabled = true
+text = "• Arcanista / Alto Impacto
+• [color=#56E39F]+133% Daño Mágico[/color]"
+fit_content = true
+scroll_active = false
+autowrap_mode = 0
 
-[node name="LabelLinea2" type="Label" parent="SubViewport/ControlRadial/TooltipFlotante/Margin/VBox"]
+[node name="LabelAccion" type="Label" parent="CapaUI/TooltipFlotante/Margin/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.9)
-theme_override_constants/shadow_offset_x = 1
-theme_override_constants/shadow_offset_y = 1
-theme_override_font_sizes/font_size = 12
-text = "• +133% Daño Mágico"
-
-[node name="LabelAccion" type="Label" parent="SubViewport/ControlRadial/TooltipFlotante/Margin/VBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.92, 0.88, 0.8, 1)
+theme_override_colors/font_color = Color(0.85, 0.82, 0.75, 1)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.9)
 theme_override_constants/shadow_offset_x = 1
 theme_override_constants/shadow_offset_y = 1
 theme_override_font_sizes/font_size = 11
 text = "[Clic para evolucionar]"
 horizontal_alignment = 1
-
-[node name="LuzFlash" type="OmniLight3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
-light_color = Color(1, 1, 1, 1)
-light_energy = 0.0
-omni_range = 4.5
