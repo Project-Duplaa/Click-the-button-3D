@@ -1,6 +1,7 @@
 extends CanvasLayer
 
 @onready var label_clase = $Control/PanelTop/LabelClase
+@onready var label_vidas = $Control/PanelTop.get_node_or_null("LabelVidas")
 @onready var bar_vida = $Control/PanelTop/BarVida
 @onready var label_vida = $Control/PanelTop/BarVida/LabelVida
 @onready var bar_xp = $Control/PanelTop/BarXP
@@ -65,6 +66,21 @@ func _process(delta):
 func _on_stats_actualizadas(vida, max_vida, xp, xp_sig, nivel, oro, bajas):
 	if label_clase != null and jugador != null and "clase" in jugador:
 		label_clase.text = "Clase: %s (Nv. %d)" % [jugador.clase, nivel]
+	if label_vidas != null and jugador != null and "reapariciones" in jugador:
+		var vidas_restantes = jugador.reapariciones + 1
+		match vidas_restantes:
+			3:
+				label_vidas.text = "Vidas: ❤️❤️❤️ (3/3)"
+				label_vidas.modulate = Color(1.0, 1.0, 1.0)
+			2:
+				label_vidas.text = "Vidas: ❤️❤️🖤 (2/3)"
+				label_vidas.modulate = Color(1.0, 0.85, 0.25)
+			1:
+				label_vidas.text = "Vidas: ❤️🖤🖤 (1/3) ¡CRÍTICO!"
+				label_vidas.modulate = Color(1.0, 0.35, 0.35)
+			_:
+				label_vidas.text = "Vidas: 🖤🖤🖤 (0/3) ¡CAÍDO!"
+				label_vidas.modulate = Color(0.7, 0.2, 0.2)
 	if bar_vida != null:
 		bar_vida.max_value = max_vida
 		bar_vida.value = vida

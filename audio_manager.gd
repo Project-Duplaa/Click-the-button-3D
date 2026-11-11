@@ -39,6 +39,8 @@ func _generar_biblioteca_sonidos():
 	_sonidos["jefe_alerta"] = _sintetizar_rugido_jefe()
 	_sonidos["danio_jugador"] = _sintetizar_golpe_dano()
 	_sonidos["enemigo_muerte"] = _sintetizar_pop_muerte()
+	_sonidos["corte_giratorio"] = _sintetizar_corte_giratorio()
+	_sonidos["escudo_bloqueo"] = _sintetizar_escudo_bloqueo()
 	_sonidos["victoria"] = _sintetizar_fanfarria_victoria()
 	_sonidos["derrota"] = _sintetizar_descenso_derrota()
 	_sonidos["corte_espada"] = _sintetizar_corte_espada()
@@ -223,6 +225,19 @@ func _sintetizar_corte_espada() -> AudioStreamWAV:
 		return (sweep + noise) * env
 	)
 
+func _sintetizar_corte_giratorio() -> AudioStreamWAV:
+	var sr = 22050
+	var dur = 0.28
+	var n = int(sr * dur)
+	return _crear_wav_8bit(n, sr, func(t: float, i: int, total: int):
+		var frac = float(i) / total
+		var env = sin(frac * PI)
+		var freq = 110.0 + 380.0 * (1.0 - frac)
+		var ruido = (randf() * 2.0 - 1.0) * 0.45
+		var sweep = sin(TAU * freq * t) * 0.65
+		return (sweep + ruido) * env * 0.95
+	)
+
 func _sintetizar_disparo_arco() -> AudioStreamWAV:
 	var sr = 22050
 	var dur = 0.18
@@ -270,4 +285,17 @@ func _sintetizar_golpe_impacto() -> AudioStreamWAV:
 		var env = 1.0 - frac
 		var f = 160.0 - frac * 90.0
 		return (sin(TAU * f * t) * 0.6 + (randf() * 2.0 - 1.0) * 0.4) * env
+	)
+
+func _sintetizar_escudo_bloqueo() -> AudioStreamWAV:
+	var sr = 22050
+	var dur = 0.26
+	var n = int(sr * dur)
+	return _crear_wav_8bit(n, sr, func(t: float, i: int, total: int):
+		var frac = float(i) / total
+		var env = exp(-frac * 6.5)
+		var a = sin(TAU * 1250.0 * t) * 0.45
+		var b = sin(TAU * 1875.0 * t) * 0.35
+		var c = sin(TAU * 2500.0 * t) * 0.20
+		return (a + b + c) * env
 	)

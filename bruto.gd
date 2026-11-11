@@ -65,10 +65,10 @@ func distancia_a(p: Vector3) -> float:
 
 func _golpe_contundente():
 	if jugador != null:
-		if jugador.has_node("Salud"):
-			jugador.get_node("Salud").recibir_golpe(int(dano_ataque))
 		if jugador.has_method("recibir_dano"):
 			jugador.recibir_dano(dano_ataque)
+		elif jugador.has_node("Salud"):
+			jugador.get_node("Salud").recibir_golpe(int(dano_ataque))
 
 func recibir_dano(cantidad: float, es_critico: bool = false):
 	vida -= cantidad

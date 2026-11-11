@@ -49,6 +49,14 @@ text = "120 / 120 HP"
 horizontal_alignment = 1
 vertical_alignment = 1
 
+[node name="LabelVidas" type="Label" parent="Control/PanelTop"]
+layout_mode = 0
+offset_left = 250.0
+offset_top = 8.0
+offset_right = 440.0
+offset_bottom = 31.0
+text = "Vidas: ❤️❤️❤️ (3/3)"
+
 [node name="BarXP" type="ProgressBar" parent="Control/PanelTop"]
 layout_mode = 0
 offset_left = 250.0

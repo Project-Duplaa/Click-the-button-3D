@@ -4,9 +4,9 @@ signal cambio(vida)
 signal sin_vida
 
 @export var vida = 120
-@export var invulnerable = 0.5
-@export var reapariciones = 1
-@export var espera_reaparecer = 2.0
+@export var invulnerable = 1.5
+@export var reapariciones = 2
+@export var espera_reaparecer = 1.5
 
 var reloj = 0.0
 var vida_inicial = 0
@@ -19,18 +19,25 @@ func _ready():
 	vida_inicial = vida
 	if pj != null and pj is Node3D:
 		punto = pj.global_position
+		if "vida" in pj:
+			vida = int(pj.vida)
+		if "reapariciones" in pj:
+			reapariciones = pj.reapariciones
 
 func _physics_process(delta):
 	reloj = maxf(reloj - delta, 0.0)
 
 func recibir_golpe(danio):
-	if reloj > 0.001 or vida == 0:
-		return
-	vida = maxi(vida - danio, 0)
-	reloj = invulnerable
-	cambio.emit(vida)
-	if vida == 0:
-		sin_vida.emit()
+	if pj != null and pj.has_method("recibir_dano"):
+		pj.recibir_dano(float(danio))
+	else:
+		if reloj > 0.001 or vida == 0:
+			return
+		vida = maxi(vida - danio, 0)
+		reloj = invulnerable
+		cambio.emit(vida)
+		if vida == 0:
+			sin_vida.emit()
 
 func _al_quedar_sin_vida():
 	if reapariciones > 0:
@@ -49,4 +56,4 @@ func _al_quedar_sin_vida():
 		
 	var partida = get_tree().get_first_node_in_group("partida")
 	if partida != null:
-		partida.perder("sin vida")
+		partida.perder("Agotaste tus 3 vidas en combate")
