@@ -177,10 +177,6 @@ func _physics_process(delta):
 	_procesar_incremental_pasivo(delta)
 	_prueba()
 
-func _procesar_incremental_pasivo(_delta: float):
-	# Generación incremental pasiva de recursos si aplica
-	pass
-
 func _procesar_autobattler(delta: float):
 	_reloj_ataque = maxf(_reloj_ataque - delta, 0.0)
 	if _reloj_ataque <= 0.001:
