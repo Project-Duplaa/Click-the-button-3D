@@ -74,6 +74,9 @@ var bloqueando: bool = false
 var reduccion_dano_bloqueo: float = 0.75
 var velocidad_bloqueo_multiplicador: float = 0.50
 var _escudo_visual: Node3D = null
+var _preview_baston: Node3D = null
+var _preview_espada: Node3D = null
+var _preview_arco: Node3D = null
 
 # Sistema de Vidas, Reapariciones y Derrota Definitiva (Tarea 3)
 @export var reapariciones: int = 2 # 2 reapariciones = 3 vidas en total
@@ -427,12 +430,111 @@ func subir_nivel():
 
 ## Vista previa visual temporal mientras el jugador sobrevuela una clase en el menú radial
 func mostrar_preview_clase(nombre_clase: String):
-	if nombre_clase == "Guerrero":
-		if _escudo_visual != null:
-			_escudo_visual.visible = true
-	else:
-		if _escudo_visual != null and clase != "Guerrero":
-			_escudo_visual.visible = false
+	_asegurar_armas_preview()
+	
+	if _preview_baston != null:
+		_preview_baston.visible = (nombre_clase == "Mago")
+	if _preview_espada != null:
+		_preview_espada.visible = (nombre_clase == "Guerrero")
+	if _preview_arco != null:
+		_preview_arco.visible = (nombre_clase == "Cazador")
+		
+	if _escudo_visual != null:
+		_escudo_visual.visible = (nombre_clase == "Guerrero" or (clase == "Guerrero" and nombre_clase == ""))
+
+func _asegurar_armas_preview():
+	if _preview_baston != null and is_instance_valid(_preview_baston):
+		return
+		
+	# 1. Bastón de Mago con Orbe Cian Resplandeciente y Partículas (Réplica exacta de la referencia)
+	_preview_baston = Node3D.new()
+	_preview_baston.name = "PreviewBastonMago"
+	
+	# Palo del bastón
+	var mesh_palo = MeshInstance3D.new()
+	var cyl = CylinderMesh.new()
+	cyl.top_radius = 0.025
+	cyl.bottom_radius = 0.025
+	cyl.height = 1.15
+	mesh_palo.mesh = cyl
+	var mat_palo = StandardMaterial3D.new()
+	mat_palo.albedo_color = Color(0.38, 0.24, 0.16)
+	mesh_palo.material_override = mat_palo
+	_preview_baston.add_child(mesh_palo)
+	
+	# Orbe de cristal mágico cian
+	var mesh_orbe = MeshInstance3D.new()
+	var sph = SphereMesh.new()
+	sph.radius = 0.09
+	sph.height = 0.18
+	mesh_orbe.mesh = sph
+	mesh_orbe.position = Vector3(0, 0.58, 0)
+	var mat_orbe = StandardMaterial3D.new()
+	mat_orbe.albedo_color = Color(0.2, 0.85, 1.0)
+	mat_orbe.emission_enabled = true
+	mat_orbe.emission = Color(0.1, 0.9, 1.0)
+	mat_orbe.emission_energy_multiplier = 3.8
+	mesh_orbe.material_override = mat_orbe
+	_preview_baston.add_child(mesh_orbe)
+	
+	# Luz y partículas mágicas del orbe
+	var luz_orbe = OmniLight3D.new()
+	luz_orbe.light_color = Color(0.25, 0.85, 1.0)
+	luz_orbe.light_energy = 2.2
+	luz_orbe.omni_range = 2.5
+	luz_orbe.position = Vector3(0, 0.58, 0)
+	_preview_baston.add_child(luz_orbe)
+	
+	var part_orbe = CPUParticles3D.new()
+	part_orbe.emitting = true
+	part_orbe.amount = 12
+	part_orbe.lifetime = 0.7
+	part_orbe.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	part_orbe.emission_sphere_radius = 0.12
+	part_orbe.gravity = Vector3(0, 0.6, 0)
+	part_orbe.color = Color(0.3, 0.9, 1.0, 0.9)
+	part_orbe.position = Vector3(0, 0.58, 0)
+	_preview_baston.add_child(part_orbe)
+	
+	# Posición del bastón sostenido en mano derecha
+	_preview_baston.position = Vector3(0.48, 0.65, 0.22)
+	_preview_baston.rotation_degrees = Vector3(8.0, 0.0, -14.0)
+	_preview_baston.visible = false
+	add_child(_preview_baston)
+	
+	# 2. Espada de Guerrero en mano derecha
+	_preview_espada = Node3D.new()
+	_preview_espada.name = "PreviewEspadaGuerrero"
+	var mesh_espada = MeshInstance3D.new()
+	var box_esp = BoxMesh.new()
+	box_esp.size = Vector3(0.08, 0.85, 0.02)
+	mesh_espada.mesh = box_esp
+	var mat_esp = StandardMaterial3D.new()
+	mat_esp.albedo_color = Color(0.85, 0.88, 0.95)
+	mat_esp.metallic = 0.9
+	mat_esp.roughness = 0.3
+	mesh_espada.material_override = mat_esp
+	_preview_espada.add_child(mesh_espada)
+	_preview_espada.position = Vector3(0.45, 0.55, 0.15)
+	_preview_espada.rotation_degrees = Vector3(-15.0, 0.0, 25.0)
+	_preview_espada.visible = false
+	add_child(_preview_espada)
+	
+	# 3. Arco de Cazador en mano izquierda
+	_preview_arco = Node3D.new()
+	_preview_arco.name = "PreviewArcoCazador"
+	var mesh_arco = MeshInstance3D.new()
+	var box_arco = BoxMesh.new()
+	box_arco.size = Vector3(0.04, 0.95, 0.15)
+	mesh_arco.mesh = box_arco
+	var mat_arco = StandardMaterial3D.new()
+	mat_arco.albedo_color = Color(0.65, 0.40, 0.22)
+	mesh_arco.material_override = mat_arco
+	_preview_arco.add_child(mesh_arco)
+	_preview_arco.position = Vector3(-0.45, 0.60, 0.20)
+	_preview_arco.rotation_degrees = Vector3(10.0, 0.0, 0.0)
+	_preview_arco.visible = false
+	add_child(_preview_arco)
 
 func aplicar_clase(nombre: String):
 	clase = nombre

@@ -2,10 +2,11 @@
 extends Control
 class_name ControlRadial
 
-## ControlRadial (UI 2D In-World para Menú Radial de Evolución)
-## Renderiza proceduralmente un anillo rúnico de 3 sectores (120° c/u),
-## detecta el sector apuntado por mouse o gamepad, gestiona animaciones
-## de hover (Tween de escala y brillo) y despliega el tooltip flotante con estética dark fantasy.
+## ControlRadial - Réplica visual fiel del diseño In-World
+## Dibuja 3 segmentos circulares curvados independientes con separación angular,
+## texturas de iconos de armas limpias (Espada, Arco, Bastón),
+## bocadillo tooltip flotante con cola triangular apuntando al sector activo,
+## y resplandor cian eléctrico cuando se sobrevuela Mago (o el color correspondiente).
 
 signal clase_resaltada(nombre_clase: String)
 signal clase_confirmada(nombre_clase: String)
@@ -13,82 +14,75 @@ signal clase_confirmada(nombre_clase: String)
 const TAMANO_VIEWPORT: Vector2 = Vector2(768.0, 768.0)
 const CENTRO: Vector2 = Vector2(384.0, 384.0)
 
-const RADIO_INTERIOR: float = 85.0
-const RADIO_EXTERIOR: float = 245.0
-const RADIO_ICONOS: float = 165.0
+const RADIO_INTERIOR: float = 110.0
+const RADIO_EXTERIOR: float = 230.0
+const RADIO_ICONOS: float = 170.0
+const GAP_ANGULAR_DEG: float = 7.0 # Separación entre sectores
 
-# Colores vivos solicitados
-const COLOR_GUERRERO: Color = Color("#E63946") # Rojo
-const COLOR_CAZADOR: Color = Color("#2EC4B6")  # Verde
-const COLOR_MAGO: Color = Color("#3A86FF")     # Azul
-const COLOR_BORDE_ORO: Color = Color(0.85, 0.70, 0.35, 0.95)
+# Colores fieles a la imagen de referencia
+const COLOR_GUERRERO: Color = Color(0.88, 0.24, 0.22, 1.0) # Rojo
+const COLOR_CAZADOR: Color = Color(0.24, 0.78, 0.38, 1.0)  # Verde
+const COLOR_MAGO: Color = Color(0.22, 0.58, 0.95, 1.0)     # Azul / Cian
+const COLOR_BORDE_ORO: Color = Color(0.88, 0.72, 0.35, 1.0) # Oro HUD
 
-# Datos de clases, ángulos y descripciones para Tooltip
+const TEX_ESPADA = preload("res://ui_assets/icono_espada.png")
+const TEX_ARCO = preload("res://ui_assets/icono_arco.png")
+const TEX_BASTON = preload("res://ui_assets/icono_baston.png")
+
 const CONFIG_CLASES = {
 	"Guerrero": {
 		"color": COLOR_GUERRERO,
-		"angulo_centro_deg": 150.0, # Izquierda / Atrás
-		"icono": "⚔️",
+		"angulo_centro_deg": 150.0,
+		"icono_tex": TEX_ESPADA,
 		"titulo": "GUERRERO",
 		"subtitulo": "Tanque / Alto Impacto",
-		"stats": "[color=#52b788]+60% Salud Máxima[/color]\n[color=#52b788]+83% Daño Melee en Cono[/color]\n[color=#ffd166]Bloqueo Defensivo [F / Q / Clic Der][/color]",
-		"accion": "[Clic Izq / Botón A para evolucionar]"
+		"linea1": "• Tanque / Alto Impacto",
+		"linea2": "• +60% Salud\n• +83% Daño Melee",
+		"accion": "[Clic para evolucionar]"
 	},
 	"Cazador": {
 		"color": COLOR_CAZADOR,
-		"angulo_centro_deg": 30.0,  # Derecha / Atrás
-		"icono": "🏹",
+		"angulo_centro_deg": 30.0,
+		"icono_tex": TEX_ARCO,
 		"titulo": "CAZADOR",
 		"subtitulo": "Ranger / Ráfaga Veloz",
-		"stats": "[color=#52b788]+16% Daño Base[/color]\n[color=#52b788]Vel. Carrera: 6.4 m/s[/color]\n[color=#ffd166]Proyectiles Rápidos a Distancia[/color]",
-		"accion": "[Clic Izq / Botón A para evolucionar]"
+		"linea1": "• Ranger / Ráfaga Veloz",
+		"linea2": "• +16% Daño\n• Vel. Carrera: 6.4 m/s",
+		"accion": "[Clic para evolucionar]"
 	},
 	"Mago": {
 		"color": COLOR_MAGO,
-		"angulo_centro_deg": 270.0, # Frente (hacia cámara)
-		"icono": "🔮",
+		"angulo_centro_deg": 270.0,
+		"icono_tex": TEX_BASTON,
 		"titulo": "MAGO",
 		"subtitulo": "Arcanista / Alto Impacto",
-		"stats": "[color=#52b788]+133% Daño Mágico Arcano[/color]\n[color=#52b788]Orbes de Energía Dirigidos[/color]\n[color=#ffd166]Ataques de Área Mágica[/color]",
-		"accion": "[Clic Izq / Botón A para evolucionar]"
+		"linea1": "• Arcanista / Alto Impacto",
+		"linea2": "• +133% Daño Mágico",
+		"accion": "[Clic para evolucionar]"
 	}
 }
 
-var clase_seleccionada: String = ""
-var _angulo_apuntado_deg: float = -1.0
+var clase_seleccionada: String = "Mago" # Inicia en Mago o vacía
 var _anim_pesos: Dictionary = {
 	"Guerrero": 0.0,
 	"Cazador": 0.0,
-	"Mago": 0.0
+	"Mago": 1.0
 }
-
-@onready var contenedor_iconos: Control = $ContenedorIconos
-@onready var btn_guerrero: Button = $ContenedorIconos/BtnGuerrero
-@onready var btn_cazador: Button = $ContenedorIconos/BtnCazador
-@onready var btn_mago: Button = $ContenedorIconos/BtnMago
+var _tiempo_pulso: float = 0.0
 
 @onready var tooltip_flotante: PanelContainer = $TooltipFlotante
 @onready var label_titulo: Label = $TooltipFlotante/Margin/VBox/LabelTitulo
-@onready var label_subtitulo: Label = $TooltipFlotante/Margin/VBox/LabelSubtitulo
-@onready var label_stats: RichTextLabel = $TooltipFlotante/Margin/VBox/LabelStats
+@onready var label_linea1: Label = $TooltipFlotante/Margin/VBox/LabelLinea1
+@onready var label_linea2: Label = $TooltipFlotante/Margin/VBox/LabelLinea2
 @onready var label_accion: Label = $TooltipFlotante/Margin/VBox/LabelAccion
-
-var _tiempo_pulso: float = 0.0
 
 func _ready():
 	custom_minimum_size = TAMANO_VIEWPORT
-	
-	if tooltip_flotante != null:
-		tooltip_flotante.modulate.a = 0.0
-		tooltip_flotante.visible = false
-	
-	_posicionar_botones()
-	_conectar_senales_botones()
+	_actualizar_tooltip(clase_seleccionada)
+	queue_redraw()
 
 func _process(delta: float):
 	_tiempo_pulso += delta * 4.0
-	
-	# Interpolación suave de los factores de brillo y escala para cada sector
 	var necesita_redraw = false
 	for k in _anim_pesos.keys():
 		var destino = 1.0 if k == clase_seleccionada else 0.0
@@ -102,107 +96,42 @@ func _process(delta: float):
 	if necesita_redraw or clase_seleccionada != "":
 		queue_redraw()
 
-func _posicionar_botones():
-	for nombre_clase in CONFIG_CLASES.keys():
-		var btn: Button = _obtener_boton(nombre_clase)
-		if btn == null:
-			continue
-			
-		var info = CONFIG_CLASES[nombre_clase]
-		var ang_rad = deg_to_rad(info["angulo_centro_deg"])
-		# En espacio de textura 2D: +X a la derecha, +Y hacia abajo
-		# El ángulo estándar en GDScript: cos(a) es X, -sin(a) es Y para que 90° sea arriba
-		var pos_local = CENTRO + Vector2(cos(ang_rad), -sin(ang_rad)) * RADIO_ICONOS
-		
-		btn.custom_minimum_size = Vector2(76.0, 76.0)
-		btn.pivot_offset = Vector2(38.0, 38.0)
-		btn.position = pos_local - btn.pivot_offset
-		btn.text = "%s\n%s" % [info["icono"], info["titulo"]]
-		btn.focus_mode = Control.FOCUS_NONE
-
-func _conectar_senales_botones():
-	for nombre_clase in CONFIG_CLASES.keys():
-		var btn: Button = _obtener_boton(nombre_clase)
-		if btn == null:
-			continue
-		var nc = nombre_clase
-		btn.mouse_entered.connect(func(): seleccionar_clase(nc))
-		btn.pressed.connect(func(): confirmar_clase(nc))
-
-func _obtener_boton(nombre_clase: String) -> Button:
-	match nombre_clase:
-		"Guerrero": return btn_guerrero
-		"Cazador": return btn_cazador
-		"Mago": return btn_mago
-	return null
-
-## Actualiza la selección basándose en el ángulo del puntero / stick (0° a 360°)
 func actualizar_por_angulo(angulo_deg: float):
 	if angulo_deg < 0.0:
 		return
-	
-	_angulo_apuntado_deg = fposmod(angulo_deg, 360.0)
-	var nueva_clase = _determinar_clase_por_angulo(_angulo_apuntado_deg)
+	var ang = fposmod(angulo_deg, 360.0)
+	var nueva_clase = "Cazador" if (ang >= 330.0 or ang < 90.0) else ("Guerrero" if (ang >= 90.0 and ang < 210.0) else "Mago")
 	if nueva_clase != clase_seleccionada:
 		seleccionar_clase(nueva_clase)
-
-func _determinar_clase_por_angulo(ang: float) -> String:
-	# 3 sectores exactos de 120°:
-	# Cazador: centrado en 30° -> de 330° a 90°
-	# Guerrero: centrado en 150° -> de 90° a 210°
-	# Mago: centrado en 270° -> de 210° a 330°
-	if ang >= 330.0 or ang < 90.0:
-		return "Cazador"
-	elif ang >= 90.0 and ang < 210.0:
-		return "Guerrero"
-	else:
-		return "Mago"
 
 func seleccionar_clase(nombre_clase: String):
 	if clase_seleccionada == nombre_clase:
 		return
-		
 	clase_seleccionada = nombre_clase
 	emit_signal("clase_resaltada", nombre_clase)
-	
-	_animar_botones_hover(nombre_clase)
 	_actualizar_tooltip(nombre_clase)
 	queue_redraw()
-
-func _animar_botones_hover(clase_activa: String):
-	for k in CONFIG_CLASES.keys():
-		var btn = _obtener_boton(k)
-		if btn == null:
-			continue
-		var tw = create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		if k == clase_activa:
-			tw.tween_property(btn, "scale", Vector2(1.22, 1.22), 0.20)
-		else:
-			tw.tween_property(btn, "scale", Vector2(1.0, 1.0), 0.15)
 
 func _actualizar_tooltip(nombre_clase: String):
 	if tooltip_flotante == null or not CONFIG_CLASES.has(nombre_clase):
 		return
-		
 	var info = CONFIG_CLASES[nombre_clase]
 	label_titulo.text = info["titulo"]
-	label_titulo.modulate = info["color"]
-	label_subtitulo.text = info["subtitulo"]
-	label_stats.text = info["stats"]
+	label_linea1.text = info["linea1"]
+	label_linea2.text = info["linea2"]
 	label_accion.text = info["accion"]
 	
-	# Calcular posición óptima del tooltip para no tapar al personaje en el centro
+	# Posición del bocadillo idéntica a la captura de referencia:
+	# En la captura, con Mago activo, el Tooltip flota a la derecha del personaje,
+	# sobre el sector verde/azul, sin tapar al héroe
 	var pos_tooltip = Vector2.ZERO
 	match nombre_clase:
-		"Guerrero":
-			# Cuadrante superior izquierdo
-			pos_tooltip = Vector2(40.0, 110.0)
-		"Cazador":
-			# Cuadrante superior derecho
-			pos_tooltip = Vector2(480.0, 110.0)
 		"Mago":
-			# Cuadrante inferior (hacia el lateral para despejar los pies)
-			pos_tooltip = Vector2(480.0, 470.0)
+			pos_tooltip = Vector2(460.0, 230.0) # Al lado derecho de la cabeza
+		"Guerrero":
+			pos_tooltip = Vector2(50.0, 200.0)
+		"Cazador":
+			pos_tooltip = Vector2(470.0, 160.0)
 			
 	tooltip_flotante.visible = true
 	var tw = create_tween().set_parallel(true)
@@ -224,90 +153,118 @@ func confirmar_seleccion_actual():
 		confirmar_clase(clase_seleccionada)
 
 # =========================================================================
-# DIBUJADO PROCEDURAL DEL ANILLO Y SECTORES
+# DIBUJADO PROCEDURAL FIEL A LA REFERENCIA
 # =========================================================================
 func _draw():
-	# 1. Fondo exterior / viñeta sutil
-	draw_circle(CENTRO, RADIO_EXTERIOR + 12.0, Color(0.04, 0.05, 0.08, 0.55))
+	var gap_rad = deg_to_rad(GAP_ANGULAR_DEG)
 	
-	# 2. Anillo base de piedra oscura
-	_dibujar_anillo_vacio(CENTRO, RADIO_INTERIOR, RADIO_EXTERIOR, Color(0.08, 0.10, 0.14, 0.88))
+	# Límites angulares con separación:
+	# Cazador: centrado en 30° (desde -30° + gap hasta 90° - gap)
+	var a_caz_ini = -PI / 6.0 + gap_rad
+	var a_caz_fin = PI / 2.0 - gap_rad
 	
-	# 3. Dibujar los 3 sectores con sus colores y pesos de brillo
-	# Rango de radianes (convirtiendo de polar con Y invertida):
-	# Cazador (30° centro): de -30° (-PI/6) a 90° (PI/2)
-	_dibujar_sector_anillo(CENTRO, RADIO_INTERIOR + 4.0, RADIO_EXTERIOR - 4.0, -PI / 6.0, PI / 2.0, "Cazador")
-	# Guerrero (150° centro): de 90° (PI/2) a 210° (7*PI/6)
-	_dibujar_sector_anillo(CENTRO, RADIO_INTERIOR + 4.0, RADIO_EXTERIOR - 4.0, PI / 2.0, 7.0 * PI / 6.0, "Guerrero")
-	# Mago (270° centro): de 210° (7*PI/6) a 330° (11*PI/6)
-	_dibujar_sector_anillo(CENTRO, RADIO_INTERIOR + 4.0, RADIO_EXTERIOR - 4.0, 7.0 * PI / 6.0, 11.0 * PI / 6.0, "Mago")
+	# Guerrero: centrado en 150° (desde 90° + gap hasta 210° - gap)
+	var a_gue_ini = PI / 2.0 + gap_rad
+	var a_gue_fin = (7.0 * PI / 6.0) - gap_rad
 	
-	# 4. Líneas divisorias ornamentales entre sectores (a 90°, 210° y 330°)
-	_dibujar_divisor_radial(CENTRO, RADIO_INTERIOR - 6.0, RADIO_EXTERIOR + 8.0, PI / 2.0)
-	_dibujar_divisor_radial(CENTRO, RADIO_INTERIOR - 6.0, RADIO_EXTERIOR + 8.0, 7.0 * PI / 6.0)
-	_dibujar_divisor_radial(CENTRO, RADIO_INTERIOR - 6.0, RADIO_EXTERIOR + 8.0, 11.0 * PI / 6.0)
+	# Mago: centrado en 270° (desde 210° + gap hasta 330° - gap)
+	var a_mag_ini = (7.0 * PI / 6.0) + gap_rad
+	var a_mag_fin = (11.0 * PI / 6.0) - gap_rad
 	
-	# 5. Anillos dorados concéntricos de filigrana
-	draw_arc(CENTRO, RADIO_EXTERIOR, 0, TAU, 64, COLOR_BORDE_ORO, 3.0, true)
-	draw_arc(CENTRO, RADIO_EXTERIOR - 8.0, 0, TAU, 64, Color(COLOR_BORDE_ORO.r, COLOR_BORDE_ORO.g, COLOR_BORDE_ORO.b, 0.4), 1.5, true)
-	draw_arc(CENTRO, RADIO_INTERIOR, 0, TAU, 48, COLOR_BORDE_ORO, 2.5, true)
-	draw_arc(CENTRO, RADIO_INTERIOR + 6.0, 0, TAU, 48, Color(COLOR_BORDE_ORO.r, COLOR_BORDE_ORO.g, COLOR_BORDE_ORO.b, 0.4), 1.5, true)
+	# Dibujar los 3 segmentos
+	_dibujar_segmento(CENTRO, RADIO_INTERIOR, RADIO_EXTERIOR, a_gue_ini, a_gue_fin, "Guerrero")
+	_dibujar_segmento(CENTRO, RADIO_INTERIOR, RADIO_EXTERIOR, a_caz_ini, a_caz_fin, "Cazador")
+	_dibujar_segmento(CENTRO, RADIO_INTERIOR, RADIO_EXTERIOR, a_mag_ini, a_mag_fin, "Mago")
 	
-	# 6. Dientes / Runas decorativas en el borde exterior
-	for i in range(24):
-		var ang = (TAU / 24.0) * i
-		var p1 = CENTRO + Vector2(cos(ang), sin(ang)) * (RADIO_EXTERIOR - 2.0)
-		var p2 = CENTRO + Vector2(cos(ang), sin(ang)) * (RADIO_EXTERIOR + 6.0)
-		draw_line(p1, p2, COLOR_BORDE_ORO, 1.5, true)
+	# Dibujar los iconos de armas en el centro de cada sector
+	_dibujar_icono_arma("Guerrero", a_gue_ini, a_gue_fin)
+	_dibujar_icono_arma("Cazador", a_caz_ini, a_caz_fin)
+	_dibujar_icono_arma("Mago", a_mag_ini, a_mag_fin)
+	
+	# Dibujar la cola de bocadillo del Tooltip apuntando al sector seleccionado
+	_dibujar_cola_tooltip()
 
-func _dibujar_anillo_vacio(centro: Vector2, r_in: float, r_out: float, col: Color):
-	var segmentos = 64
-	var puntos = PackedVector2Array()
-	for i in range(segmentos + 1):
-		var a = (TAU / segmentos) * i
-		puntos.append(centro + Vector2(cos(a), sin(a)) * r_out)
-	for i in range(segmentos, -1, -1):
-		var a = (TAU / segmentos) * i
-		puntos.append(centro + Vector2(cos(a), sin(a)) * r_in)
-	draw_polygon(puntos, PackedColorArray([col]))
-
-func _dibujar_sector_anillo(centro: Vector2, r_in: float, r_out: float, ang_ini: float, ang_fin: float, nombre_clase: String):
+func _dibujar_segmento(centro: Vector2, r_in: float, r_out: float, a_ini: float, a_fin: float, nombre_clase: String):
 	var peso = _anim_pesos.get(nombre_clase, 0.0)
 	var col_base = CONFIG_CLASES[nombre_clase]["color"]
 	
-	# Color desaturado atenuado cuando está inactivo
-	var col_inactivo = Color(col_base.r * 0.35, col_base.g * 0.35, col_base.b * 0.35, 0.22)
-	# Color brillante activo con pulso sutil
-	var brillo_pulso = 1.0 + sin(_tiempo_pulso) * 0.08
-	var col_activo = Color(col_base.r * brillo_pulso, col_base.g * brillo_pulso, col_base.b * brillo_pulso, 0.72)
+	# Relleno translúcido
+	var alpha_fill = lerpf(0.42, 0.65, peso)
+	var col_fill = Color(col_base.r, col_base.g, col_base.b, alpha_fill)
 	
-	var col_final = col_inactivo.lerp(col_activo, peso)
+	# Borde: cuando está activo, brillo más intenso y mayor grosor
+	var col_borde = col_base if peso < 0.1 else col_base.lerp(Color.WHITE, 0.35)
+	var grosor_borde = lerpf(3.0, 5.0, peso)
 	
-	var segmentos = 24
-	var puntos = PackedVector2Array()
-	# En Godot 2D dibujamos el arco en sentido horario
+	var segmentos = 32
+	var puntos_exterior = PackedVector2Array()
+	var puntos_interior = PackedVector2Array()
+	
 	for i in range(segmentos + 1):
-		var a = lerpf(ang_ini, ang_fin, float(i) / segmentos)
-		puntos.append(centro + Vector2(cos(a), -sin(a)) * r_out)
-	for i in range(segmentos, -1, -1):
-		var a = lerpf(ang_ini, ang_fin, float(i) / segmentos)
-		puntos.append(centro + Vector2(cos(a), -sin(a)) * r_in)
+		var t = float(i) / segmentos
+		var a = lerpf(a_ini, a_fin, t)
+		puntos_exterior.append(centro + Vector2(cos(a), -sin(a)) * r_out)
+		puntos_interior.append(centro + Vector2(cos(a), -sin(a)) * r_in)
 		
-	draw_polygon(puntos, PackedColorArray([col_final]))
+	# Polígono cerrado para relleno
+	var poly = PackedVector2Array()
+	for p in puntos_exterior:
+		poly.append(p)
+	for i in range(puntos_interior.size() - 1, -1, -1):
+		poly.append(puntos_interior[i])
+		
+	draw_polygon(poly, PackedColorArray([col_fill]))
 	
-	# Si está activo, resaltar los bordes del sector con luz
-	if peso > 0.05:
-		var col_linea = Color(col_base.r, col_base.g, col_base.b, 0.85 * peso)
-		for i in range(segmentos):
-			var a1 = lerpf(ang_ini, ang_fin, float(i) / segmentos)
-			var a2 = lerpf(ang_ini, ang_fin, float(i + 1) / segmentos)
-			var p1 = centro + Vector2(cos(a1), -sin(a1)) * r_out
-			var p2 = centro + Vector2(cos(a2), -sin(a2)) * r_out
-			draw_line(p1, p2, col_linea, 3.5 * peso, true)
+	# Si está activo, resplandor exterior suave
+	if peso > 0.1:
+		var glow_col = Color(col_base.r, col_base.g, col_base.b, 0.35 * peso)
+		draw_polyline(puntos_exterior, glow_col, grosor_borde + 4.0, true)
+		draw_polyline(puntos_interior, glow_col, grosor_borde + 3.0, true)
+		
+	# Contorno del sector
+	var borde_completo = PackedVector2Array()
+	for p in puntos_exterior:
+		borde_completo.append(p)
+	for i in range(puntos_interior.size() - 1, -1, -1):
+		borde_completo.append(puntos_interior[i])
+	borde_completo.append(puntos_exterior[0]) # Cerrar loop
+	
+	draw_polyline(borde_completo, col_borde, grosor_borde, true)
 
-func _dibujar_divisor_radial(centro: Vector2, r_in: float, r_out: float, ang_rad: float):
-	var dir = Vector2(cos(ang_rad), -sin(ang_rad))
-	var p_in = centro + dir * r_in
-	var p_out = centro + dir * r_out
-	draw_line(p_in, p_out, COLOR_BORDE_ORO, 2.5, true)
-	draw_circle(p_out, 4.0, COLOR_BORDE_ORO)
+func _dibujar_icono_arma(nombre_clase: String, a_ini: float, a_fin: float):
+	var tex: Texture2D = CONFIG_CLASES[nombre_clase]["icono_tex"]
+	if tex == null:
+		return
+		
+	var a_medio = (a_ini + a_fin) * 0.5
+	var pos_centro_sector = CENTRO + Vector2(cos(a_medio), -sin(a_medio)) * RADIO_ICONOS
+	
+	var peso = _anim_pesos.get(nombre_clase, 0.0)
+	var escala = lerpf(1.0, 1.20, peso)
+	var tam_icono = Vector2(60.0, 60.0) * escala
+	
+	var rect_dest = Rect2(pos_centro_sector - tam_icono * 0.5, tam_icono)
+	draw_texture_rect(tex, rect_dest, false)
+
+func _dibujar_cola_tooltip():
+	if tooltip_flotante == null or not tooltip_flotante.visible:
+		return
+		
+	# Dibuja la cola triangular que une el tooltip con el sector activo (idéntica a la referencia)
+	var rect_tip = tooltip_flotante.get_rect()
+	var p_origen1 = Vector2(rect_tip.position.x, rect_tip.position.y + rect_tip.size.y - 12.0)
+	var p_origen2 = Vector2(rect_tip.position.x + 14.0, rect_tip.position.y + rect_tip.size.y)
+	
+	# Punto hacia el que apunta la cola (el sector azul de Mago u otro)
+	var p_destino = CENTRO + Vector2(cos(deg_to_rad(270.0)), -sin(deg_to_rad(270.0))) * (RADIO_EXTERIOR - 10.0)
+	if clase_seleccionada == "Guerrero":
+		p_destino = CENTRO + Vector2(cos(deg_to_rad(150.0)), -sin(deg_to_rad(150.0))) * (RADIO_EXTERIOR - 10.0)
+		p_origen1 = Vector2(rect_tip.position.x + rect_tip.size.x, rect_tip.position.y + rect_tip.size.y - 12.0)
+		p_origen2 = Vector2(rect_tip.position.x + rect_tip.size.x - 14.0, rect_tip.position.y + rect_tip.size.y)
+	elif clase_seleccionada == "Cazador":
+		p_destino = CENTRO + Vector2(cos(deg_to_rad(30.0)), -sin(deg_to_rad(30.0))) * (RADIO_EXTERIOR - 10.0)
+		
+	var triangulo = PackedVector2Array([p_origen1, p_origen2, p_destino])
+	draw_polygon(triangulo, PackedColorArray([Color(0.08, 0.10, 0.14, 0.95)]))
+	draw_line(p_origen1, p_destino, COLOR_BORDE_ORO, 1.5, true)
+	draw_line(p_origen2, p_destino, COLOR_BORDE_ORO, 1.5, true)

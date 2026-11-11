@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://cc3jtburlu0wh"]
+[gd_scene load_steps=6 format=3 uid="uid://bevolucionradial3d"]
 
 [ext_resource type="Script" path="res://evolucion_radial.gd" id="1_radial"]
 [ext_resource type="Script" path="res://control_radial.gd" id="2_control"]
@@ -6,79 +6,32 @@
 [sub_resource type="ViewportTexture" id="ViewportTexture_Radial"]
 viewport_path = NodePath("SubViewport")
 
-[sub_resource type="StyleBoxFlat" id="StyleBox_BtnGuerrero"]
-bg_color = Color(0.2, 0.06, 0.08, 0.92)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.9, 0.22, 0.27, 0.95)
-corner_radius_top_left = 38
-corner_radius_top_right = 38
-corner_radius_bottom_right = 38
-corner_radius_bottom_left = 38
-shadow_color = Color(0.8, 0.1, 0.15, 0.45)
-shadow_size = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBox_BtnCazador"]
-bg_color = Color(0.06, 0.18, 0.16, 0.92)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.18, 0.77, 0.71, 0.95)
-corner_radius_top_left = 38
-corner_radius_top_right = 38
-corner_radius_bottom_right = 38
-corner_radius_bottom_left = 38
-shadow_color = Color(0.1, 0.7, 0.6, 0.45)
-shadow_size = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBox_BtnMago"]
-bg_color = Color(0.06, 0.12, 0.22, 0.92)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.23, 0.52, 1, 0.95)
-corner_radius_top_left = 38
-corner_radius_top_right = 38
-corner_radius_bottom_right = 38
-corner_radius_bottom_left = 38
-shadow_color = Color(0.2, 0.5, 1, 0.45)
-shadow_size = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBox_Tooltip"]
-content_margin_left = 14.0
-content_margin_top = 12.0
-content_margin_right = 14.0
+[sub_resource type="StyleBoxFlat" id="StyleBox_TooltipBocadillo"]
+content_margin_left = 16.0
+content_margin_top = 10.0
+content_margin_right = 16.0
 content_margin_bottom = 12.0
-bg_color = Color(0.08, 0.1, 0.15, 0.95)
+bg_color = Color(0.08, 0.09, 0.13, 0.96)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.85, 0.7, 0.35, 0.95)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
-shadow_color = Color(0, 0, 0, 0.75)
-shadow_size = 10
-shadow_offset = Vector2(0, 2)
-
-[sub_resource type="StyleBoxLine" id="StyleBoxLine_Sep"]
-color = Color(0.85, 0.7, 0.35, 0.5)
-thickness = 1
+border_color = Color(0.85, 0.72, 0.38, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0, 0, 0, 0.7)
+shadow_size = 8
 
 [node name="EvolucionRadial" type="Node3D"]
 script = ExtResource("1_radial")
 
 [node name="Sprite3D" type="Sprite3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.025, 0)
 axis = 1
 texture = SubResource("ViewportTexture_Radial")
-pixel_size = 0.005
+pixel_size = 0.0055
 render_priority = 2
 transparent = true
 shaded = false
@@ -101,115 +54,58 @@ grow_vertical = 2
 mouse_filter = 1
 script = ExtResource("2_control")
 
-[node name="ContenedorIconos" type="Control" parent="SubViewport/ControlRadial"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-
-[node name="BtnGuerrero" type="Button" parent="SubViewport/ControlRadial/ContenedorIconos"]
-custom_minimum_size = Vector2(76, 76)
-layout_mode = 0
-offset_left = 175.0
-offset_top = 265.0
-offset_right = 251.0
-offset_bottom = 341.0
-pivot_offset = Vector2(38, 38)
-focus_mode = 0
-theme_override_colors/font_color = Color(1, 0.9, 0.9, 1)
-theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.9)
-theme_override_constants/shadow_offset_x = 1
-theme_override_constants/shadow_offset_y = 1
-theme_override_font_sizes/font_size = 13
-theme_override_styles/normal = SubResource("StyleBox_BtnGuerrero")
-text = "⚔️
-GUERRERO"
-
-[node name="BtnCazador" type="Button" parent="SubViewport/ControlRadial/ContenedorIconos"]
-custom_minimum_size = Vector2(76, 76)
-layout_mode = 0
-offset_left = 510.0
-offset_top = 265.0
-offset_right = 586.0
-offset_bottom = 341.0
-pivot_offset = Vector2(38, 38)
-focus_mode = 0
-theme_override_colors/font_color = Color(0.9, 1, 0.95, 1)
-theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.9)
-theme_override_constants/shadow_offset_x = 1
-theme_override_constants/shadow_offset_y = 1
-theme_override_font_sizes/font_size = 13
-theme_override_styles/normal = SubResource("StyleBox_BtnCazador")
-text = "🏹
-CAZADOR"
-
-[node name="BtnMago" type="Button" parent="SubViewport/ControlRadial/ContenedorIconos"]
-custom_minimum_size = Vector2(76, 76)
-layout_mode = 0
-offset_left = 346.0
-offset_top = 535.0
-offset_right = 422.0
-offset_bottom = 611.0
-pivot_offset = Vector2(38, 38)
-focus_mode = 0
-theme_override_colors/font_color = Color(0.9, 0.95, 1, 1)
-theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.9)
-theme_override_constants/shadow_offset_x = 1
-theme_override_constants/shadow_offset_y = 1
-theme_override_font_sizes/font_size = 13
-theme_override_styles/normal = SubResource("StyleBox_BtnMago")
-text = "🔮
-MAGO"
-
 [node name="TooltipFlotante" type="PanelContainer" parent="SubViewport/ControlRadial"]
-visible = false
 layout_mode = 0
-offset_left = 40.0
-offset_top = 110.0
-offset_right = 260.0
-offset_bottom = 270.0
-theme_override_styles/panel = SubResource("StyleBox_Tooltip")
+offset_left = 460.0
+offset_top = 230.0
+offset_right = 690.0
+offset_bottom = 330.0
+theme_override_styles/panel = SubResource("StyleBox_TooltipBocadillo")
 
 [node name="Margin" type="MarginContainer" parent="SubViewport/ControlRadial/TooltipFlotante"]
 layout_mode = 2
 
 [node name="VBox" type="VBoxContainer" parent="SubViewport/ControlRadial/TooltipFlotante/Margin"]
 layout_mode = 2
-theme_override_constants/separation = 5
+theme_override_constants/separation = 3
 
 [node name="LabelTitulo" type="Label" parent="SubViewport/ControlRadial/TooltipFlotante/Margin/VBox"]
 layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.82, 0.35, 1)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.95)
 theme_override_constants/shadow_offset_x = 1
 theme_override_constants/shadow_offset_y = 1
-theme_override_font_sizes/font_size = 16
-text = "GUERRERO"
+theme_override_font_sizes/font_size = 15
+text = "MAGO"
+horizontal_alignment = 1
 
-[node name="LabelSubtitulo" type="Label" parent="SubViewport/ControlRadial/TooltipFlotante/Margin/VBox"]
+[node name="LabelLinea1" type="Label" parent="SubViewport/ControlRadial/TooltipFlotante/Margin/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.85, 0.88, 0.92, 1)
-theme_override_font_sizes/font_size = 11
-text = "Tanque / Alto Impacto"
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.9)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 12
+text = "• Arcanista / Alto Impacto"
 
-[node name="Separador" type="HSeparator" parent="SubViewport/ControlRadial/TooltipFlotante/Margin/VBox"]
+[node name="LabelLinea2" type="Label" parent="SubViewport/ControlRadial/TooltipFlotante/Margin/VBox"]
 layout_mode = 2
-theme_override_styles/separator = SubResource("StyleBoxLine_Sep")
-
-[node name="LabelStats" type="RichTextLabel" parent="SubViewport/ControlRadial/TooltipFlotante/Margin/VBox"]
-layout_mode = 2
-bbcode_enabled = true
-text = "[color=#52b788]+60% Salud Máxima[/color]
-[color=#52b788]+83% Daño Melee en Cono[/color]"
-fit_content = true
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.9)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 12
+text = "• +133% Daño Mágico"
 
 [node name="LabelAccion" type="Label" parent="SubViewport/ControlRadial/TooltipFlotante/Margin/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.9, 0.75, 0.45, 1)
-theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.92, 0.88, 0.8, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.9)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 11
 text = "[Clic para evolucionar]"
+horizontal_alignment = 1
 
 [node name="LuzFlash" type="OmniLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
