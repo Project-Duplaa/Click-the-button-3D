@@ -31,13 +31,13 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -310.0
-offset_top = -220.0
-offset_right = 310.0
-offset_bottom = 220.0
+offset_left = -350.0
+offset_top = -275.0
+offset_right = 350.0
+offset_bottom = 275.0
 grow_horizontal = 2
 grow_vertical = 2
-pivot_offset = Vector2(310, 220)
+pivot_offset = Vector2(350, 275)
 
 [node name="VBox" type="VBoxContainer" parent="Control/Fondo"]
 layout_mode = 1
@@ -147,8 +147,29 @@ size_flags_horizontal = 3
 text = "#1"
 horizontal_alignment = 2
 
+[node name="LabelKeyBanco" type="Label" parent="Control/Fondo/VBox/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.85, 0.35, 1)
+text = "🏛️ Tesoro en Banco (Meta):"
+
+[node name="LabelValBanco" type="Label" parent="Control/Fondo/VBox/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.85, 0.35, 1)
+text = "0 Oro | 0 Clics"
+horizontal_alignment = 2
+
 [node name="HSeparator2" type="HSeparator" parent="Control/Fondo/VBox"]
 layout_mode = 2
+
+[node name="BtnArbolMeta" type="Button" parent="Control/Fondo/VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 42)
+theme_override_colors/font_color = Color(1, 0.9, 0.4, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 0.7, 1)
+theme_override_font_sizes/font_size = 14
+text = "🌳 ÁRBOL DE HABILIDADES (MEJORAR GLADIADOR) · 0 🪙 | 0 ⚡"
 
 [node name="HBoxBotones" type="HBoxContainer" parent="Control/Fondo/VBox"]
 layout_mode = 2
@@ -157,9 +178,11 @@ theme_override_constants/separation = 16
 [node name="BtnReintentar" type="Button" parent="Control/Fondo/VBox/HBoxBotones"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "⚔️ Reintentar Desafío"
+custom_minimum_size = Vector2(0, 36)
+text = "⚔️ Comenzar Siguiente Run"
 
 [node name="BtnSalir" type="Button" parent="Control/Fondo/VBox/HBoxBotones"]
 layout_mode = 2
 size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 36)
 text = "🚪 Salir al Escritorio"

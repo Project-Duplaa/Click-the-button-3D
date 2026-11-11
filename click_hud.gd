@@ -6,8 +6,6 @@ extends CanvasLayer
 # barra de vida rubí con bisel, gemas corazón 3D facetadas, dagas ornamentales,
 # oro con moneda 3D, bajas con calavera 3D, y barra de XP estilizada.
 
-const ArbolMejorasEscena = preload("res://arbol_mejoras.tscn")
-
 const MALLAS_AVATAR = {
 	"Novato": preload("res://personaje/character-male-a.glb"),
 	"Guerrero": preload("res://personaje/character-male-d.glb"),
@@ -40,10 +38,9 @@ const TEX_CORAZON_VACIO = preload("res://ui_assets/hud_gem_heart_empty.png")
 @onready var label_oro: Label = $Control/BarraSuperior/ContenedorEconomia/HBoxOro/LabelOro
 @onready var label_bajas: Label = $Control/BarraSuperior/ContenedorEconomia/HBoxBajas/LabelBajas
 
-# XP y Botón Árbol
+# XP y Barra
 @onready var bar_xp: ProgressBar = $Control/BarXP
 @onready var label_xp: Label = $Control/BarXP/LabelXP
-@onready var btn_arbol_mejoras: Button = $Control.get_node_or_null("BtnArbolMejoras")
 
 # Modales y Paneles
 @onready var modal_mejora: Panel = $Control/ModalMejora
@@ -56,7 +53,6 @@ const TEX_CORAZON_VACIO = preload("res://ui_assets/hud_gem_heart_empty.png")
 @onready var bar_vida_jefe: ProgressBar = $Control/PanelJefe/BarVidaJefe
 @onready var label_vida_jefe: Label = $Control/PanelJefe/BarVidaJefe/LabelVidaJefe
 
-var arbol_mejoras_instancia: CanvasLayer = null
 var jugador: Node = null
 var tiempo_total: float = 0.0
 var oleada: int = 1
@@ -80,8 +76,6 @@ func _ready():
 			jugador.economia_actualizada.connect(_on_economia_actualizada)
 		_on_stats_actualizadas(jugador.vida, jugador.vida_maxima, jugador.xp, jugador.xp_siguiente_nivel, jugador.nivel, jugador.oro, jugador.bajas)
 	
-	if btn_arbol_mejoras != null:
-		btn_arbol_mejoras.pressed.connect(toggle_arbol_mejoras)
 	if btn_opc1 != null:
 		btn_opc1.pressed.connect(func(): _elegir_mejora("dano"))
 	if btn_opc2 != null:
@@ -90,18 +84,6 @@ func _ready():
 		btn_opc3.pressed.connect(func(): _elegir_mejora("vida"))
 	
 	call_deferred("_conectar_boton_movil")
-
-func _unhandled_input(event: InputEvent):
-	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_U or event.keycode == KEY_B:
-			toggle_arbol_mejoras()
-			get_viewport().set_input_as_handled()
-
-func toggle_arbol_mejoras():
-	if arbol_mejoras_instancia == null:
-		arbol_mejoras_instancia = ArbolMejorasEscena.instantiate()
-		get_tree().root.add_child(arbol_mejoras_instancia)
-	arbol_mejoras_instancia.toggle()
 
 func _calibrar_avatar():
 	if camara_avatar != null:

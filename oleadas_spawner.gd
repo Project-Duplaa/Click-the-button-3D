@@ -65,6 +65,12 @@ func _generar_oleada(num: int):
 	print("--- INICIANDO OLEADA ", num, " EN ARENA 60x60 ---")
 	AudioManager.play("alerta_oleada")
 	
+	# Al finalizar la oleada previa y comenzar una nueva (num > 1), otorgar interés si está desbloqueado
+	if num > 1:
+		var jugador = get_tree().get_first_node_in_group("jugador")
+		if jugador != null and jugador.has_method("aplicar_interes_oleada"):
+			jugador.aplicar_interes_oleada()
+	
 	if num == 5 and not _mini_jefe_spawned:
 		spawn_mini_jefe()
 	elif num >= 15 and not _parca_spawned:

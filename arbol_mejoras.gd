@@ -51,10 +51,7 @@ func _vincular_jugador():
 
 func _unhandled_input(event: InputEvent):
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_U or event.keycode == KEY_B:
-			toggle()
-			get_viewport().set_input_as_handled()
-		elif event.keycode == KEY_ESCAPE and visible:
+		if event.keycode == KEY_ESCAPE and visible:
 			cerrar()
 			get_viewport().set_input_as_handled()
 

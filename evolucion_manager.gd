@@ -136,9 +136,30 @@ func disparar_metamorfosis():
 
 func abrir_modal_evolucion():
 	if modal_instancia != null and is_instance_valid(modal_instancia):
+		if modal_instancia.has_method("abrir"):
+			modal_instancia.abrir()
 		return
 	
 	estado_actual = EstadoFSM.METAMORFOSIS
+	
+	# 1. Prioridad: Interfaz Radial In-World a los pies del personaje (Diseño 3 sin pausar pantalla)
+	if personaje_ref != null and is_instance_valid(personaje_ref):
+		var radial = personaje_ref.get_node_or_null("EvolucionRadial")
+		if radial == null:
+			var escena_radial = load("res://evolucion_radial.tscn")
+			if escena_radial != null:
+				radial = escena_radial.instantiate()
+				radial.name = "EvolucionRadial"
+				personaje_ref.add_child(radial)
+		if radial != null:
+			modal_instancia = radial
+			if not radial.evolucion_seleccionada.is_connected(_on_clase_elegida_en_modal):
+				radial.evolucion_seleccionada.connect(_on_clase_elegida_en_modal)
+			radial.abrir()
+			print("✨ [FSM Evolución] Menú radial in-world desplegado a los pies del héroe.")
+			return
+
+	# 2. Fallback: Modal tradicional si no hay personaje disponible
 	var escena_modal = load("res://modal_evolucion.tscn")
 	if escena_modal != null:
 		modal_instancia = escena_modal.instantiate()
@@ -147,13 +168,15 @@ func abrir_modal_evolucion():
 			tree.root.add_child(modal_instancia)
 			if modal_instancia.has_signal("clase_seleccionada"):
 				modal_instancia.clase_seleccionada.connect(_on_clase_elegida_en_modal)
-			tree.paused = true
 	else:
 		push_error("No se encontró la escena res://modal_evolucion.tscn")
 
 func _on_clase_elegida_en_modal(nombre_clase: String):
 	if modal_instancia != null and is_instance_valid(modal_instancia):
-		modal_instancia.queue_free()
+		if modal_instancia.has_method("cerrar"):
+			modal_instancia.cerrar()
+		elif modal_instancia is CanvasLayer:
+			modal_instancia.queue_free()
 		modal_instancia = null
 	var tree = _obtener_tree()
 	if tree != null:

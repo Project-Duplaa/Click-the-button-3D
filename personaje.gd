@@ -425,6 +425,15 @@ func subir_nivel():
 	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
 	emit_signal("economia_actualizada", oro, clics_disponibles, clics_totales)
 
+## Vista previa visual temporal mientras el jugador sobrevuela una clase en el menú radial
+func mostrar_preview_clase(nombre_clase: String):
+	if nombre_clase == "Guerrero":
+		if _escudo_visual != null:
+			_escudo_visual.visible = true
+	else:
+		if _escudo_visual != null and clase != "Guerrero":
+			_escudo_visual.visible = false
+
 func aplicar_clase(nombre: String):
 	clase = nombre
 	if clase != "Guerrero":
