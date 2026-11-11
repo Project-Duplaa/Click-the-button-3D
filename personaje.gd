@@ -76,9 +76,7 @@ func _ready():
 
 func _unhandled_input(event):
 	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-			click_attack()
-		elif event.button_index == MOUSE_BUTTON_RIGHT and clase == "Guerrero":
+		if event.button_index == MOUSE_BUTTON_RIGHT and clase == "Guerrero":
 			_actualizar_estado_bloqueo(event.pressed)
 	elif event is InputEventKey and clase == "Guerrero":
 		if event.keycode == KEY_F or event.keycode == KEY_Q:
@@ -247,41 +245,9 @@ func _ejecutar_ataque(enemigo: Node3D):
 				p.iniciar(origen, dir_flecha, dano_flecha, vel_flecha, perforaciones)
 
 func click_attack():
-	# Si está bloqueando activamente como Guerrero, mantiene la guardia y repele agresores
-	if bloqueando and clase == "Guerrero":
-		_parpadear_escudo()
-		_repeler_enemigos_alrededor(2.6, 5.0)
-		return
-		
-	if clase == "Guerrero":
-		_ejecutar_corte_giratorio_guerrero(true)
-	else:
-		# Click manual tipo clicker con tajo crítico dorado y sonido contundente
-		var dir_click = -basis.z
-		var objetivo = _obtener_enemigo_cercano()
-		if objetivo != null:
-			var d = (objetivo.global_position - global_position)
-			d.y = 0.0
-			if d.length_squared() > 0.01:
-				dir_click = d.normalized()
-				basis = Basis.looking_at(dir_click)
-				
-		accion = "attack-melee-right"
-		_reloj_anim_accion = 0.20
-		_ejecutar_animacion_procedural_ataque("melee")
-		_crear_tajo_espada(dir_click, true) # Tajo dorado de crítico
-		AudioManager.play("corte_espada", 1.25)
-		AudioManager.play("click", 1.15)
-		
-		if objetivo != null and global_position.distance_to(objetivo.global_position) <= rango_ataque + 2.5:
-			if objetivo.has_method("recibir_dano"):
-				objetivo.recibir_dano(dano * 0.85, true)
-				AudioManager.play("golpe_impacto", 1.2)
-	# Bono incremental de click
-	oro += 1
-	recoger_drop(0, 1) # +1 XP por click
-	if evolucion_manager != null:
-		evolucion_manager.registrar_click()
+	# El combate es 100% automático (Autobattler continuo por proximidad).
+	# La única interacción de clic permitida en el juego es sobre el Botón Móvil 3D.
+	pass
 
 func _ejecutar_animacion_procedural_ataque(tipo_ataque: String):
 	var mod = get_node_or_null("Modelo")
