@@ -106,9 +106,12 @@ func activar_recoleccion():
 	AudioManager.play("puzzle_completo", 1.2, -2.0)
 	
 	var pj = get_tree().get_first_node_in_group("jugador")
-	if pj != null and pj.has_method("recoger_drop"):
-		pj.recoger_drop(0, oro_recompensa)
-		pj.recoger_drop(1, xp_recompensa)
+	if pj != null:
+		if pj.has_method("registrar_click_jugador"):
+			pj.registrar_click_jugador(true)
+		if pj.has_method("recoger_drop"):
+			pj.recoger_drop(0, oro_recompensa)
+			pj.recoger_drop(1, xp_recompensa)
 		if "evolucion_manager" in pj and pj.evolucion_manager != null:
 			pj.evolucion_manager.registrar_click()
 			
@@ -123,7 +126,7 @@ func activar_recoleccion():
 	_detonar_onda_defensiva()
 	
 	# Texto flotante
-	_spawn_floating_text("¡ANOMALÍA! +%d💰 +%d✨" % [oro_recompensa, xp_recompensa])
+	_spawn_floating_text("¡ANOMALÍA! +4⚡ +%d🪙 +%d✨" % [oro_recompensa, xp_recompensa])
 	
 	emit_signal("recolectada")
 	

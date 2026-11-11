@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://arbolmejoras3d"]
+[gd_scene format=3 uid="uid://bt1385uoihb2b"]
 
 [ext_resource type="Script" path="res://arbol_mejoras.gd" id="1_arbol"]
 

@@ -53,10 +53,14 @@ func _process(delta):
 		return
 		
 	if jugador != null:
+		var bonus_radio = 0.0
+		if jugador.has_method("obtener_radio_atraccion_extra"):
+			bonus_radio = jugador.obtener_radio_atraccion_extra()
 		var d = global_position.distance_to(jugador.global_position)
-		if d < radio_atraccion:
+		if d < (radio_atraccion + bonus_radio):
 			var dir = (jugador.global_position + Vector3(0, 0.8, 0) - global_position).normalized()
-			global_position += dir * velocidad_iman * delta
+			var vel_actual = velocidad_iman + (bonus_radio * 0.75)
+			global_position += dir * vel_actual * delta
 
 func _on_body_entered(body):
 	if recogido:

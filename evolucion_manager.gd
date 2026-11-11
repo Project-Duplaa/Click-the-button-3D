@@ -169,23 +169,26 @@ func evolucionar_a(nombre_clase: String):
 	var stats = STATS_CLASE[nombre_clase]
 	
 	if personaje_ref != null:
-		# 1. Actualizar atributos
-		personaje_ref.clase = nombre_clase
-		personaje_ref.vida_maxima = stats["vida_maxima"]
-		personaje_ref.vida = stats["vida_maxima"] # Cura completa por metamorfosis
-		personaje_ref.dano = stats["dano"]
-		personaje_ref.rango_ataque = stats["rango_ataque"]
-		personaje_ref.cadencia_ataque = stats["cadencia_ataque"]
-		personaje_ref.speed_caminar = stats["speed_caminar"]
-		personaje_ref.speed_correr = stats["speed_correr"]
+		# 1. Actualizar clase y atributos con preservación del árbol incremental
+		if personaje_ref.has_method("aplicar_clase"):
+			personaje_ref.aplicar_clase(nombre_clase)
+		else:
+			personaje_ref.clase = nombre_clase
+			personaje_ref.vida_maxima = stats["vida_maxima"]
+			personaje_ref.vida = stats["vida_maxima"]
+			personaje_ref.dano = stats["dano"]
+			personaje_ref.rango_ataque = stats["rango_ataque"]
+			personaje_ref.cadencia_ataque = stats["cadencia_ataque"]
+			personaje_ref.speed_caminar = stats["speed_caminar"]
+			personaje_ref.speed_correr = stats["speed_correr"]
 		
 		# Sincronizar componente desacoplado Salud si existe
 		var nodo_salud = personaje_ref.get_node_or_null("Salud")
 		if nodo_salud != null:
 			if "vida" in nodo_salud:
-				nodo_salud.vida = int(stats["vida_maxima"])
+				nodo_salud.vida = int(personaje_ref.vida)
 			if "vida_inicial" in nodo_salud:
-				nodo_salud.vida_inicial = int(stats["vida_maxima"])
+				nodo_salud.vida_inicial = int(personaje_ref.vida_maxima)
 		
 		# 2. Intercambio de malla 3D en tiempo real
 		var ruta_malla = MALLAS_CLASE.get(nombre_clase, "")
