@@ -1,8 +1,162 @@
-[gd_scene load_steps=2 format=3 uid="uid://bclickhud3d"]
+[gd_scene load_steps=15 format=3 uid="uid://bclickhud3d"]
 
 [ext_resource type="Script" path="res://click_hud.gd" id="1_hud"]
+[ext_resource type="PackedScene" path="res://personaje/character-male-a.glb" id="2_avatar_mesh"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_PanelBase"]
+bg_color = Color(0.08, 0.10, 0.15, 0.88)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.30, 0.35, 0.48, 0.85)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+shadow_color = Color(0, 0, 0, 0.5)
+shadow_size = 8
+shadow_offset = Vector2(0, 2)
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_AvatarFrame"]
+bg_color = Color(0.12, 0.16, 0.25, 0.95)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.45, 0.58, 0.76, 1)
+corner_radius_top_left = 34
+corner_radius_top_right = 34
+corner_radius_bottom_right = 34
+corner_radius_bottom_left = 34
+shadow_color = Color(0.05, 0.08, 0.15, 0.7)
+shadow_size = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_BarHP_Bg"]
+bg_color = Color(0.14, 0.04, 0.06, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.36, 0.12, 0.16, 0.9)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_BarHP_Fill"]
+bg_color = Color(0.88, 0.14, 0.22, 1)
+border_width_top = 1
+border_color = Color(1, 0.45, 0.52, 0.9)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_color = Color(0.85, 0.12, 0.18, 0.35)
+shadow_size = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_PlacaOleada"]
+bg_color = Color(0.24, 0.18, 0.16, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.65, 0.48, 0.28, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0, 0, 0, 0.45)
+shadow_size = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_SubOleada"]
+bg_color = Color(0.08, 0.10, 0.15, 0.88)
+border_width_left = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.30, 0.35, 0.48, 0.85)
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_color = Color(0, 0, 0, 0.4)
+shadow_size = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_BarXP_Bg"]
+bg_color = Color(0.07, 0.08, 0.14, 0.92)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.25, 0.22, 0.40, 0.8)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_BarXP_Fill"]
+bg_color = Color(0.38, 0.32, 0.92, 1)
+border_width_top = 1
+border_color = Color(0.68, 0.58, 1, 0.9)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_color = Color(0.42, 0.35, 0.95, 0.45)
+shadow_size = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_PanelJefe"]
+bg_color = Color(0.18, 0.05, 0.07, 0.92)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.85, 0.18, 0.25, 0.9)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0.6, 0.05, 0.1, 0.4)
+shadow_size = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_ModalMejora"]
+bg_color = Color(0.09, 0.11, 0.17, 0.96)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.88, 0.72, 0.30, 0.95)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+shadow_color = Color(0, 0, 0, 0.65)
+shadow_size = 14
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_BotonOpcion"]
+bg_color = Color(0.14, 0.18, 0.27, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.40, 0.50, 0.70, 0.9)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_BotonOpcionHover"]
+bg_color = Color(0.20, 0.26, 0.38, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.92, 0.78, 0.35, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
 
 [node name="ClickHUD" type="CanvasLayer"]
+layer = 5
 script = ExtResource("1_hud")
 
 [node name="Control" type="Control" parent="."]
@@ -14,94 +168,299 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="PanelTop" type="Panel" parent="Control"]
+[node name="TarjetaHeroe" type="Panel" parent="Control"]
 layout_mode = 1
-anchors_preset = 10
+offset_left = 20.0
+offset_top = 16.0
+offset_right = 370.0
+offset_bottom = 102.0
+theme_override_styles/panel = SubResource("StyleBox_PanelBase")
+
+[node name="AvatarFrame" type="Panel" parent="Control/TarjetaHeroe"]
+clip_children = 2
+layout_mode = 1
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 10.0
+offset_top = -34.0
+offset_right = 78.0
+offset_bottom = 34.0
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBox_AvatarFrame")
+
+[node name="SubViewportContainer" type="SubViewportContainer" parent="Control/TarjetaHeroe/AvatarFrame"]
+layout_mode = 1
+anchors_preset = 15
 anchor_right = 1.0
-offset_bottom = 65.0
+anchor_bottom = 1.0
 grow_horizontal = 2
+grow_vertical = 2
+stretch = true
 
-[node name="LabelClase" type="Label" parent="Control/PanelTop"]
-layout_mode = 0
-offset_left = 15.0
+[node name="SubViewport" type="SubViewport" parent="Control/TarjetaHeroe/AvatarFrame/SubViewportContainer"]
+own_world_3d = true
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(68, 68)
+render_target_update_mode = 4
+
+[node name="CamaraAvatar" type="Camera3D" parent="Control/TarjetaHeroe/AvatarFrame/SubViewportContainer/SubViewport"]
+transform = Transform3D(1, 0, 0, 0, 0.990268, 0.139173, 0, -0.139173, 0.990268, 0, 1.48, 0.85)
+current = true
+fov = 42.0
+
+[node name="LuzFrontal" type="DirectionalLight3D" parent="Control/TarjetaHeroe/AvatarFrame/SubViewportContainer/SubViewport"]
+transform = Transform3D(0.866025, -0.25, 0.433013, 0, 0.866025, 0.5, -0.5, -0.433013, 0.75, 1, 2, 2)
+light_color = Color(1, 0.95, 0.9, 1)
+light_energy = 1.8
+
+[node name="LuzRelleno" type="DirectionalLight3D" parent="Control/TarjetaHeroe/AvatarFrame/SubViewportContainer/SubViewport"]
+transform = Transform3D(-0.707107, 0, -0.707107, 0, 1, 0, 0.707107, 0, -0.707107, -1, 1, -1)
+light_color = Color(0.4, 0.6, 0.9, 1)
+light_energy = 1.0
+
+[node name="ModeloAvatar" parent="Control/TarjetaHeroe/AvatarFrame/SubViewportContainer/SubViewport" instance=ExtResource("2_avatar_mesh")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="LabelClase" type="Label" parent="Control/TarjetaHeroe"]
+layout_mode = 1
+offset_left = 90.0
 offset_top = 8.0
-offset_right = 220.0
-offset_bottom = 31.0
-text = "Clase: Guerrero (Nv. 1)"
+offset_right = 340.0
+offset_bottom = 30.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 14
+text = "Clase: Novato (Nv. 1)"
 
-[node name="BarVida" type="ProgressBar" parent="Control/PanelTop"]
-layout_mode = 0
-offset_left = 15.0
-offset_top = 35.0
-offset_right = 230.0
-offset_bottom = 55.0
+[node name="BarVida" type="ProgressBar" parent="Control/TarjetaHeroe"]
+layout_mode = 1
+offset_left = 90.0
+offset_top = 33.0
+offset_right = 340.0
+offset_bottom = 54.0
+theme_override_styles/background = SubResource("StyleBox_BarHP_Bg")
+theme_override_styles/fill = SubResource("StyleBox_BarHP_Fill")
 value = 100.0
 show_percentage = false
 
-[node name="LabelVida" type="Label" parent="Control/PanelTop/BarVida"]
+[node name="LabelVida" type="Label" parent="Control/TarjetaHeroe/BarVida"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-text = "120 / 120 HP"
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.9)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 12
+text = "100 / 100 HP"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="LabelVidas" type="Label" parent="Control/PanelTop"]
-layout_mode = 0
-offset_left = 250.0
-offset_top = 8.0
-offset_right = 440.0
-offset_bottom = 31.0
-text = "Vidas: ❤️❤️❤️ (3/3)"
-
-[node name="BarXP" type="ProgressBar" parent="Control/PanelTop"]
-layout_mode = 0
-offset_left = 250.0
-offset_top = 35.0
-offset_right = 430.0
-offset_bottom = 55.0
-show_percentage = false
-
-[node name="LabelXP" type="Label" parent="Control/PanelTop/BarXP"]
+[node name="LabelVidas" type="Label" parent="Control/TarjetaHeroe"]
 layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-text = "XP: 0 / 25"
-horizontal_alignment = 1
+offset_left = 90.0
+offset_top = 58.0
+offset_right = 340.0
+offset_bottom = 79.0
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 13
+text = "Vidas: 3/3   ❤️❤️❤️"
 vertical_alignment = 1
 
-[node name="LabelInfo" type="Label" parent="Control/PanelTop"]
+[node name="TarjetaOleada" type="Control" parent="Control"]
 layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
-offset_left = -150.0
-offset_top = 18.0
-offset_right = 150.0
-offset_bottom = 45.0
+offset_left = -160.0
+offset_top = 12.0
+offset_right = 160.0
+offset_bottom = 104.0
 grow_horizontal = 2
-text = "Oleada 1  |  00:00  |  Bajas: 0"
+mouse_filter = 2
+
+[node name="PlacaOleada" type="Panel" parent="Control/TarjetaOleada"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 36.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("StyleBox_PlacaOleada")
+
+[node name="LabelOleada" type="Label" parent="Control/TarjetaOleada/PlacaOleada"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.97, 0.80, 0.32, 1)
+theme_override_colors/font_shadow_color = Color(0.18, 0.08, 0.02, 1)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 2
+theme_override_font_sizes/font_size = 16
+text = "⚔️  OLEADA 1  ⚔️"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="LabelOro" type="Label" parent="Control/PanelTop"]
+[node name="PanelEstado" type="Panel" parent="Control/TarjetaOleada"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -54.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBox_SubOleada")
+
+[node name="LabelTiempo" type="Label" parent="Control/TarjetaOleada/PanelEstado"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 4.0
+offset_bottom = 26.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 15
+text = "⌛ 00:00"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="LabelNucleo" type="Label" parent="Control/TarjetaOleada/PanelEstado"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -24.0
+offset_bottom = -3.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.88, 0.80, 0.65, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.7)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 12
+text = "⚡ 0 Clics (Vel: 2.8 m/s)"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TarjetaStats" type="Panel" parent="Control"]
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -160.0
-offset_top = 18.0
+offset_left = -220.0
+offset_top = 16.0
 offset_right = -20.0
-offset_bottom = 45.0
+offset_bottom = 102.0
 grow_horizontal = 0
-text = "🪙 Oro: 0"
-horizontal_alignment = 2
+theme_override_styles/panel = SubResource("StyleBox_PanelBase")
+
+[node name="HBoxOro" type="HBoxContainer" parent="Control/TarjetaStats"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 16.0
+offset_top = 12.0
+offset_right = -16.0
+offset_bottom = 40.0
+grow_horizontal = 2
+alignment = 2
+
+[node name="LabelOro" type="Label" parent="Control/TarjetaStats/HBoxOro"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 15
+text = "Oro: 0"
+vertical_alignment = 1
+
+[node name="IconoOro" type="Label" parent="Control/TarjetaStats/HBoxOro"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "🪙"
+vertical_alignment = 1
+
+[node name="HBoxBajas" type="HBoxContainer" parent="Control/TarjetaStats"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -42.0
+offset_right = -16.0
+offset_bottom = -12.0
+grow_horizontal = 2
+grow_vertical = 0
+alignment = 2
+
+[node name="LabelBajas" type="Label" parent="Control/TarjetaStats/HBoxBajas"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 14
+text = "Bajas: 0"
+vertical_alignment = 1
+
+[node name="IconoBajas" type="Label" parent="Control/TarjetaStats/HBoxBajas"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "💀"
+vertical_alignment = 1
+
+[node name="BarXP" type="ProgressBar" parent="Control"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 40.0
+offset_top = -24.0
+offset_right = -40.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_styles/background = SubResource("StyleBox_BarXP_Bg")
+theme_override_styles/fill = SubResource("StyleBox_BarXP_Fill")
+value = 25.0
+show_percentage = false
+
+[node name="LabelXP" type="Label" parent="Control/BarXP"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.9)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 11
+text = "XP: 0 / 60"
+horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="PanelJefe" type="Panel" parent="Control"]
@@ -110,20 +469,28 @@ layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
-offset_left = -260.0
-offset_top = 72.0
-offset_right = 260.0
-offset_bottom = 125.0
+offset_left = -250.0
+offset_top = 112.0
+offset_right = 250.0
+offset_bottom = 168.0
 grow_horizontal = 2
+theme_override_styles/panel = SubResource("StyleBox_PanelJefe")
 
 [node name="LabelNombreJefe" type="Label" parent="Control/PanelJefe"]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
-offset_bottom = 22.0
+offset_top = 4.0
+offset_bottom = 24.0
 grow_horizontal = 2
+theme_override_colors/font_color = Color(1, 0.4, 0.45, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.9)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 13
 text = "💀 LA PARCA ROJA"
 horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="BarVidaJefe" type="ProgressBar" parent="Control/PanelJefe"]
 layout_mode = 1
@@ -131,12 +498,14 @@ anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 10.0
+offset_left = 12.0
 offset_top = -24.0
-offset_right = -10.0
-offset_bottom = -6.0
+offset_right = -12.0
+offset_bottom = -8.0
 grow_horizontal = 2
 grow_vertical = 0
+theme_override_styles/background = SubResource("StyleBox_BarHP_Bg")
+theme_override_styles/fill = SubResource("StyleBox_BarHP_Fill")
 value = 100.0
 show_percentage = false
 
@@ -147,6 +516,11 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.9)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 11
 text = "5000 / 5000 HP"
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -165,7 +539,7 @@ offset_right = -20.0
 offset_bottom = -20.0
 grow_horizontal = 0
 grow_vertical = 0
-text = "🔥 ¡CLICK! (+Daño/+Oro)"
+text = "🔥 ¡CLICK!"
 
 [node name="ModalMejora" type="Panel" parent="Control"]
 visible = false
@@ -175,50 +549,62 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -275.0
-offset_top = -120.0
-offset_right = 275.0
-offset_bottom = 120.0
+offset_left = -280.0
+offset_top = -125.0
+offset_right = 280.0
+offset_bottom = 125.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBox_ModalMejora")
 
 [node name="VBox" type="VBoxContainer" parent="Control/ModalMejora"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 15.0
-offset_top = 15.0
-offset_right = -15.0
-offset_bottom = -15.0
+offset_left = 20.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = -20.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 15
+theme_override_constants/separation = 16
 
 [node name="Titulo" type="Label" parent="Control/ModalMejora/VBox"]
 layout_mode = 2
-text = "⭐ ¡NIVEL ALCANZADO! Elige tu mejora:"
+theme_override_colors/font_color = Color(0.98, 0.85, 0.40, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.9)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 2
+theme_override_font_sizes/font_size = 16
+text = "⭐ ¡NIVEL ALCANZADO! Elige tu bendición del Coliseo:"
 horizontal_alignment = 1
 
 [node name="HBox" type="HBoxContainer" parent="Control/ModalMejora/VBox"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/separation = 10
+theme_override_constants/separation = 12
 
 [node name="BtnOpc1" type="Button" parent="Control/ModalMejora/VBox/HBox"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_styles/normal = SubResource("StyleBox_BotonOpcion")
+theme_override_styles/hover = SubResource("StyleBox_BotonOpcionHover")
 text = "⚔️ Filo Mortal
 +25% Daño"
 
 [node name="BtnOpc2" type="Button" parent="Control/ModalMejora/VBox/HBox"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_styles/normal = SubResource("StyleBox_BotonOpcion")
+theme_override_styles/hover = SubResource("StyleBox_BotonOpcionHover")
 text = "👟 Velocidad
 +20% Movimiento"
 
 [node name="BtnOpc3" type="Button" parent="Control/ModalMejora/VBox/HBox"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_styles/normal = SubResource("StyleBox_BotonOpcion")
+theme_override_styles/hover = SubResource("StyleBox_BotonOpcionHover")
 text = "🛡️ Vitalidad
 +30 Vida Máx"
