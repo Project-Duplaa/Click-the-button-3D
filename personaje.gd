@@ -2,12 +2,15 @@ extends CharacterBody3D
 
 const AudioManager = preload("res://audio_manager.gd")
 const EvolucionManager = preload("res://evolucion_manager.gd")
+const ArbolMejorasDatos = preload("res://arbol_mejoras_datos.gd")
 
 enum Estado { QUIETO, CAMINAR, CORRER, AIRE }
 const RUIDO = [0.0, 2.5, 6.5, 0.0]
 
 signal stats_actualizadas(vida, max_vida, xp, xp_sig, nivel, oro, bajas)
 signal nivel_subido(nuevo_nivel)
+signal economia_actualizada(oro_actual, clics_disponibles, clics_totales)
+signal mejora_arbol_comprada(id_mejora, nuevo_nivel)
 
 @export var camara: Camera3D
 @export var speed_caminar = 3.2
@@ -28,6 +31,31 @@ var xp_siguiente_nivel: int = 60
 var nivel: int = 1
 var bajas: int = 0
 
+# Sistema Incremental: Monedas, Clics y Árbol de Ascensión
+var clics_disponibles: int = 0
+var clics_totales: int = 0
+var mejoras_arbol: Dictionary = {}
+
+# Estadísticas base puras según clase
+var base_vida_maxima: float = 100.0
+var base_dano: float = 12.0
+var base_cadencia_ataque: float = 0.80
+var base_rango_ataque: float = 2.8
+var base_speed_caminar: float = 3.2
+var base_speed_correr: float = 5.5
+
+# Modificadores activos calculados del árbol
+var bonus_dano_pct: float = 0.0
+var bonus_vida_max: float = 0.0
+var bonus_velocidad_pct: float = 0.0
+var bonus_oro_pct: float = 0.0
+var bonus_cadencia_pct: float = 0.0
+var prob_critico: float = 0.0
+var mult_critico: float = 2.2
+var contador_clics_sobrecarga: int = 0
+var _reloj_incremental_pasivo: float = 0.0
+var _clics_pasivos_frac: float = 0.0
+
 var evolucion_manager: EvolucionManager = null
 
 var _reloj_ataque: float = 0.0
@@ -46,6 +74,9 @@ var bloqueando: bool = false
 var reduccion_dano_bloqueo: float = 0.75
 var velocidad_bloqueo_multiplicador: float = 0.50
 var _escudo_visual: Node3D = null
+var _preview_baston: Node3D = null
+var _preview_espada: Node3D = null
+var _preview_arco: Node3D = null
 
 # Sistema de Vidas, Reapariciones y Derrota Definitiva (Tarea 3)
 @export var reapariciones: int = 2 # 2 reapariciones = 3 vidas en total
@@ -146,6 +177,7 @@ func _physics_process(delta):
 			
 	animar()
 	_procesar_autobattler(delta)
+	_procesar_incremental_pasivo(delta)
 	_prueba()
 
 func _procesar_autobattler(delta: float):
@@ -178,16 +210,20 @@ func _ejecutar_ataque(enemigo: Node3D):
 	if dir.length() > 0.01:
 		basis = Basis.looking_at(dir)
 
+	var es_crit = randf() < prob_critico
+	var dano_ataque_actual = dano * (mult_critico if es_crit else 1.0)
+	var bonus_asc = mejoras_arbol.get("hib_ascension", 0) >= 1
+
 	if clase == "Novato":
 		# Corte melee con barrido en arco frontal (Cleave) y tajo luminoso visible
 		accion = "attack-melee-right"
 		_reloj_anim_accion = 0.30
 		_ejecutar_animacion_procedural_ataque("melee")
-		_crear_tajo_espada(dir, false)
+		_crear_tajo_espada(dir, es_crit)
 		AudioManager.play("corte_espada", randf_range(0.95, 1.15))
 		
-		var dano_melee = dano
-		var rango_cleave = rango_ataque
+		var dano_melee = dano_ataque_actual
+		var rango_cleave = rango_ataque + (0.5 if bonus_asc else 0.0)
 		var enemigos = get_tree().get_nodes_in_group("enemigos")
 		for e in enemigos:
 			if is_instance_valid(e) and e is Node3D:
@@ -195,13 +231,13 @@ func _ejecutar_ataque(enemigo: Node3D):
 				if dist <= rango_cleave:
 					var hacia_e = (e.global_position - global_position).normalized()
 					hacia_e.y = 0.0
-					if dir.dot(hacia_e) > 0.35: # Cono frontal de 120 grados
+					if dir.dot(hacia_e) > (0.20 if bonus_asc else 0.35): # Cono frontal de 120-150 grados
 						if e.has_method("recibir_dano"):
-							e.recibir_dano(dano_melee)
+							e.recibir_dano(dano_melee, es_crit)
 						AudioManager.play("golpe_impacto", randf_range(0.95, 1.15))
 	elif clase == "Guerrero":
 		# CORTE GIRATORIO MELEE EN ÁREA 360° (Whirlwind)
-		_ejecutar_corte_giratorio_guerrero(false)
+		_ejecutar_corte_giratorio_guerrero(false, es_crit, dano_ataque_actual)
 	elif clase == "Mago":
 		# Especialidad Mago: Orbe Arcano teledirigido con detonación en área AOE
 		accion = "attack-melee-right"
@@ -212,7 +248,7 @@ func _ejecutar_ataque(enemigo: Node3D):
 			var orbe = orbe_escena.instantiate()
 			var origen = global_position + Vector3(0, 0.9, 0)
 			get_parent().add_child(orbe)
-			orbe.iniciar(origen, dir, dano, enemigo)
+			orbe.iniciar(origen, dir, dano_ataque_actual, enemigo)
 	else:
 		# Especialidad Cazador: Disparo múltiple de flechas (Multishot) en abanico
 		accion = "attack-melee-right"
@@ -228,10 +264,12 @@ func _ejecutar_ataque(enemigo: Node3D):
 		elif nivel >= 3:
 			cant_flechas = 3
 			angulo_paso = 11.0
+		if bonus_asc:
+			cant_flechas += 1
 			
-		var perforaciones = 1 if nivel < 5 else 2
+		var perforaciones = (1 if nivel < 5 else 2) + (2 if bonus_asc else 0)
 		var vel_flecha = 15.0
-		var dano_flecha = dano * 0.65 # Balance para que el multishot no triplique el daño total
+		var dano_flecha = dano_ataque_actual * 0.65 # Balance para que el multishot no triplique el daño total
 		var origen = global_position + Vector3(0, 0.9, 0)
 		var proyectil_escena = load("res://proyectil.tscn")
 		
@@ -347,7 +385,8 @@ func recibir_dano(cantidad: float):
 func recoger_drop(tipo: int, valor: int):
 	match tipo:
 		0: # ORO
-			oro += valor
+			var bonus_mult = 1.0 + (float(mejoras_arbol.get("mon_oro", 0)) * 0.25)
+			oro += int(ceil(valor * bonus_mult))
 		1: # EXP
 			xp += valor
 			if xp >= xp_siguiente_nivel:
@@ -355,33 +394,147 @@ func recoger_drop(tipo: int, valor: int):
 		2: # CORAZON
 			vida = minf(vida + valor, vida_maxima)
 	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
+	emit_signal("economia_actualizada", oro, clics_disponibles, clics_totales)
 
 func registrar_baja():
 	bajas += 1
 	AudioManager.play("enemigo_muerte", randf_range(0.9, 1.2))
 	recoger_drop(1, 6) # 6 XP por baja
-	recoger_drop(0, 3) # 3 Oro por baja
+	recoger_drop(0, 3) # 3 Oro base por baja (afectado por el multiplicador de Codicia)
 
 func subir_nivel():
 	xp -= xp_siguiente_nivel
 	nivel += 1
 	xp_siguiente_nivel = int(xp_siguiente_nivel * 1.55)
-	vida = minf(vida + 30.0, vida_maxima) # Cura parcial +30 HP para mayor tension de supervivencia
 	
 	# Escalado de especialidades por clase al subir nivel
 	if clase == "Cazador":
-		cadencia_ataque = maxf(0.18, cadencia_ataque * 0.92) # Velocidad de disparo escalable
-		dano *= 1.08
+		base_cadencia_ataque = maxf(0.18, base_cadencia_ataque * 0.92) # Velocidad de disparo escalable
+		base_dano *= 1.08
 	elif clase == "Guerrero":
-		dano *= 1.10
-		rango_ataque = minf(3.6, rango_ataque + 0.05)
+		base_dano *= 1.10
+		base_rango_ataque = minf(3.6, base_rango_ataque + 0.05)
 	elif clase == "Mago":
-		dano *= 1.12
+		base_dano *= 1.12
+	else:
+		base_dano *= 1.06
 		
+	recalcular_stats_incrementales()
+	vida = minf(vida + 30.0, vida_maxima) # Cura parcial +30 HP
+	
 	emit_signal("nivel_subido", nivel)
 	if evolucion_manager != null:
 		evolucion_manager.notificar_nivel(nivel)
 	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
+	emit_signal("economia_actualizada", oro, clics_disponibles, clics_totales)
+
+## Vista previa visual temporal mientras el jugador sobrevuela una clase en el menú radial
+func mostrar_preview_clase(nombre_clase: String):
+	_asegurar_armas_preview()
+	
+	if _preview_baston != null:
+		_preview_baston.visible = (nombre_clase == "Mago")
+	if _preview_espada != null:
+		_preview_espada.visible = (nombre_clase == "Guerrero")
+	if _preview_arco != null:
+		_preview_arco.visible = (nombre_clase == "Cazador")
+		
+	if _escudo_visual != null:
+		_escudo_visual.visible = (nombre_clase == "Guerrero" or (clase == "Guerrero" and nombre_clase == ""))
+
+func _asegurar_armas_preview():
+	if _preview_baston != null and is_instance_valid(_preview_baston):
+		return
+		
+	# 1. Bastón de Mago con Orbe Cian Resplandeciente y Partículas (Réplica exacta de la referencia)
+	_preview_baston = Node3D.new()
+	_preview_baston.name = "PreviewBastonMago"
+	
+	# Palo del bastón
+	var mesh_palo = MeshInstance3D.new()
+	var cyl = CylinderMesh.new()
+	cyl.top_radius = 0.025
+	cyl.bottom_radius = 0.025
+	cyl.height = 1.15
+	mesh_palo.mesh = cyl
+	var mat_palo = StandardMaterial3D.new()
+	mat_palo.albedo_color = Color(0.38, 0.24, 0.16)
+	mesh_palo.material_override = mat_palo
+	_preview_baston.add_child(mesh_palo)
+	
+	# Orbe de cristal mágico cian
+	var mesh_orbe = MeshInstance3D.new()
+	var sph = SphereMesh.new()
+	sph.radius = 0.09
+	sph.height = 0.18
+	mesh_orbe.mesh = sph
+	mesh_orbe.position = Vector3(0, 0.58, 0)
+	var mat_orbe = StandardMaterial3D.new()
+	mat_orbe.albedo_color = Color(0.2, 0.85, 1.0)
+	mat_orbe.emission_enabled = true
+	mat_orbe.emission = Color(0.1, 0.9, 1.0)
+	mat_orbe.emission_energy_multiplier = 3.8
+	mesh_orbe.material_override = mat_orbe
+	_preview_baston.add_child(mesh_orbe)
+	
+	# Luz y partículas mágicas del orbe
+	var luz_orbe = OmniLight3D.new()
+	luz_orbe.light_color = Color(0.25, 0.85, 1.0)
+	luz_orbe.light_energy = 2.2
+	luz_orbe.omni_range = 2.5
+	luz_orbe.position = Vector3(0, 0.58, 0)
+	_preview_baston.add_child(luz_orbe)
+	
+	var part_orbe = CPUParticles3D.new()
+	part_orbe.emitting = true
+	part_orbe.amount = 12
+	part_orbe.lifetime = 0.7
+	part_orbe.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	part_orbe.emission_sphere_radius = 0.12
+	part_orbe.gravity = Vector3(0, 0.6, 0)
+	part_orbe.color = Color(0.3, 0.9, 1.0, 0.9)
+	part_orbe.position = Vector3(0, 0.58, 0)
+	_preview_baston.add_child(part_orbe)
+	
+	# Posición del bastón sostenido en mano derecha
+	_preview_baston.position = Vector3(0.48, 0.65, 0.22)
+	_preview_baston.rotation_degrees = Vector3(8.0, 0.0, -14.0)
+	_preview_baston.visible = false
+	add_child(_preview_baston)
+	
+	# 2. Espada de Guerrero en mano derecha
+	_preview_espada = Node3D.new()
+	_preview_espada.name = "PreviewEspadaGuerrero"
+	var mesh_espada = MeshInstance3D.new()
+	var box_esp = BoxMesh.new()
+	box_esp.size = Vector3(0.08, 0.85, 0.02)
+	mesh_espada.mesh = box_esp
+	var mat_esp = StandardMaterial3D.new()
+	mat_esp.albedo_color = Color(0.85, 0.88, 0.95)
+	mat_esp.metallic = 0.9
+	mat_esp.roughness = 0.3
+	mesh_espada.material_override = mat_esp
+	_preview_espada.add_child(mesh_espada)
+	_preview_espada.position = Vector3(0.45, 0.55, 0.15)
+	_preview_espada.rotation_degrees = Vector3(-15.0, 0.0, 25.0)
+	_preview_espada.visible = false
+	add_child(_preview_espada)
+	
+	# 3. Arco de Cazador en mano izquierda
+	_preview_arco = Node3D.new()
+	_preview_arco.name = "PreviewArcoCazador"
+	var mesh_arco = MeshInstance3D.new()
+	var box_arco = BoxMesh.new()
+	box_arco.size = Vector3(0.04, 0.95, 0.15)
+	mesh_arco.mesh = box_arco
+	var mat_arco = StandardMaterial3D.new()
+	mat_arco.albedo_color = Color(0.65, 0.40, 0.22)
+	mesh_arco.material_override = mat_arco
+	_preview_arco.add_child(mesh_arco)
+	_preview_arco.position = Vector3(-0.45, 0.60, 0.20)
+	_preview_arco.rotation_degrees = Vector3(10.0, 0.0, 0.0)
+	_preview_arco.visible = false
+	add_child(_preview_arco)
 
 func aplicar_clase(nombre: String):
 	clase = nombre
@@ -394,52 +547,227 @@ func aplicar_clase(nombre: String):
 		_crear_escudo_visual()
 	match nombre:
 		"Novato":
-			vida_maxima = 100.0
-			vida = 100.0
-			dano = 12.0
-			rango_ataque = 2.8
-			cadencia_ataque = 0.80
-			speed_caminar = 3.2
-			speed_correr = 5.5
+			base_vida_maxima = 100.0
+			base_dano = 12.0
+			base_rango_ataque = 2.8
+			base_cadencia_ataque = 0.80
+			base_speed_caminar = 3.2
+			base_speed_correr = 5.5
 		"Guerrero":
-			vida_maxima = 160.0
-			vida = 160.0
-			dano = 22.0
-			rango_ataque = 3.2
-			cadencia_ataque = 0.70
-			speed_caminar = 3.2
-			speed_correr = 5.6
+			base_vida_maxima = 160.0
+			base_dano = 22.0
+			base_rango_ataque = 3.2
+			base_cadencia_ataque = 0.70
+			base_speed_caminar = 3.2
+			base_speed_correr = 5.6
 		"Cazador":
-			vida_maxima = 100.0
-			vida = 100.0
-			dano = 14.0
-			rango_ataque = 7.5
-			cadencia_ataque = 0.45
-			speed_caminar = 3.8
-			speed_correr = 6.4
+			base_vida_maxima = 100.0
+			base_dano = 14.0
+			base_rango_ataque = 7.5
+			base_cadencia_ataque = 0.45
+			base_speed_caminar = 3.8
+			base_speed_correr = 6.4
 		"Mago":
-			vida_maxima = 85.0
-			vida = 85.0
-			dano = 28.0
-			rango_ataque = 5.5
-			cadencia_ataque = 0.90
-			speed_caminar = 3.3
-			speed_correr = 5.7
-	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
+			base_vida_maxima = 85.0
+			base_dano = 28.0
+			base_rango_ataque = 5.5
+			base_cadencia_ataque = 0.90
+			base_speed_caminar = 3.3
+			base_speed_correr = 5.7
+	vida = base_vida_maxima
+	recalcular_stats_incrementales()
 
 func aplicar_mejora(tipo_mejora: String):
 	match tipo_mejora:
 		"dano":
-			dano *= 1.25
+			base_dano *= 1.25
 		"velocidad":
-			speed_caminar *= 1.20
-			speed_correr *= 1.20
+			base_speed_caminar *= 1.20
+			base_speed_correr *= 1.20
 		"vida":
-			vida_maxima += 30.0
-			vida = minf(vida + 30.0, vida_maxima)
+			base_vida_maxima += 30.0
+			vida = minf(vida + 30.0, vida_maxima + 30.0)
 		"cadencia":
-			cadencia_ataque = maxf(cadencia_ataque * 0.80, 0.2)
+			base_cadencia_ataque = maxf(base_cadencia_ataque * 0.80, 0.18)
+	recalcular_stats_incrementales()
+
+# ==============================================================================
+# SISTEMA INCREMENTAL: CÁLCULOS DEL ÁRBOL DE ASCENSIÓN Y COMERCIO
+# ==============================================================================
+
+func recalcular_stats_incrementales():
+	var lvl_dano = mejoras_arbol.get("mon_dano", 0)
+	var lvl_vida = mejoras_arbol.get("mon_vida", 0)
+	var lvl_vel = mejoras_arbol.get("mon_vel", 0)
+	var lvl_oro = mejoras_arbol.get("mon_oro", 0)
+	var lvl_cad = mejoras_arbol.get("mon_cadencia", 0)
+	var lvl_crit = mejoras_arbol.get("clk_critico", 0)
+	var lvl_filo = mejoras_arbol.get("hib_filo_crit", 0)
+	var lvl_asc = mejoras_arbol.get("hib_ascension", 0)
+	
+	bonus_dano_pct = (lvl_dano * 0.18) + (0.75 if lvl_asc >= 1 else 0.0)
+	bonus_vida_max = (lvl_vida * 25.0)
+	bonus_velocidad_pct = (lvl_vel * 0.10)
+	bonus_oro_pct = (lvl_oro * 0.25)
+	bonus_cadencia_pct = (lvl_cad * 0.12)
+	prob_critico = (lvl_crit * 0.08)
+	mult_critico = 2.2 + (lvl_filo * 0.60)
+	
+	dano = base_dano * (1.0 + bonus_dano_pct)
+	cadencia_ataque = maxf(0.15, base_cadencia_ataque * (1.0 - bonus_cadencia_pct))
+	rango_ataque = base_rango_ataque
+	speed_caminar = base_speed_caminar * (1.0 + bonus_velocidad_pct)
+	speed_correr = base_speed_correr * (1.0 + bonus_velocidad_pct)
+	
+	var vida_anterior_max = vida_maxima
+	vida_maxima = base_vida_maxima + bonus_vida_max
+	if vida_maxima > vida_anterior_max:
+		vida = minf(vida + (vida_maxima - vida_anterior_max), vida_maxima)
+		
+	# Sincronizar componente Salud si existe
+	if has_node("Salud"):
+		var s = get_node("Salud")
+		s.vida = int(vida)
+		s.vida_inicial = int(vida_maxima)
+		
 	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
+	emit_signal("economia_actualizada", oro, clics_disponibles, clics_totales)
+
+func puede_comprar_mejora(id: String) -> bool:
+	if not ArbolMejorasDatos.MEJORAS.has(id):
+		return false
+	var datos = ArbolMejorasDatos.MEJORAS[id]
+	var lvl_actual = mejoras_arbol.get(id, 0)
+	if lvl_actual >= datos.max_nivel:
+		return false
+	if not ArbolMejorasDatos.cumple_requisitos(id, mejoras_arbol):
+		return false
+	var costos = ArbolMejorasDatos.calcular_costo(id, lvl_actual)
+	if oro < costos.monedas or clics_disponibles < costos.clicks:
+		return false
+	return true
+
+func comprar_mejora(id: String) -> bool:
+	if not puede_comprar_mejora(id):
+		return false
+	var lvl_actual = mejoras_arbol.get(id, 0)
+	var costos = ArbolMejorasDatos.calcular_costo(id, lvl_actual)
+	
+	oro -= costos.monedas
+	clics_disponibles -= costos.clicks
+	mejoras_arbol[id] = lvl_actual + 1
+	
+	# Efectos inmediatos especiales
+	if id == "mon_vida":
+		vida = minf(vida + 25.0, vida_maxima + 25.0)
+	elif id == "hib_pacto":
+		reapariciones = min(reapariciones + 1, 5)
+		vida = vida_maxima
+		AudioManager.play("altar_activado", 1.25, 2.0)
+	elif id == "hib_ascension":
+		AudioManager.play("victoria", 1.1, 3.0)
+		_spawn_efecto_ascension()
+		
+	recalcular_stats_incrementales()
+	emit_signal("mejora_arbol_comprada", id, mejoras_arbol[id])
+	AudioManager.play("altar_activado", 1.0 + (mejoras_arbol[id] * 0.04), -2.0)
+	return true
+
+func registrar_click_jugador(es_anomalia: bool = false):
+	var lvl_pot = mejoras_arbol.get("clk_potencia", 0)
+	var lvl_alq = mejoras_arbol.get("hib_alquimia", 0)
+	var lvl_sob = mejoras_arbol.get("clk_sobrecarga", 0)
+	
+	var clics_ganados = 1 + lvl_pot
+	if es_anomalia:
+		clics_ganados += 3
+		
+	clics_disponibles += clics_ganados
+	clics_totales += clics_ganados
+	
+	# Oro extra por Clic Potenciado
+	if lvl_pot > 0:
+		recoger_drop(0, lvl_pot)
+		
+	# Alquimia Rúnica: convierte poder de daño en oro
+	if lvl_alq > 0:
+		var oro_alquimia = int(ceil(dano * 0.15 * lvl_alq))
+		recoger_drop(0, max(1, oro_alquimia))
+		
+	# Sobrecarga de Tormenta: relámpago cada 8 clics
+	if lvl_sob > 0:
+		contador_clics_sobrecarga += 1
+		if contador_clics_sobrecarga >= 8:
+			contador_clics_sobrecarga = 0
+			_detonar_tormenta_arcana(60.0 + (lvl_sob - 1) * 25.0)
+			
+	if evolucion_manager != null:
+		evolucion_manager.registrar_click()
+		
+	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
+	emit_signal("economia_actualizada", oro, clics_disponibles, clics_totales)
+
+func obtener_radio_atraccion_extra() -> float:
+	return float(mejoras_arbol.get("clk_iman", 0)) * 2.5
+
+func obtener_bonus_onda_clic() -> Dictionary:
+	var lvl_onda = mejoras_arbol.get("clk_onda", 0)
+	return {
+		"radio_mult": 1.0 + (lvl_onda * 0.30),
+		"dano_mult": 1.0 + (lvl_onda * 0.35)
+	}
+
+func _procesar_incremental_pasivo(delta: float):
+	var lvl_minero = mejoras_arbol.get("mon_pasivo", 0)
+	var lvl_clk_pas = mejoras_arbol.get("clk_pasivo", 0)
+	if lvl_minero <= 0 and lvl_clk_pas <= 0:
+		return
+		
+	_reloj_incremental_pasivo += delta
+	if _reloj_incremental_pasivo >= 1.0:
+		_reloj_incremental_pasivo -= 1.0
+		var hubo_cambio = false
+		if lvl_minero > 0:
+			oro += lvl_minero * 1
+			hubo_cambio = true
+		if lvl_clk_pas > 0:
+			_clics_pasivos_frac += lvl_clk_pas * 0.4
+			if _clics_pasivos_frac >= 1.0:
+				var enteroclics = int(_clics_pasivos_frac)
+				_clics_pasivos_frac -= enteroclics
+				clics_disponibles += enteroclics
+				clics_totales += enteroclics
+				hubo_cambio = true
+		if hubo_cambio:
+			emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
+			emit_signal("economia_actualizada", oro, clics_disponibles, clics_totales)
+
+func _detonar_tormenta_arcana(dano_descarga: float):
+	AudioManager.play("orbe_explosion", 1.3)
+	var tree = _obtener_tree()
+	if tree == null:
+		return
+	var enemigos = tree.get_nodes_in_group("enemigos")
+	for e in enemigos:
+		if is_instance_valid(e) and e is Node3D:
+			if global_position.distance_to(e.global_position) <= 24.0:
+				if e.has_method("recibir_dano"):
+					e.recibir_dano(dano_descarga, true)
+	
+	var escena = load("res://damage_number_3d.tscn")
+	if escena != null and get_parent() != null:
+		var num = escena.instantiate()
+		get_parent().add_child(num)
+		num.global_position = global_position + Vector3(0, 2.3, 0)
+		num.iniciar(0, true, false, "🌩️ ¡SOBRECARGA DE TORMENTA!")
+
+func _spawn_efecto_ascension():
+	var escena = load("res://damage_number_3d.tscn")
+	if escena != null and get_parent() != null:
+		var num = escena.instantiate()
+		get_parent().add_child(num)
+		num.global_position = global_position + Vector3(0, 2.5, 0)
+		num.iniciar(0, true, false, "👑 ¡ASCENSIÓN SUPREMA!")
 
 func elegir_estado():
 	if not is_on_floor():
@@ -603,7 +931,7 @@ func _repeler_enemigos_alrededor(radio: float, fuerza: float):
 				if "velocity" in e:
 					e.velocity += dir * fuerza
 
-func _ejecutar_corte_giratorio_guerrero(es_click: bool = false):
+func _ejecutar_corte_giratorio_guerrero(es_click: bool = false, es_crit: bool = false, dano_custom: float = -1.0):
 	accion = "attack-melee-right"
 	_reloj_anim_accion = 0.32
 	
@@ -624,7 +952,8 @@ func _ejecutar_corte_giratorio_guerrero(es_click: bool = false):
 	if tree == null:
 		return
 	var enemigos = tree.get_nodes_in_group("enemigos")
-	var dano_aplicar = dano * (1.25 if es_click else 1.0)
+	var dano_base_calc = dano if dano_custom <= 0.0 else dano_custom
+	var dano_aplicar = dano_base_calc * (1.25 if es_click else 1.0)
 	var golpeados = 0
 	
 	for e in enemigos:
@@ -633,7 +962,7 @@ func _ejecutar_corte_giratorio_guerrero(es_click: bool = false):
 			if dist <= rango_ataque + 0.6:
 				golpeados += 1
 				if e.has_method("recibir_dano"):
-					e.recibir_dano(dano_aplicar, es_click)
+					e.recibir_dano(dano_aplicar, es_crit or es_click)
 				
 				# Knockback / Empuje radial hacia afuera
 				var dir_empuje = (e.global_position - global_position).normalized()

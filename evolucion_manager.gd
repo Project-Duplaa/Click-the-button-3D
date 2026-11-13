@@ -136,9 +136,31 @@ func disparar_metamorfosis():
 
 func abrir_modal_evolucion():
 	if modal_instancia != null and is_instance_valid(modal_instancia):
+		if modal_instancia.has_method("abrir"):
+			modal_instancia.abrir()
 		return
 	
 	estado_actual = EstadoFSM.METAMORFOSIS
+	
+	# 1. Prioridad: Interfaz Radial In-World a los pies del personaje (Diseño 3 sin pausar pantalla)
+	if personaje_ref != null and is_instance_valid(personaje_ref):
+		var radial = personaje_ref.get_node_or_null("EvolucionRadial")
+		if radial == null:
+			var escena_radial = load("res://evolucion_radial.tscn")
+			if escena_radial != null:
+				radial = escena_radial.instantiate()
+				radial.name = "EvolucionRadial"
+				personaje_ref.add_child(radial)
+				radial.personaje_padre = personaje_ref
+		if radial != null:
+			modal_instancia = radial
+			if not radial.evolucion_seleccionada.is_connected(_on_clase_elegida_en_modal):
+				radial.evolucion_seleccionada.connect(_on_clase_elegida_en_modal)
+			radial.abrir()
+			print("✨ [FSM Evolución] Menú radial in-world desplegado a los pies del héroe.")
+			return
+
+	# 2. Fallback: Modal tradicional si no hay personaje disponible
 	var escena_modal = load("res://modal_evolucion.tscn")
 	if escena_modal != null:
 		modal_instancia = escena_modal.instantiate()
@@ -147,13 +169,15 @@ func abrir_modal_evolucion():
 			tree.root.add_child(modal_instancia)
 			if modal_instancia.has_signal("clase_seleccionada"):
 				modal_instancia.clase_seleccionada.connect(_on_clase_elegida_en_modal)
-			tree.paused = true
 	else:
 		push_error("No se encontró la escena res://modal_evolucion.tscn")
 
 func _on_clase_elegida_en_modal(nombre_clase: String):
 	if modal_instancia != null and is_instance_valid(modal_instancia):
-		modal_instancia.queue_free()
+		if modal_instancia.has_method("cerrar"):
+			modal_instancia.cerrar()
+		elif modal_instancia is CanvasLayer:
+			modal_instancia.queue_free()
 		modal_instancia = null
 	var tree = _obtener_tree()
 	if tree != null:
@@ -169,23 +193,26 @@ func evolucionar_a(nombre_clase: String):
 	var stats = STATS_CLASE[nombre_clase]
 	
 	if personaje_ref != null:
-		# 1. Actualizar atributos
-		personaje_ref.clase = nombre_clase
-		personaje_ref.vida_maxima = stats["vida_maxima"]
-		personaje_ref.vida = stats["vida_maxima"] # Cura completa por metamorfosis
-		personaje_ref.dano = stats["dano"]
-		personaje_ref.rango_ataque = stats["rango_ataque"]
-		personaje_ref.cadencia_ataque = stats["cadencia_ataque"]
-		personaje_ref.speed_caminar = stats["speed_caminar"]
-		personaje_ref.speed_correr = stats["speed_correr"]
+		# 1. Actualizar clase y atributos con preservación del árbol incremental
+		if personaje_ref.has_method("aplicar_clase"):
+			personaje_ref.aplicar_clase(nombre_clase)
+		else:
+			personaje_ref.clase = nombre_clase
+			personaje_ref.vida_maxima = stats["vida_maxima"]
+			personaje_ref.vida = stats["vida_maxima"]
+			personaje_ref.dano = stats["dano"]
+			personaje_ref.rango_ataque = stats["rango_ataque"]
+			personaje_ref.cadencia_ataque = stats["cadencia_ataque"]
+			personaje_ref.speed_caminar = stats["speed_caminar"]
+			personaje_ref.speed_correr = stats["speed_correr"]
 		
 		# Sincronizar componente desacoplado Salud si existe
 		var nodo_salud = personaje_ref.get_node_or_null("Salud")
 		if nodo_salud != null:
 			if "vida" in nodo_salud:
-				nodo_salud.vida = int(stats["vida_maxima"])
+				nodo_salud.vida = int(personaje_ref.vida)
 			if "vida_inicial" in nodo_salud:
-				nodo_salud.vida_inicial = int(stats["vida_maxima"])
+				nodo_salud.vida_inicial = int(personaje_ref.vida_maxima)
 		
 		# 2. Intercambio de malla 3D en tiempo real
 		var ruta_malla = MALLAS_CLASE.get(nombre_clase, "")

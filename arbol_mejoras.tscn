@@ -1,0 +1,276 @@
+[gd_scene format=3 uid="uid://bt1385uoihb2b"]
+
+[ext_resource type="Script" path="res://arbol_mejoras.gd" id="1_arbol"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_FondoVentana"]
+bg_color = Color(0.08, 0.10, 0.15, 0.96)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.85, 0.72, 0.32, 0.95)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+shadow_color = Color(0, 0, 0, 0.7)
+shadow_size = 16
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_PillOro"]
+bg_color = Color(0.18, 0.14, 0.05, 0.9)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.95, 0.8, 0.25, 0.8)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_PillClics"]
+bg_color = Color(0.06, 0.14, 0.20, 0.9)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.30, 0.82, 0.95, 0.8)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_PillPoder"]
+bg_color = Color(0.16, 0.07, 0.18, 0.9)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.85, 0.45, 0.95, 0.8)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_BtnTab"]
+bg_color = Color(0.13, 0.16, 0.24, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 2
+border_color = Color(0.4, 0.5, 0.7, 0.8)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_BtnCerrar"]
+bg_color = Color(0.45, 0.12, 0.15, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.9, 0.3, 0.35, 0.9)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[node name="ArbolMejoras" type="CanvasLayer"]
+process_mode = 3
+layer = 22
+script = ExtResource("1_arbol")
+
+[node name="Control" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="FondoOscuro" type="ColorRect" parent="Control"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.03, 0.04, 0.06, 0.82)
+
+[node name="PanelVentana" type="Panel" parent="Control"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -460.0
+offset_top = -285.0
+offset_right = 460.0
+offset_bottom = 285.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset = Vector2(460, 285)
+theme_override_styles/panel = SubResource("StyleBox_FondoVentana")
+
+[node name="Margin" type="MarginContainer" parent="Control/PanelVentana"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 16
+
+[node name="VBox" type="VBoxContainer" parent="Control/PanelVentana/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="HBoxHeader" type="HBoxContainer" parent="Control/PanelVentana/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="VBoxTitulos" type="VBoxContainer" parent="Control/PanelVentana/Margin/VBox/HBoxHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="LabelTitulo" type="Label" parent="Control/PanelVentana/Margin/VBox/HBoxHeader/VBoxTitulos"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.85, 0.35, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 2
+theme_override_font_sizes/font_size = 18
+text = "⚔️ ÁRBOL DE ASCENSIÓN & COMERCIO INCREMENTAL"
+
+[node name="LabelSubtitulo" type="Label" parent="Control/PanelVentana/Margin/VBox/HBoxHeader/VBoxTitulos"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.82, 0.90, 1)
+theme_override_font_sizes/font_size = 12
+text = "Evoluciona tu personaje gastando Monedas, Clics del Núcleo Móvil o combinando ambos"
+
+[node name="BtnCerrar" type="Button" parent="Control/PanelVentana/Margin/VBox/HBoxHeader"]
+custom_minimum_size = Vector2(120, 32)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBox_BtnCerrar")
+text = "✕ Cerrar [U]"
+
+[node name="HBoxEconomia" type="HBoxContainer" parent="Control/PanelVentana/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PanelOro" type="PanelContainer" parent="Control/PanelVentana/Margin/VBox/HBoxEconomia"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBox_PillOro")
+
+[node name="HBox" type="HBoxContainer" parent="Control/PanelVentana/Margin/VBox/HBoxEconomia/PanelOro"]
+layout_mode = 2
+alignment = 1
+
+[node name="LabelOro" type="Label" parent="Control/PanelVentana/Margin/VBox/HBoxEconomia/PanelOro/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.82, 0.30, 1)
+theme_override_font_sizes/font_size = 13
+text = "🪙 Oro:"
+
+[node name="LabelValOro" type="Label" parent="Control/PanelVentana/Margin/VBox/HBoxEconomia/PanelOro/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "0 🪙"
+
+[node name="PanelClics" type="PanelContainer" parent="Control/PanelVentana/Margin/VBox/HBoxEconomia"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBox_PillClics")
+
+[node name="HBox" type="HBoxContainer" parent="Control/PanelVentana/Margin/VBox/HBoxEconomia/PanelClics"]
+layout_mode = 2
+alignment = 1
+
+[node name="LabelClics" type="Label" parent="Control/PanelVentana/Margin/VBox/HBoxEconomia/PanelClics/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.40, 0.88, 1, 1)
+theme_override_font_sizes/font_size = 13
+text = "⚡ Clics:"
+
+[node name="LabelValClics" type="Label" parent="Control/PanelVentana/Margin/VBox/HBoxEconomia/PanelClics/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "0 ⚡"
+
+[node name="PanelPoder" type="PanelContainer" parent="Control/PanelVentana/Margin/VBox/HBoxEconomia"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBox_PillPoder")
+
+[node name="HBox" type="HBoxContainer" parent="Control/PanelVentana/Margin/VBox/HBoxEconomia/PanelPoder"]
+layout_mode = 2
+alignment = 1
+
+[node name="LabelPoder" type="Label" parent="Control/PanelVentana/Margin/VBox/HBoxEconomia/PanelPoder/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.90, 0.55, 1, 1)
+theme_override_font_sizes/font_size = 13
+text = "⚔️ Poder:"
+
+[node name="LabelValPoder" type="Label" parent="Control/PanelVentana/Margin/VBox/HBoxEconomia/PanelPoder/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "12.0 DMG"
+
+[node name="HBoxFiltros" type="HBoxContainer" parent="Control/PanelVentana/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="BtnTodas" type="Button" parent="Control/PanelVentana/Margin/VBox/HBoxFiltros"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/normal = SubResource("StyleBox_BtnTab")
+text = "🌟 Todas"
+
+[node name="BtnMonedas" type="Button" parent="Control/PanelVentana/Margin/VBox/HBoxFiltros"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/normal = SubResource("StyleBox_BtnTab")
+text = "🪙 Arsenal (Monedas)"
+
+[node name="BtnClicks" type="Button" parent="Control/PanelVentana/Margin/VBox/HBoxFiltros"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/normal = SubResource("StyleBox_BtnTab")
+text = "⚡ Resonancia (Clics)"
+
+[node name="BtnHibrido" type="Button" parent="Control/PanelVentana/Margin/VBox/HBoxFiltros"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/normal = SubResource("StyleBox_BtnTab")
+text = "🔮 Sinergia (Ambas)"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="Control/PanelVentana/Margin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="GridTarjetas" type="GridContainer" parent="Control/PanelVentana/Margin/VBox/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 12
+columns = 2
+
+[node name="LabelFooter" type="Label" parent="Control/PanelVentana/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.65, 0.70, 0.78, 1)
+theme_override_font_sizes/font_size = 11
+text = "💡 Puedes abrir y cerrar este árbol en cualquier momento con la tecla [U] o [B]. Los costos escalan geométricamente."
+horizontal_alignment = 1
