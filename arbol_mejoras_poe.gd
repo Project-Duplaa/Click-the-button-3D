@@ -79,7 +79,7 @@ func _sincronizar_niveles_desde_jugador():
 
 func _unhandled_input(event: InputEvent):
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_ESCAPE and visible:
+		if (event.keycode == KEY_ESCAPE or event.keycode == KEY_U or event.keycode == KEY_B) and visible:
 			cerrar()
 			get_viewport().set_input_as_handled()
 
@@ -98,7 +98,7 @@ func abrir():
 	_actualizar_barra_economia()
 	
 	# Inspeccionar nodo por defecto
-	var nodo_inicial = diccionario_nodos.get("clk_dano_1", diccionario_nodos.get("nodo_origen"))
+	var nodo_inicial = diccionario_nodos.get("clk_fuerza_1", diccionario_nodos.get("nodo_origen"))
 	if nodo_inicial != null:
 		_on_nodo_seleccionado_en_lienzo(nodo_inicial, ArbolInterconectadoDatos.obtener_estado_nodo(nodo_inicial, diccionario_nodos))
 
@@ -129,8 +129,8 @@ func _actualizar_barra_economia():
 		oro_cnt += jugador.oro
 		clk_disp += jugador.clics_disponibles
 		
-	label_oro_top.text = "🪙 %d Oro (Tesoro Roguelike)" % oro_cnt
-	label_clics_top.text = "⚡ %d Clics (Tesoro Roguelike)" % clk_disp
+	label_oro_top.text = "🧪 %d Isótopos" % oro_cnt
+	label_clics_top.text = "⚡ %d Clics de Fisión" % clk_disp
 
 # ==============================================================================
 # MANEJO DEL PANEL DETALLE LATERAL (MINIMALIST DARK SLATE PANEL)
@@ -147,52 +147,52 @@ func _actualizar_panel_detalle(nodo: SkillNodeData, estado: String):
 	lbl_nodo_desc.text = nodo.descripcion
 	lbl_nodo_bono.text = nodo.obtener_texto_bono()
 	
-	# Rama Tag y Color
-	var tag_rama = "🔵 PODER ACTIVO (CLIC)"
-	var col_rama = Color(0.45, 0.73, 0.95)
+	# Rama Tag y Color (Estética Laboratorio Radiactivo)
+	var tag_rama = "⚡ ENERGÍA CHERENKOV · PODER ACTIVO"
+	var col_rama = Color(0.20, 0.85, 1.0)
 	match nodo.rama:
 		"verde":
-			tag_rama = "🟢 SUPERVIVENCIA Y CONTROL"
-			col_rama = Color(0.35, 0.78, 0.56)
+			tag_rama = "☣️ BIOCONTENCIÓN & RESISTENCIA CELULAR"
+			col_rama = Color(0.25, 0.95, 0.45)
 		"dorada":
-			tag_rama = "🟡 AUTOMATIZACIÓN Y ECONOMÍA"
-			col_rama = Color(0.96, 0.78, 0.40)
+			tag_rama = "🧪 EXTRACCIÓN DE ISÓTOPOS & FISIÓN"
+			col_rama = Color(1.0, 0.80, 0.25)
 		"hibrido":
-			tag_rama = "🟣 SINERGIA CONECTADA"
-			col_rama = Color(0.80, 0.55, 0.92)
+			tag_rama = "🧬 MUTACIÓN CUÁNTICA // SINERGIA"
+			col_rama = Color(0.85, 0.55, 1.0)
 		"central":
-			tag_rama = "💠 ORIGEN DEL COLISEO"
-			col_rama = Color(0.60, 0.92, 0.98)
+			tag_rama = "☢️ NÚCLEO DE REACTOR CERO"
+			col_rama = Color(0.30, 1.0, 0.70)
 			
 	if nodo.es_keystone:
-		tag_rama += " [KEYSTONE]"
+		tag_rama += " [PROTOCOLO CRÍTICO]"
 		
 	lbl_nodo_rama.text = tag_rama
 	lbl_nodo_rama.add_theme_color_override("font_color", col_rama)
 	
 	if nodo.id == "nodo_origen":
-		lbl_nodo_nivel.text = "[ ACTIVO ]"
+		lbl_nodo_nivel.text = "[ NÚCLEO OPERATIVO ]"
 	else:
 		lbl_nodo_nivel.text = "Nivel %d / %d" % [nodo.nivel_actual, nodo.nivel_max]
 	
 	# Estado de Conexión en la red
 	match estado:
 		"maxeado":
-			lbl_nodo_estado.text = "⭐ Nodo completado al máximo nivel."
+			lbl_nodo_estado.text = "⭐ Módulo Saturado: Nivel Máximo Operativo."
 			lbl_nodo_estado.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
 		"comprado":
-			lbl_nodo_estado.text = "✓ Activo en tu red de resonancia."
-			lbl_nodo_estado.add_theme_color_override("font_color", Color(0.4, 0.9, 0.5))
+			lbl_nodo_estado.text = "✓ Módulo Activo: Flujo de Energía Estable."
+			lbl_nodo_estado.add_theme_color_override("font_color", Color(0.25, 0.95, 0.5))
 		"desbloqueable":
-			lbl_nodo_estado.text = "⚡ Conectado: Listo para ser desbloqueado."
-			lbl_nodo_estado.add_theme_color_override("font_color", Color(0.5, 0.8, 1.0))
+			lbl_nodo_estado.text = "⚡ Circuito Enlazado: Listo para Inyección."
+			lbl_nodo_estado.add_theme_color_override("font_color", Color(0.3, 0.85, 1.0))
 		_:
-			lbl_nodo_estado.text = "🔒 Bloqueado: Requiere enlace desde un nodo vecino comprado."
-			lbl_nodo_estado.add_theme_color_override("font_color", Color(0.85, 0.4, 0.4))
+			lbl_nodo_estado.text = "🔒 Módulo Bloqueado: Requiere acople desde un módulo adyacente."
+			lbl_nodo_estado.add_theme_color_override("font_color", Color(0.9, 0.35, 0.35))
 			
 	# Costos y Botón de Compra
 	if nodo.id == "nodo_origen" or estado == "maxeado":
-		lbl_nodo_costo.text = "⭐ Nivel Máximo Alcanzado"
+		lbl_nodo_costo.text = "⭐ Módulo Completamente Sintetizado"
 		btn_comprar_nodo.text = "Completado"
 		btn_comprar_nodo.disabled = true
 	else:
@@ -210,7 +210,7 @@ func _actualizar_panel_detalle(nodo: SkillNodeData, estado: String):
 		
 		if costos.oro > 0:
 			alcanza_oro = oro_actual >= costos.oro
-			txt_costo.append("%d 🪙 Oro" % costos.oro)
+			txt_costo.append("%d 🧪 Isótopos" % costos.oro)
 		if costos.clics > 0:
 			alcanza_clic = clics_actuales >= costos.clics
 			txt_costo.append("%d ⚡ Clics" % costos.clics)
@@ -219,13 +219,13 @@ func _actualizar_panel_detalle(nodo: SkillNodeData, estado: String):
 		
 		var puede_pagar = alcanza_oro and alcanza_clic
 		if estado == "bloqueado":
-			btn_comprar_nodo.text = "🔒 Bloqueado"
+			btn_comprar_nodo.text = "🔒 Módulo Bloqueado"
 			btn_comprar_nodo.disabled = true
 		elif not puede_pagar:
 			btn_comprar_nodo.text = "Recursos insuficientes"
 			btn_comprar_nodo.disabled = true
 		else:
-			btn_comprar_nodo.text = "Desbloquear (Nv. %d)" % (nodo.nivel_actual + 1)
+			btn_comprar_nodo.text = "Inyectar Sobrecarga (Nv. %d)" % (nodo.nivel_actual + 1)
 			btn_comprar_nodo.disabled = false
 
 func _on_btn_comprar_presionado():

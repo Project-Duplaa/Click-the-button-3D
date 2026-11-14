@@ -1,6 +1,6 @@
 extends CanvasLayer
 
-# Pantalla de Fin de Partida y Metaprogresión Roguelike
+# Pantalla de Fin de Partida y Metaprogresión Roguelike (Estilo Hades / Roguelite Neón)
 # Desarrollado por: Juan Camilo Angulo Camelo
 # Despliega el resumen analítico detallado de la run (Victoria o Derrota),
 # deposita las ganancias en el Banco Permanente y permite abrir el Árbol de Habilidades estilo PoE
@@ -12,19 +12,24 @@ const AudioManager = preload("res://audio_manager.gd")
 const ArbolMejorasPoEEscena = preload("res://arbol_mejoras_poe.tscn")
 const MetaprogresoManager = preload("res://metaprogreso_manager.gd")
 
-@onready var panel_fondo = $Control/Fondo
-@onready var label_titulo = $Control/Fondo/VBox/LabelTitulo
-@onready var label_motivo = $Control/Fondo/VBox/LabelMotivo
-@onready var label_tiempo = $Control/Fondo/VBox/Grid/LabelValTiempo
-@onready var label_clicks = $Control/Fondo/VBox/Grid/LabelValClicks
-@onready var label_bajas = $Control/Fondo/VBox/Grid/LabelValBajas
-@onready var label_nivel = $Control/Fondo/VBox/Grid/LabelValNivel
-@onready var label_oro = $Control/Fondo/VBox/Grid/LabelValOro
-@onready var label_intento = $Control/Fondo/VBox/Grid/LabelValIntento
-@onready var label_banco = $Control/Fondo/VBox/Grid.get_node_or_null("LabelValBanco")
-@onready var btn_arbol_meta = $Control/Fondo/VBox.get_node_or_null("BtnArbolMeta")
-@onready var btn_reintentar = $Control/Fondo/VBox/HBoxBotones/BtnReintentar
-@onready var btn_salir = $Control/Fondo/VBox/HBoxBotones/BtnSalir
+const ICON_SKULL = preload("res://ui_assets/icon_skull_hades.svg")
+const ICON_VICTORY = preload("res://ui_assets/icon_victory_hades.svg")
+
+@onready var panel_fondo: Panel = $Control/Fondo
+@onready var texture_crest: TextureRect = find_child("TextureCrest", true, false)
+@onready var label_titulo: Label = find_child("LabelTitulo", true, false)
+@onready var label_motivo: Label = find_child("LabelMotivo", true, false)
+@onready var panel_motivo: PanelContainer = find_child("PanelMotivo", true, false)
+@onready var label_tiempo: Label = find_child("LabelValTiempo", true, false)
+@onready var label_clicks: Label = find_child("LabelValClicks", true, false)
+@onready var label_bajas: Label = find_child("LabelValBajas", true, false)
+@onready var label_nivel: Label = find_child("LabelValNivel", true, false)
+@onready var label_oro: Label = find_child("LabelValOro", true, false)
+@onready var label_intento: Label = find_child("LabelValIntento", true, false)
+@onready var label_banco: Label = find_child("LabelValBanco", true, false)
+@onready var btn_arbol_meta: Button = find_child("BtnArbolMeta", true, false)
+@onready var btn_reintentar: Button = find_child("BtnReintentar", true, false)
+@onready var btn_salir: Button = find_child("BtnSalir", true, false)
 
 var arbol_instancia: CanvasLayer = null
 var _recursos_transferidos: bool = false
@@ -33,8 +38,10 @@ func _ready():
 	add_to_group("pantalla_fin_partida")
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false
-	btn_reintentar.pressed.connect(_on_btn_reintentar_pressed)
-	btn_salir.pressed.connect(_on_btn_salir_pressed)
+	if btn_reintentar != null:
+		btn_reintentar.pressed.connect(_on_btn_reintentar_pressed)
+	if btn_salir != null:
+		btn_salir.pressed.connect(_on_btn_salir_pressed)
 	if btn_arbol_meta != null:
 		btn_arbol_meta.pressed.connect(_on_btn_arbol_meta_pressed)
 
@@ -43,17 +50,33 @@ func mostrar(es_victoria: bool, motivo: String = ""):
 	if is_inside_tree() and get_tree() != null:
 		get_tree().paused = true
 	
-	# Audio temático
+	# Audio y Estilo Temático Hades (Victoria Oro vs Derrota Carmesí)
 	if es_victoria:
 		AudioManager.play("victoria", 1.0, 2.0)
-		label_titulo.text = "🏆 ¡VICTORIA GLORIOSA EN EL COLISEO!"
-		label_titulo.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2))
-		label_motivo.text = "Has conquistado la arena y resistido el poder supremo del Núcleo." if motivo == "" else motivo
+		if texture_crest != null:
+			texture_crest.texture = ICON_VICTORY
+		if label_titulo != null:
+			label_titulo.text = "¡VICTORIA GLORIOSA EN EL COLISEO!"
+			label_titulo.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0))
+			label_titulo.add_theme_color_override("font_outline_color", Color(0.92, 0.72, 0.12, 1.0))
+		if label_motivo != null:
+			label_motivo.text = "🏆 " + ("Has conquistado la arena y resistido el poder supremo del Núcleo." if motivo == "" else motivo)
+			label_motivo.add_theme_color_override("font_color", Color(1.0, 0.94, 0.6, 1.0))
+		if btn_reintentar != null:
+			btn_reintentar.text = "⚔️ Siguiente Arena del Coliseo"
 	else:
 		AudioManager.play("derrota", 1.0, 2.0)
-		label_titulo.text = "💀 HAS CAÍDO EN COMBATE"
-		label_titulo.add_theme_color_override("font_color", Color(0.95, 0.2, 0.2))
-		label_motivo.text = "Tus fuerzas sucumbieron ante la horda del coliseo." if motivo == "" else ("Motivo: " + motivo)
+		if texture_crest != null:
+			texture_crest.texture = ICON_SKULL
+		if label_titulo != null:
+			label_titulo.text = "HAS CAÍDO EN COMBATE"
+			label_titulo.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0))
+			label_titulo.add_theme_color_override("font_outline_color", Color(0.88, 0.11, 0.28, 1.0))
+		if label_motivo != null:
+			label_motivo.text = "💀 " + ("Tus fuerzas sucumbieron ante la horda del coliseo." if motivo == "" else ("Motivo: " + motivo))
+			label_motivo.add_theme_color_override("font_color", Color(0.99, 0.64, 0.68, 1.0))
+		if btn_reintentar != null:
+			btn_reintentar.text = "⚔️ Comenzar Siguiente Run"
 		
 	# Recopilar métricas analíticas de la partida
 	var pj = get_tree().get_first_node_in_group("jugador")
@@ -90,12 +113,18 @@ func mostrar(es_victoria: bool, motivo: String = ""):
 	var min = int(tiempo_s) / 60
 	var seg = int(tiempo_s) % 60
 	
-	label_tiempo.text = "%02d:%02d min" % [min, seg]
-	label_clicks.text = "+%d clics" % clicks_cnt
-	label_bajas.text = "%d enemigos" % bajas_cnt
-	label_nivel.text = "%s (Nv. %d)" % [clase_str, nivel_num]
-	label_oro.text = "+%d monedas" % oro_cnt
-	label_intento.text = "#%d" % num_intento
+	if label_tiempo != null:
+		label_tiempo.text = "%02d:%02d min" % [min, seg]
+	if label_clicks != null:
+		label_clicks.text = "+%d clics" % clicks_cnt
+	if label_bajas != null:
+		label_bajas.text = "%d enemigos" % bajas_cnt
+	if label_nivel != null:
+		label_nivel.text = "%s (Nv. %d)" % [clase_str, nivel_num]
+	if label_oro != null:
+		label_oro.text = "+%d monedas" % oro_cnt
+	if label_intento != null:
+		label_intento.text = "#%d" % num_intento
 	
 	# Metaprogresión Roguelike: depositar ganancias de la run en la cuenta permanente
 	if not _recursos_transferidos:
@@ -104,17 +133,20 @@ func mostrar(es_victoria: bool, motivo: String = ""):
 		
 	_actualizar_labels_banco()
 	
-	# Efecto de entrada con Tween
-	panel_fondo.scale = Vector3.ZERO if panel_fondo is Node3D else Vector2(0.8, 0.8)
-	var tw = create_tween()
-	tw.tween_property(panel_fondo, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	# Efecto de entrada con Tween fluido y pulso
+	if panel_fondo != null:
+		panel_fondo.scale = Vector2(0.85, 0.85)
+		panel_fondo.modulate = Color(1, 1, 1, 0)
+		var tw = create_tween().set_parallel(true)
+		tw.tween_property(panel_fondo, "scale", Vector2.ONE, 0.38).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(panel_fondo, "modulate", Color.WHITE, 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 func _actualizar_labels_banco():
 	MetaprogresoManager.asegurar_inicializado()
 	if label_banco != null:
-		label_banco.text = "%d 🪙 Oro | %d ⚡ Clics" % [MetaprogresoManager.oro_banco, MetaprogresoManager.clics_banco]
+		label_banco.text = "%d 🧪 Isótopos | %d ⚡ Clics" % [MetaprogresoManager.oro_banco, MetaprogresoManager.clics_banco]
 	if btn_arbol_meta != null:
-		btn_arbol_meta.text = "🌳 ÁRBOL DE HABILIDADES (MEJORAR GLADIADOR) · %d 🪙 | %d ⚡" % [MetaprogresoManager.oro_banco, MetaprogresoManager.clics_banco]
+		btn_arbol_meta.text = "☢️ MATRIZ DE BIOCONTENCIÓN (MEJORAS DEL REACTOR) · %d 🧪 | %d ⚡" % [MetaprogresoManager.oro_banco, MetaprogresoManager.clics_banco]
 
 func _on_btn_arbol_meta_pressed():
 	AudioManager.play("click", 1.2)
@@ -134,11 +166,14 @@ func _on_arbol_cerrado():
 
 func _on_btn_reintentar_pressed():
 	AudioManager.play("click", 1.2)
-	get_tree().paused = false
-	var partida = get_tree().get_first_node_in_group("partida")
-	if partida != null and "intentos" in partida:
-		partida.intentos += 1
-	get_tree().reload_current_scene()
+	if is_inside_tree() and get_tree() != null:
+		get_tree().paused = false
+		var partida = get_tree().get_first_node_in_group("partida")
+		if partida != null and "intentos" in partida:
+			partida.intentos += 1
+		get_tree().reload_current_scene()
 
 func _on_btn_salir_pressed():
-	get_tree().quit()
+	AudioManager.play("click", 1.2)
+	if is_inside_tree() and get_tree() != null:
+		get_tree().quit()

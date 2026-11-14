@@ -3,20 +3,21 @@ extends Node3D
 class_name EvolucionRadial
 
 ## EvolucionRadial (Controlador 3D In-World a los pies del Personaje)
-## Administra el Sprite3D con SubViewport sobre el suelo para desplegar el anillo rúnico,
-## proyecta la posición del ratón al plano del suelo, procesa el stick del gamepad,
+## Administra el Sprite3D sobre el suelo para desplegar el anillo rúnico (Diseño 3),
+## procesa EXCLUSIVAMENTE la posición del cursor del ratón (independiente del movimiento con WASD),
 ## proyecta el tooltip 2D flotante en CanvasLayer al lado del personaje con cola triangular,
 ## emite señales de preview y confirmación, y anima aperturas / cierres con Tween.
 
 signal evolucion_seleccionada(nombre_clase: String)
 signal clase_preview_cambiada(nombre_clase: String)
 
-@export var radio_activacion_min: float = 0.50 # Distancia mínima al centro para considerar apuntado
-@export var radio_activacion_max: float = 1.95 # Distancia máxima al centro
-@export var altura_suelo_offset: float = 0.06 # Elevación sobre el piso de la arena (el altar está en Y=0.03)
+# Radios calibrados a la escala real del anillo en metros (RADIO_INTERIOR: 135px, RADIO_EXTERIOR: 250px * 0.0055)
+@export var radio_activacion_min: float = 0.68 # Distancia mínima al centro (margen limpio que no intersecta al héroe)
+@export var radio_activacion_max: float = 1.50 # Distancia máxima al centro (borde exterior con margen justo)
+@export var altura_suelo_offset: float = 0.025 # A ras de suelo sobre la arena (bajo las suelas del héroe)
 @export var escala_abierto: Vector3 = Vector3(1.0, 1.0, 1.0)
 
-const COOLDOWN_CONFIRMACION: float = 0.40 # Previene auto-confirmación por clics rápidos de combate
+const COOLDOWN_CONFIRMACION: float = 0.40 # Previene auto-confirmación por clics residuales de combate
 
 @onready var sprite_radial: Sprite3D = $Sprite3D
 @onready var subviewport: SubViewport = $SubViewport
@@ -48,6 +49,8 @@ func _ready():
 	if tooltip_flotante != null:
 		tooltip_flotante.visible = false
 		tooltip_flotante.modulate.a = 0.0
+		if not tooltip_flotante.gui_input.is_connected(_on_tooltip_gui_input):
+			tooltip_flotante.gui_input.connect(_on_tooltip_gui_input)
 		
 	if dibujador_cola != null and dibujador_cola.has_method("ocultar"):
 		dibujador_cola.ocultar()
@@ -129,41 +132,36 @@ func _process(delta: float):
 		global_position = personaje_padre.global_position + Vector3(0, altura_suelo_offset, 0)
 		global_rotation = Vector3.ZERO
 		
-	_procesar_input_direccion()
+	_procesar_input_mouse()
 	_actualizar_posicion_tooltip_2d()
 
-func _unhandled_input(event: InputEvent):
+## Clics globales: intercepta el clic para confirmar la evolución si y solo si el ratón apunta al anillo
+func _input(event: InputEvent):
 	if not activo:
 		return
 		
-	# Bloquear confirmaciones residuales de combate en los primeros 0.40s de apertura
+	# Bloquear confirmaciones residuales de combate durante la animación de apertura
 	if _tiempo_abierto < COOLDOWN_CONFIRMACION:
 		return
 		
-	if event is InputEventMouseButton and event.pressed:
-		if event.button_index == MOUSE_BUTTON_LEFT:
-			# Solo confirma si el ratón está REALMENTE sobre uno de los 3 sectores del anillo
-			if _cursor_sobre_anillo and control_radial != null and control_radial.clase_seleccionada != "":
-				confirmar_evolucion(control_radial.clase_seleccionada)
-				get_viewport().set_input_as_handled()
-				
-	elif event.is_action_pressed("ui_accept"):
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if _cursor_sobre_anillo and control_radial != null and control_radial.clase_seleccionada != "":
+			confirmar_evolucion(control_radial.clase_seleccionada)
+			get_viewport().set_input_as_handled()
+
+## Permite también hacer clic directo sobre el tooltip flotante que dice [Clic para evolucionar]
+func _on_tooltip_gui_input(event: InputEvent):
+	if not activo or _tiempo_abierto < COOLDOWN_CONFIRMACION:
+		return
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		if control_radial != null and control_radial.clase_seleccionada != "":
 			confirmar_evolucion(control_radial.clase_seleccionada)
 			get_viewport().set_input_as_handled()
 
-func _procesar_input_direccion():
-	# 1. Stick del mando (controlador analógico)
-	var stick = Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	if stick.length() > 0.35:
-		_cursor_sobre_anillo = true
-		var ang_rad = atan2(-stick.y, stick.x)
-		var ang_deg = fposmod(rad_to_deg(ang_rad), 360.0)
-		if control_radial != null:
-			control_radial.actualizar_por_angulo(ang_deg)
-		return
-		
-	# 2. Entrada de Mouse (Raycasting al plano del suelo del personaje)
+## Selección 100% EXCLUSIVA POR MOUSE:
+## No se lee ningún eje de teclado (WASD) ni joystick de movimiento para que el jugador pueda
+## desplazarse libremente sin que la dirección de carrera bloquee o cambie la clase elegida.
+func _procesar_input_mouse():
 	if get_viewport() == null:
 		return
 	if camara_3d == null or not is_instance_valid(camara_3d):
@@ -171,29 +169,33 @@ func _procesar_input_direccion():
 		if camara_3d == null:
 			return
 			
+	var pj_pos = personaje_padre.global_position if (personaje_padre != null and is_instance_valid(personaje_padre)) else global_position
+	var plano_y = pj_pos.y
+	
 	var mouse_screen = get_viewport().get_mouse_position()
 	var ray_orig = camara_3d.project_ray_origin(mouse_screen)
 	var ray_norm = camara_3d.project_ray_normal(mouse_screen)
 	
 	if abs(ray_norm.y) > 0.0001:
-		var d = (global_position.y - ray_orig.y) / ray_norm.y
-		var hit_world = ray_orig + ray_norm * d
-		var offset_local = hit_world - global_position
-		
-		# Distancia al centro en el plano XZ
-		var dist_suelo = Vector2(offset_local.x, offset_local.z).length()
-		
-		# El cursor debe estar estrictamente dentro del radio del anillo
-		if dist_suelo >= radio_activacion_min and dist_suelo <= radio_activacion_max:
-			_cursor_sobre_anillo = true
-			var ang_rad = atan2(-offset_local.z, offset_local.x)
-			var ang_deg = fposmod(rad_to_deg(ang_rad), 360.0)
-			if control_radial != null:
-				control_radial.actualizar_por_angulo(ang_deg)
-		else:
-			_cursor_sobre_anillo = false
-			if control_radial != null and stick.length() <= 0.2:
-				control_radial.deseleccionar()
+		var d = (plano_y - ray_orig.y) / ray_norm.y
+		if d > 0.0:
+			var hit_world = ray_orig + ray_norm * d
+			var offset_local = hit_world - pj_pos
+			
+			# Distancia euclídea al centro en el plano del suelo XZ
+			var dist_suelo = Vector2(offset_local.x, offset_local.z).length()
+			
+			# El cursor debe estar estrictamente dentro del grosor del anillo rúnico
+			if dist_suelo >= radio_activacion_min and dist_suelo <= radio_activacion_max:
+				_cursor_sobre_anillo = true
+				var ang_rad = atan2(-offset_local.z, offset_local.x)
+				var ang_deg = fposmod(rad_to_deg(ang_rad), 360.0)
+				if control_radial != null:
+					control_radial.actualizar_por_angulo(ang_deg)
+			else:
+				_cursor_sobre_anillo = false
+				if control_radial != null and control_radial.clase_seleccionada != "":
+					control_radial.deseleccionar()
 
 func _on_clase_resaltada(nombre_clase: String):
 	emit_signal("clase_preview_cambiada", nombre_clase)
@@ -245,20 +247,20 @@ func _actualizar_posicion_tooltip_2d():
 		if camara_3d == null:
 			return
 			
-	var pj_pos = personaje_padre.global_position if personaje_padre != null else global_position
+	var pj_pos = personaje_padre.global_position if (personaje_padre != null and is_instance_valid(personaje_padre)) else global_position
 	
 	# Calcular la posición 3D del sector activo en el suelo
 	var sector_offset_3d = Vector3.ZERO
 	match control_radial.clase_seleccionada:
 		"Mago":
 			# Al frente (hacia la cámara, +Z)
-			sector_offset_3d = Vector3(0.0, 0.0, 1.15)
+			sector_offset_3d = Vector3(0.0, 0.0, 1.06)
 		"Guerrero":
 			# A la izquierda y atrás (-X, -Z)
-			sector_offset_3d = Vector3(-1.0, 0.0, -0.58)
+			sector_offset_3d = Vector3(-0.92, 0.0, -0.53)
 		"Cazador":
 			# A la derecha y atrás (+X, -Z)
-			sector_offset_3d = Vector3(1.0, 0.0, -0.58)
+			sector_offset_3d = Vector3(0.92, 0.0, -0.53)
 			
 	var pos_sector_3d = pj_pos + sector_offset_3d
 	_pos_pantalla_sector = camara_3d.unproject_position(pos_sector_3d)

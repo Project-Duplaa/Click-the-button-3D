@@ -21,6 +21,9 @@ var vida: float = 55.0
 var estado: Estado = Estado.PERSEGUIR
 var jugador: Node3D = null
 
+var tiene_escudo_runico: bool = true
+var _reloj_escudo_roto: float = 0.0
+
 var _reloj_cooldown_carga: float = 2.0
 var _reloj_estado: float = 0.0
 var _dir_carga: Vector3 = Vector3.FORWARD
@@ -46,6 +49,9 @@ func _ready():
 func _physics_process(delta):
 	if not is_on_floor():
 		velocity += get_gravity() * delta
+		
+	if _reloj_escudo_roto > 0.0:
+		_reloj_escudo_roto -= delta
 		
 	_reloj_cooldown_carga = maxf(_reloj_cooldown_carga - delta, 0.0)
 	
@@ -153,7 +159,28 @@ func _finalizar_carga_aturdido():
 	if linea_carga != null:
 		linea_carga.visible = false
 
+func desactivar_escudo_runico(duracion: float = 7.0):
+	_reloj_escudo_roto = duracion
+	var escena_num = load("res://damage_number_3d.tscn")
+	if escena_num != null:
+		var n = escena_num.instantiate()
+		var pos_num = global_position + Vector3(0, 2.4, 0)
+		get_parent().add_child(n)
+		n.global_position = pos_num
+		n.iniciar(0, true, false, "¡ESCUDO ROTO! ⚡")
+
 func recibir_dano(cantidad: float, es_critico: bool = false):
+	# Mitigación del 60% si el escudo rúnico está activo
+	if tiene_escudo_runico and _reloj_escudo_roto <= 0.0:
+		cantidad *= 0.40
+		var escena_esc = load("res://damage_number_3d.tscn")
+		if escena_esc != null:
+			var n = escena_esc.instantiate()
+			var pos_num = global_position + Vector3(0, 2.4, 0)
+			get_parent().add_child(n)
+			n.global_position = pos_num
+			n.iniciar(0, false, false, "🛡️ ESCUDO RÚNICO")
+
 	vida -= cantidad
 	
 	# Shudder de golpe

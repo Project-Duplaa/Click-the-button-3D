@@ -1,11 +1,11 @@
-[gd_scene format=3]
+[gd_scene load_steps=13 format=3 uid="uid://cbotonmovil3d"]
 
 [ext_resource type="Script" path="res://boton_movil.gd" id="1_boton"]
 [ext_resource type="PackedScene" path="res://assets/modelos/mobile_core_drone.glb" id="2_drone"]
 
 [sub_resource type="CylinderShape3D" id="ColBoton"]
-height = 1.2
-radius = 1.2
+height = 1.4
+radius = 1.35
 
 [sub_resource type="StandardMaterial3D" id="MatBotonCyan"]
 albedo_color = Color(0.1, 0.95, 1, 1)
@@ -31,11 +31,35 @@ material = SubResource("MatAnilloCyan")
 inner_radius = 0.48
 outer_radius = 0.58
 
+[sub_resource type="StandardMaterial3D" id="MatCadena"]
+albedo_color = Color(0.95, 0.22, 0.15, 1)
+roughness = 0.3
+emission_enabled = true
+emission = Color(1, 0.18, 0.1, 1)
+emission_energy_multiplier = 3.5
+
+[sub_resource type="TorusMesh" id="MeshCadenaAnillo"]
+material = SubResource("MatCadena")
+inner_radius = 0.68
+outer_radius = 0.78
+
+[sub_resource type="StandardMaterial3D" id="MatCandado"]
+albedo_color = Color(0.85, 0.15, 0.15, 1)
+metallic = 0.85
+roughness = 0.25
+emission_enabled = true
+emission = Color(0.9, 0.15, 0.1, 1)
+emission_energy_multiplier = 2.0
+
+[sub_resource type="BoxMesh" id="MeshCandado"]
+material = SubResource("MatCandado")
+size = Vector3(0.28, 0.32, 0.16)
+
 [node name="BotonMovil" type="Area3D"]
 script = ExtResource("1_boton")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0)
 shape = SubResource("ColBoton")
 
 [node name="Pedestal" type="Node3D" parent="."]
@@ -57,3 +81,22 @@ light_color = Color(0.12, 0.92, 1, 1)
 light_energy = 2.8
 omni_range = 6.5
 omni_attenuation = 1.2
+
+[node name="CadenasContencion" type="Node3D" parent="."]
+visible = false
+
+[node name="Cadena1" type="MeshInstance3D" parent="CadenasContencion"]
+transform = Transform3D(0.707107, -0.707107, 0, 0.707107, 0.707107, 0, 0, 0, 1, 0, 0.85, 0)
+mesh = SubResource("MeshCadenaAnillo")
+
+[node name="Cadena2" type="MeshInstance3D" parent="CadenasContencion"]
+transform = Transform3D(0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 0, 0, 1, 0, 0.85, 0)
+mesh = SubResource("MeshCadenaAnillo")
+
+[node name="Cadena3" type="MeshInstance3D" parent="CadenasContencion"]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0.85, 0)
+mesh = SubResource("MeshCadenaAnillo")
+
+[node name="CandadoVisual" type="MeshInstance3D" parent="CadenasContencion"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.48, 0)
+mesh = SubResource("MeshCandado")

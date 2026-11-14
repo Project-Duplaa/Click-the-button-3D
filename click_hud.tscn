@@ -369,7 +369,7 @@ theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.95)
 theme_override_constants/shadow_offset_x = 1
 theme_override_constants/shadow_offset_y = 1
 theme_override_font_sizes/font_size = 13
-text = "Vidas: 3/3"
+text = "Vidas: 1/1"
 
 [node name="HBoxCorazones" type="HBoxContainer" parent="Control/BarraSuperior/ContenedorVidas"]
 layout_mode = 2
@@ -384,6 +384,7 @@ expand_mode = 1
 stretch_mode = 5
 
 [node name="Corazon2" type="TextureRect" parent="Control/BarraSuperior/ContenedorVidas/HBoxCorazones"]
+visible = false
 custom_minimum_size = Vector2(20, 20)
 layout_mode = 2
 mouse_filter = 2
@@ -392,6 +393,7 @@ expand_mode = 1
 stretch_mode = 5
 
 [node name="Corazon3" type="TextureRect" parent="Control/BarraSuperior/ContenedorVidas/HBoxCorazones"]
+visible = false
 custom_minimum_size = Vector2(20, 20)
 layout_mode = 2
 mouse_filter = 2

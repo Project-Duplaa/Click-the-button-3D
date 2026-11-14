@@ -13,9 +13,9 @@ signal clase_confirmada(nombre_clase: String)
 const TAMANO_VIEWPORT: Vector2 = Vector2(768.0, 768.0)
 const CENTRO: Vector2 = Vector2(384.0, 384.0)
 
-const RADIO_INTERIOR: float = 110.0
-const RADIO_EXTERIOR: float = 230.0
-const RADIO_ICONOS: float = 170.0
+const RADIO_INTERIOR: float = 135.0
+const RADIO_EXTERIOR: float = 250.0
+const RADIO_ICONOS: float = 192.5
 const GAP_ANGULAR_DEG: float = 7.0 # Separación entre sectores
 
 # Colores fieles a la imagen de referencia

@@ -190,9 +190,6 @@ transform = Transform3D(-2.6, 0, 0, 0, 2.6, 0, 0, 0, -2.6, 0, 0, 0)
 script = ExtResource("8_salud")
 reapariciones = 2
 
-[node name="Guardia" parent="." unique_id=1185367294 instance=ExtResource("4_guardia")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 6)
-
 [node name="Partida" type="Node" parent="." unique_id=122288285]
 script = ExtResource("7_partida")
 tiempo_limite = 900.0

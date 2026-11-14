@@ -22,13 +22,77 @@ var hud: Node = null
 
 var _mini_jefe_spawned: bool = false
 var _parca_spawned: bool = false
+var clicks_totales: int = 0
+var partida_iniciada: bool = false
 
 func _ready():
 	hud = get_parent().get_node_or_null("ClickHUD")
-	# Generar una primera horda inicial de calentamiento
-	call_deferred("_generar_oleada", 1)
+	var boton = get_parent().get_node_or_null("BotonMovil")
+	if boton != null:
+		boton.click_presionado.connect(_on_click_boton_presionado)
+	# NO se generan enemigos al iniciar hasta que el jugador pulse el botón móvil
+	print("⏳ [OleadasSpawner] Arena en calma. Esperando el primer clic al botón para iniciar la partida.")
+
+func _on_click_boton_presionado(total_clicks: int):
+	clicks_totales = total_clicks
+	
+	# La partida no inicia ni spawnea enemigos hasta que le den al botón
+	if not partida_iniciada:
+		partida_iniciada = true
+		print("⚔️ [OleadasSpawner] ¡PRIMER CLIC AL BOTÓN RECIBIDO! ¡INICIANDO OLEADA 1! ⚔️")
+		AudioManager.play("alerta_oleada", 1.25, 2.0)
+		_generar_oleada(1)
+		return
+	
+	# 1. Acelerar el reloj de la próxima oleada (cada clic atrae antes a la horda)
+	_reloj_oleada = maxf(_reloj_oleada - 0.65, 1.5)
+	
+	# 2. Despertar anticipado del Mini-Jefe Gladiador a los 25 clics
+	if clicks_totales >= 25 and not _mini_jefe_spawned:
+		print(">>> [OleadasSpawner] ¡SOBRECARGA DE 25 CLICS! DESPERTANDO MINI-JEFE ANTICIPADO <<<")
+		spawn_mini_jefe()
+		
+	# 3. Despertar de la Parca Roja por sobrecarga masiva a los 70 clics
+	if clicks_totales >= 70 and not _parca_spawned:
+		print(">>> [OleadasSpawner] ¡MASA CRÍTICA DE CLICS (70)! LA PARCA ROJA HA SIDO INVOCADA <<<")
+		spawn_parca_roja()
+		
+	# 4. Incursión de Asalto Inmediata cada 10 clics (pico táctico de dificultad)
+	if clicks_totales % 10 == 0:
+		_disparar_incursion_asalto(clicks_totales)
+		
+	# 5. Enfurecer gradualmente a los enemigos activos en la arena
+	if clicks_totales % 4 == 0:
+		var enemigos = get_tree().get_nodes_in_group("enemigos")
+		for e in enemigos:
+			if e != null and is_instance_valid(e) and "rapidez" in e:
+				e.rapidez = minf(e.rapidez * 1.02, 7.2)
+
+func _disparar_incursion_asalto(clicks: int):
+	AudioManager.play("alerta_oleada", 1.35, 2.0)
+	print("🚨 [OleadasSpawner] ¡INCURSIÓN DE ASALTO POR CLICS (%d)! 🚨" % clicks)
+	
+	var extra_vida = clicks * 1.5
+	if clicks <= 10:
+		for i in range(2): _spawn_enemigo(espectro_escena, extra_vida)
+		_spawn_enemigo(guardia_escena, extra_vida)
+	elif clicks <= 20:
+		for i in range(2): _spawn_enemigo(berserker_escena, extra_vida)
+		for i in range(2): _spawn_enemigo(kamikaze_escena, extra_vida * 0.5)
+	elif clicks <= 30:
+		_spawn_enemigo(bruto_escena, extra_vida * 1.4)
+		for i in range(2): _spawn_enemigo(arquero_escena, extra_vida * 0.8)
+		for i in range(3): _spawn_enemigo(espectro_escena, extra_vida)
+	else:
+		_spawn_enemigo(bruto_escena, extra_vida * 1.6)
+		for i in range(2): _spawn_enemigo(berserker_escena, extra_vida)
+		for i in range(3): _spawn_enemigo(kamikaze_escena, extra_vida * 0.6)
+		for i in range(4): _spawn_enemigo(espectro_escena, extra_vida)
 
 func _process(delta):
+	if not partida_iniciada:
+		return
+		
 	_tiempo_transcurrido += delta
 	_reloj_oleada -= delta
 	
@@ -77,25 +141,24 @@ func _generar_oleada(num: int):
 		spawn_parca_roja()
 	
 	if num == 1:
-		# Fase 1: Calentamiento de espectros (6)
-		for i in range(6):
+		# Fase 1: Arranque lento e íntimo (2 espectros) para forzar farmeo con el botón móvil
+		for i in range(2):
 			_spawn_enemigo(espectro_escena, 0.0)
 	elif num == 2:
-		# Fase 1b: Espectros + primer contacto de infantería
-		for i in range(7):
-			_spawn_enemigo(espectro_escena, 0.0)
-		for i in range(2):
-			_spawn_enemigo(guardia_escena, 0.0)
-	elif num == 3:
-		# Fase 2: Introducción táctica de Arqueros y Kamikazes explosivos
-		for i in range(2):
-			_spawn_enemigo(arquero_escena, 0.0)
-		for i in range(2):
-			_spawn_enemigo(kamikaze_escena, 0.0)
+		# Fase 1b: Primer desafío táctico (3 espectros + 1 guardia)
 		for i in range(3):
-			_spawn_enemigo(guardia_escena, 4.0)
-		for i in range(5):
-			_spawn_enemigo(espectro_escena, 2.0)
+			_spawn_enemigo(espectro_escena, 0.0)
+		_spawn_enemigo(guardia_escena, 0.0)
+	elif num == 3:
+		# Fase 2: Introducción táctica (Evolución in-world desbloqueada)
+		for i in range(1):
+			_spawn_enemigo(arquero_escena, 0.0)
+		for i in range(1):
+			_spawn_enemigo(kamikaze_escena, 0.0)
+		for i in range(2):
+			_spawn_enemigo(guardia_escena, 2.0)
+		for i in range(4):
+			_spawn_enemigo(espectro_escena, 0.0)
 	elif num == 4:
 		# Fase 2b: Entrada del temible Berserker con carga furiosa
 		_spawn_enemigo(berserker_escena, 0.0)
@@ -164,6 +227,16 @@ func _spawn_enemigo(escena: PackedScene, vida_extra: float):
 	var enemigo = escena.instantiate()
 	get_parent().add_child(enemigo)
 	enemigo.global_position = pos
+	
+	# Escalado incremental de dificultad por clics
+	var extra_por_clicks = float(clicks_totales) * 1.25
 	if "vida_maxima" in enemigo:
-		enemigo.vida_maxima += vida_extra
+		enemigo.vida_maxima += (vida_extra + extra_por_clicks)
 		enemigo.vida = enemigo.vida_maxima
+		
+	if "dano_ataque" in enemigo:
+		enemigo.dano_ataque *= (1.0 + float(clicks_totales) * 0.012) # +1.2% por clic acumulado
+		
+	if "rapidez" in enemigo:
+		var mult_vel = clampf(1.0 + (float(clicks_totales) * 0.005), 1.0, 1.40) # hasta +40% de velocidad
+		enemigo.rapidez *= mult_vel

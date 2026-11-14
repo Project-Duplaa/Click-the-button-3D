@@ -5,7 +5,7 @@ signal sin_vida
 
 @export var vida = 120
 @export var invulnerable = 1.5
-@export var reapariciones = 2
+@export var reapariciones = 0
 @export var espera_reaparecer = 1.5
 
 var reloj = 0.0
@@ -56,4 +56,8 @@ func _al_quedar_sin_vida():
 		
 	var partida = get_tree().get_first_node_in_group("partida")
 	if partida != null:
-		partida.perder("Agotaste tus 3 vidas en combate")
+		var max_v = (pj.obtener_vidas_maximas() if (pj != null and pj.has_method("obtener_vidas_maximas")) else 1)
+		if max_v == 1:
+			partida.perder("Caíste en combate (1 vida)")
+		else:
+			partida.perder("Agotaste tus %d vidas en combate" % max_v)

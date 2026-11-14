@@ -11,6 +11,10 @@ var jugador: Node3D = null
 var _reloj_ataque: float = 0.0
 var _escala_base: Vector3 = Vector3(3.8, 3.8, 3.8)
 
+# Escudo Rúnico (Obliga a pulsar el botón móvil para quebrarlo)
+var tiene_escudo_runico: bool = true
+var _reloj_escudo_roto: float = 0.0
+
 @onready var anim = $Modelo/AnimationPlayer
 @onready var modelo = $Modelo
 
@@ -23,6 +27,8 @@ func _ready():
 func _physics_process(delta):
 	velocity += get_gravity() * delta
 	_reloj_ataque = maxf(_reloj_ataque - delta, 0.0)
+	if _reloj_escudo_roto > 0.0:
+		_reloj_escudo_roto -= delta
 	
 	if jugador == null:
 		jugador = get_tree().get_first_node_in_group("jugador")
@@ -47,8 +53,12 @@ func ir_a(destino: Vector3):
 	hacia.y = 0.0
 	if hacia.length_squared() > 0.01:
 		var dir = hacia.normalized()
-		velocity.x = dir.x * rapidez
-		velocity.z = dir.z * rapidez
+		var mult_colapso = 1.0
+		var b_movil = get_tree().get_first_node_in_group("boton_movil")
+		if b_movil != null and "en_colapso" in b_movil and b_movil.en_colapso:
+			mult_colapso = 1.30
+		velocity.x = dir.x * rapidez * mult_colapso
+		velocity.z = dir.z * rapidez * mult_colapso
 		basis = Basis.looking_at(dir)
 		if anim != null and anim.has_animation("walk"):
 			anim.play("walk")
@@ -70,7 +80,16 @@ func _golpe_contundente():
 		elif jugador.has_node("Salud"):
 			jugador.get_node("Salud").recibir_golpe(int(dano_ataque))
 
+func desactivar_escudo_runico(duracion: float = 7.0):
+	_reloj_escudo_roto = duracion
+	_spawn_damage_number(0, true, "¡ESCUDO ROTO! ⚡")
+
 func recibir_dano(cantidad: float, es_critico: bool = false):
+	# Mitigación del 80% si el escudo rúnico está activo
+	if tiene_escudo_runico and _reloj_escudo_roto <= 0.0:
+		cantidad *= 0.20
+		_spawn_damage_number(0, false, "🛡️ ESCUDO RÚNICO")
+	
 	vida -= cantidad
 	
 	# Shudder de impacto pesado
@@ -85,14 +104,14 @@ func recibir_dano(cantidad: float, es_critico: bool = false):
 	if vida <= 0.0:
 		morir()
 
-func _spawn_damage_number(cantidad: float, es_critico: bool):
+func _spawn_damage_number(cantidad: float, es_critico: bool, texto_custom: String = ""):
 	var escena = load("res://damage_number_3d.tscn")
 	if escena != null:
 		var num = escena.instantiate()
 		var pos_num = global_position + Vector3(randf_range(-0.3, 0.3), 2.8, randf_range(-0.3, 0.3))
 		get_parent().add_child(num)
 		num.global_position = pos_num
-		num.iniciar(cantidad, es_critico, false)
+		num.iniciar(cantidad, es_critico, false, texto_custom)
 
 func morir():
 	# El Bruto arroja un cofre o múltiples recompensas de alto valor

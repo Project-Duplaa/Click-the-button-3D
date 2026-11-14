@@ -16,7 +16,7 @@ var _reloj_flotacion: float = 0.0
 
 @onready var runa_cristal: MeshInstance3D = $Pedestal/RunaCristal
 @onready var luz_runa: OmniLight3D = $Pedestal/LuzRuna
-@onready var columna_mesh: MeshInstance3D = $Pedestal/Columna
+@onready var columna_mesh: MeshInstance3D = get_node_or_null("Pedestal/Columna")
 
 func _ready():
 	add_to_group("altares_runicos")

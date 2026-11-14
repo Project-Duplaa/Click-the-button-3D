@@ -15,8 +15,16 @@ signal metamorfosis_disponible()
 signal clase_evolucionada(nombre_clase: String, stats: Dictionary)
 signal malla_cambiada(nuevo_modelo: Node3D)
 
-const HITO_NIVEL: int = 3
-const HITO_CLICS: int = 15
+# Requisitos de Metamorfosis (Calibrados para alcanzarse tras superar el juego inicial, ~minuto 2 a 3)
+@export var hito_nivel: int = 5
+@export var hito_clics: int = 25
+@export var hito_bajas: int = 15
+@export var requiere_todos_los_hitos: bool = true
+
+# Constantes de compatibilidad
+const HITO_NIVEL: int = 5
+const HITO_CLICS: int = 25
+const HITO_BAJAS: int = 15
 
 const MALLAS_CLASE = {
 	"Novato": "res://personaje/character-male-a.glb",
@@ -100,13 +108,23 @@ func _vincular_eventos_externos():
 		if not boton.click_presionado.is_connected(_on_boton_movil_click):
 			boton.click_presionado.connect(_on_boton_movil_click)
 
-func _on_boton_movil_click(_total_clicks: int):
-	registrar_click()
+func _on_boton_movil_click(total_clicks: int):
+	# Sincronización exacta con el contador oficial de clics de boton_movil (evita conteo doble)
+	total_clics_acumulados = total_clicks
+	_evaluar_hito_evolucion()
 
 func registrar_click():
 	if estado_actual != EstadoFSM.NOVATO:
 		return
-	total_clics_acumulados += 1
+	var tree = _obtener_tree()
+	if tree != null:
+		var b = tree.get_first_node_in_group("boton_movil")
+		if b != null and "total_clicks" in b:
+			total_clics_acumulados = b.total_clicks
+		else:
+			total_clics_acumulados += 1
+	else:
+		total_clics_acumulados += 1
 	_evaluar_hito_evolucion()
 
 func notificar_nivel(_nuevo_nivel: int):
@@ -114,12 +132,43 @@ func notificar_nivel(_nuevo_nivel: int):
 		return
 	_evaluar_hito_evolucion()
 
+func notificar_baja():
+	if estado_actual != EstadoFSM.NOVATO:
+		return
+	_evaluar_hito_evolucion()
+
+func puede_evolucionar() -> bool:
+	if estado_actual != EstadoFSM.NOVATO:
+		return false
+	var nivel_actual = personaje_ref.nivel if personaje_ref != null else 1
+	var bajas_actuales = personaje_ref.bajas if personaje_ref != null else 0
+	
+	if requiere_todos_los_hitos:
+		# Requiere maestría en combate (nivel y bajas) Y en interacción con el núcleo (clics)
+		return (nivel_actual >= hito_nivel 
+			and total_clics_acumulados >= hito_clics 
+			and bajas_actuales >= hito_bajas)
+	else:
+		return (nivel_actual >= hito_nivel or total_clics_acumulados >= hito_clics)
+
+func obtener_texto_progreso_evolucion() -> String:
+	if estado_actual != EstadoFSM.NOVATO:
+		return ""
+	var nivel_actual = personaje_ref.nivel if personaje_ref != null else 1
+	var bajas_actuales = personaje_ref.bajas if personaje_ref != null else 0
+	if puede_evolucionar():
+		return "¡METAMORFOSIS DISPONIBLE!"
+	return "Metamorfosis: Nv.%d/%d · Clics:%d/%d · Bajas:%d/%d" % [
+		nivel_actual, hito_nivel,
+		total_clics_acumulados, hito_clics,
+		bajas_actuales, hito_bajas
+	]
+
 func _evaluar_hito_evolucion():
 	if estado_actual != EstadoFSM.NOVATO:
 		return
 	
-	var nivel_actual = personaje_ref.nivel if personaje_ref != null else 1
-	if nivel_actual >= HITO_NIVEL or total_clics_acumulados >= HITO_CLICS:
+	if puede_evolucionar():
 		disparar_metamorfosis()
 
 func disparar_metamorfosis():
@@ -128,10 +177,16 @@ func disparar_metamorfosis():
 	
 	estado_actual = EstadoFSM.DISPONIBLE
 	emit_signal("metamorfosis_disponible")
-	print("⚡ [FSM Evolución] ¡Hito alcanzado! (Nivel %d, Clics %d). Metamorfosis disponible." % [
-		personaje_ref.nivel if personaje_ref != null else 1,
-		total_clics_acumulados
+	print("⚡ [FSM Evolución] ¡Hito alcanzado! (Nivel %d/%d, Clics %d/%d, Bajas %d/%d). Metamorfosis disponible." % [
+		personaje_ref.nivel if personaje_ref != null else 1, hito_nivel,
+		total_clics_acumulados, hito_clics,
+		personaje_ref.bajas if personaje_ref != null else 0, hito_bajas
 	])
+	
+	AudioManager.play("altar_activado", 1.25, 2.0)
+	if personaje_ref != null and personaje_ref.has_method("_spawn_texto_3d"):
+		personaje_ref._spawn_texto_3d("✨ ¡METAMORFOSIS HEROICA DESBLOQUEADA!", Color(1.0, 0.85, 0.2))
+		
 	abrir_modal_evolucion()
 
 func abrir_modal_evolucion():

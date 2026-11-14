@@ -1,6 +1,162 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=18 format=3 uid="uid://ci80g87jhyu5m"]
 
 [ext_resource type="Script" path="res://pantalla_fin_partida.gd" id="1_fin"]
+[ext_resource type="Texture2D" path="res://ui_assets/icon_skull_hades.svg" id="2_skull"]
+[ext_resource type="Texture2D" path="res://ui_assets/icon_time_hades.svg" id="3_time"]
+[ext_resource type="Texture2D" path="res://ui_assets/icon_clicks_hades.svg" id="4_clicks"]
+[ext_resource type="Texture2D" path="res://ui_assets/icon_kills_hades.svg" id="5_kills"]
+[ext_resource type="Texture2D" path="res://ui_assets/icon_class_hades.svg" id="6_class"]
+[ext_resource type="Texture2D" path="res://ui_assets/icon_gold_hades.svg" id="7_gold"]
+[ext_resource type="Texture2D" path="res://ui_assets/icon_attempt_hades.svg" id="8_attempt"]
+[ext_resource type="Texture2D" path="res://ui_assets/icon_vault_hades.svg" id="9_vault"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fondo"]
+bg_color = Color(0.065, 0.038, 0.105, 0.97)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.957, 0.247, 0.369, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_color = Color(0.957, 0.247, 0.369, 0.35)
+shadow_size = 28
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_motivo"]
+bg_color = Color(0.957, 0.247, 0.369, 0.15)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.957, 0.247, 0.369, 0.45)
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+corner_radius_bottom_right = 20
+corner_radius_bottom_left = 20
+content_margin_left = 16.0
+content_margin_top = 4.0
+content_margin_right = 16.0
+content_margin_bottom = 4.0
+
+[sub_resource type="StyleBoxLine" id="StyleBoxLine_ribbon"]
+color = Color(0.957, 0.247, 0.369, 0.4)
+thickness = 2
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card"]
+bg_color = Color(0.12, 0.08, 0.19, 0.75)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 0.08)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+content_margin_left = 14.0
+content_margin_top = 8.0
+content_margin_right = 14.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_banco"]
+bg_color = Color(0.18, 0.12, 0.26, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.98, 0.8, 0.2, 0.5)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+content_margin_left = 16.0
+content_margin_top = 10.0
+content_margin_right = 16.0
+content_margin_bottom = 10.0
+shadow_color = Color(0.98, 0.8, 0.2, 0.18)
+shadow_size = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_meta_normal"]
+bg_color = Color(0.04, 0.55, 0.38, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.9, 0.6, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0.06, 0.72, 0.5, 0.4)
+shadow_size = 14
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_meta_hover"]
+bg_color = Color(0.06, 0.68, 0.46, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.4, 1, 0.75, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0.06, 0.8, 0.55, 0.65)
+shadow_size = 20
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_retry_normal"]
+bg_color = Color(0.88, 0.11, 0.28, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.96, 0.25, 0.37, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0.88, 0.11, 0.28, 0.45)
+shadow_size = 14
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_retry_hover"]
+bg_color = Color(0.96, 0.25, 0.37, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 0.45, 0.55, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0.96, 0.25, 0.37, 0.7)
+shadow_size = 22
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_salir_normal"]
+bg_color = Color(0.12, 0.08, 0.19, 0.75)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 0.2)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_salir_hover"]
+bg_color = Color(0.2, 0.14, 0.29, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.96, 0.25, 0.37, 0.6)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 
 [node name="PantallaFinPartida" type="CanvasLayer"]
 process_mode = 3
@@ -22,7 +178,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.04, 0.05, 0.08, 0.82)
+color = Color(0.04, 0.02, 0.07, 0.88)
 
 [node name="Fondo" type="Panel" parent="Control"]
 layout_mode = 1
@@ -31,158 +187,339 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -350.0
-offset_top = -275.0
-offset_right = 350.0
-offset_bottom = 275.0
+offset_left = -380.0
+offset_top = -285.0
+offset_right = 380.0
+offset_bottom = 285.0
 grow_horizontal = 2
 grow_vertical = 2
-pivot_offset = Vector2(350, 275)
+pivot_offset = Vector2(380, 285)
+theme_override_styles/panel = SubResource("StyleBoxFlat_fondo")
 
 [node name="VBox" type="VBoxContainer" parent="Control/Fondo"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 25.0
+offset_left = 28.0
 offset_top = 20.0
-offset_right = -25.0
+offset_right = -28.0
 offset_bottom = -20.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 14
+theme_override_constants/separation = 12
 
-[node name="LabelTitulo" type="Label" parent="Control/Fondo/VBox"]
+[node name="HeaderBox" type="VBoxContainer" parent="Control/Fondo/VBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 22
-text = "🏆 ¡VICTORIA GLORIOSA EN EL COLISEO!"
+theme_override_constants/separation = 4
+
+[node name="TextureCrest" type="TextureRect" parent="Control/Fondo/VBox/HeaderBox"]
+custom_minimum_size = Vector2(38, 38)
+layout_mode = 2
+size_flags_horizontal = 4
+texture = ExtResource("2_skull")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LabelTitulo" type="Label" parent="Control/Fondo/VBox/HeaderBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.85)
+theme_override_colors/font_outline_color = Color(0.88, 0.11, 0.28, 1)
+theme_override_constants/shadow_offset_y = 2
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 26
+text = "HAS CAÍDO EN COMBATE"
 horizontal_alignment = 1
 
-[node name="LabelMotivo" type="Label" parent="Control/Fondo/VBox"]
+[node name="CenterMotivo" type="CenterContainer" parent="Control/Fondo/VBox/HeaderBox"]
 layout_mode = 2
+
+[node name="PanelMotivo" type="PanelContainer" parent="Control/Fondo/VBox/HeaderBox/CenterMotivo"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_motivo")
+
+[node name="LabelMotivo" type="Label" parent="Control/Fondo/VBox/HeaderBox/CenterMotivo/PanelMotivo"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.99, 0.64, 0.68, 1)
 theme_override_font_sizes/font_size = 13
-text = "Has conquistado la arena y resistido el poder supremo del Núcleo."
+text = "💀 Motivo: Caíste en combate (1 vida)"
 horizontal_alignment = 1
-autowrap_mode = 2
 
-[node name="HSeparator" type="HSeparator" parent="Control/Fondo/VBox"]
+[node name="RibbonBox" type="HBoxContainer" parent="Control/Fondo/VBox"]
 layout_mode = 2
+theme_override_constants/separation = 12
 
-[node name="LabelSubtitulo" type="Label" parent="Control/Fondo/VBox"]
+[node name="LineLeft" type="HSeparator" parent="Control/Fondo/VBox/RibbonBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 14
-text = "📊 RESUMEN ANALÍTICO DE LA RUN:"
+size_flags_horizontal = 3
+theme_override_styles/separator = SubResource("StyleBoxLine_ribbon")
+
+[node name="LabelSubtitulo" type="Label" parent="Control/Fondo/VBox/RibbonBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.99, 0.83, 0.3, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.6)
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 13
+text = "✦ RESUMEN ANALÍTICO DE LA RUN ✦"
 horizontal_alignment = 1
+
+[node name="LineRight" type="HSeparator" parent="Control/Fondo/VBox/RibbonBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/separator = SubResource("StyleBoxLine_ribbon")
 
 [node name="Grid" type="GridContainer" parent="Control/Fondo/VBox"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/h_separation = 20
+theme_override_constants/h_separation = 12
 theme_override_constants/v_separation = 8
 columns = 2
 
-[node name="LabelKeyTiempo" type="Label" parent="Control/Fondo/VBox/Grid"]
+[node name="CardTiempo" type="PanelContainer" parent="Control/Fondo/VBox/Grid"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "⏱️ Tiempo Sobrevivido:"
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
 
-[node name="LabelValTiempo" type="Label" parent="Control/Fondo/VBox/Grid"]
+[node name="HBox" type="HBoxContainer" parent="Control/Fondo/VBox/Grid/CardTiempo"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Icon" type="TextureRect" parent="Control/Fondo/VBox/Grid/CardTiempo/HBox"]
+custom_minimum_size = Vector2(20, 20)
+layout_mode = 2
+texture = ExtResource("3_time")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LabelKeyTiempo" type="Label" parent="Control/Fondo/VBox/Grid/CardTiempo/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.68, 0.78, 1)
+theme_override_font_sizes/font_size = 13
+text = "Tiempo Sobrevivido:"
+
+[node name="LabelValTiempo" type="Label" parent="Control/Fondo/VBox/Grid/CardTiempo/HBox"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
+theme_override_font_sizes/font_size = 15
 text = "00:00"
 horizontal_alignment = 2
 
-[node name="LabelKeyClicks" type="Label" parent="Control/Fondo/VBox/Grid"]
+[node name="CardClicks" type="PanelContainer" parent="Control/Fondo/VBox/Grid"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "🎯 Clics al Núcleo Móvil:"
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
 
-[node name="LabelValClicks" type="Label" parent="Control/Fondo/VBox/Grid"]
+[node name="HBox" type="HBoxContainer" parent="Control/Fondo/VBox/Grid/CardClicks"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Icon" type="TextureRect" parent="Control/Fondo/VBox/Grid/CardClicks/HBox"]
+custom_minimum_size = Vector2(20, 20)
+layout_mode = 2
+texture = ExtResource("4_clicks")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LabelKeyClicks" type="Label" parent="Control/Fondo/VBox/Grid/CardClicks/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.68, 0.78, 1)
+theme_override_font_sizes/font_size = 13
+text = "Clics al Núcleo Móvil:"
+
+[node name="LabelValClicks" type="Label" parent="Control/Fondo/VBox/Grid/CardClicks/HBox"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.75, 0.52, 0.99, 1)
+theme_override_font_sizes/font_size = 15
 text = "0 clics"
 horizontal_alignment = 2
 
-[node name="LabelKeyBajas" type="Label" parent="Control/Fondo/VBox/Grid"]
+[node name="CardBajas" type="PanelContainer" parent="Control/Fondo/VBox/Grid"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "⚔️ Gladiadores Abatidos:"
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
 
-[node name="LabelValBajas" type="Label" parent="Control/Fondo/VBox/Grid"]
+[node name="HBox" type="HBoxContainer" parent="Control/Fondo/VBox/Grid/CardBajas"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Icon" type="TextureRect" parent="Control/Fondo/VBox/Grid/CardBajas/HBox"]
+custom_minimum_size = Vector2(20, 20)
+layout_mode = 2
+texture = ExtResource("5_kills")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LabelKeyBajas" type="Label" parent="Control/Fondo/VBox/Grid/CardBajas/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.68, 0.78, 1)
+theme_override_font_sizes/font_size = 13
+text = "Gladiadores Abatidos:"
+
+[node name="LabelValBajas" type="Label" parent="Control/Fondo/VBox/Grid/CardBajas/HBox"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.96, 0.25, 0.37, 1)
+theme_override_font_sizes/font_size = 15
 text = "0 enemigos"
 horizontal_alignment = 2
 
-[node name="LabelKeyNivel" type="Label" parent="Control/Fondo/VBox/Grid"]
+[node name="CardNivel" type="PanelContainer" parent="Control/Fondo/VBox/Grid"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "🧙 Especialidad y Nivel:"
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
 
-[node name="LabelValNivel" type="Label" parent="Control/Fondo/VBox/Grid"]
+[node name="HBox" type="HBoxContainer" parent="Control/Fondo/VBox/Grid/CardNivel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Icon" type="TextureRect" parent="Control/Fondo/VBox/Grid/CardNivel/HBox"]
+custom_minimum_size = Vector2(20, 20)
+layout_mode = 2
+texture = ExtResource("6_class")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LabelKeyNivel" type="Label" parent="Control/Fondo/VBox/Grid/CardNivel/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.68, 0.78, 1)
+theme_override_font_sizes/font_size = 13
+text = "Especialidad y Nivel:"
+
+[node name="LabelValNivel" type="Label" parent="Control/Fondo/VBox/Grid/CardNivel/HBox"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Mago (Nv. 1)"
+theme_override_colors/font_color = Color(0.2, 0.83, 0.6, 1)
+theme_override_font_sizes/font_size = 15
+text = "Guerrero (Nv. 1)"
 horizontal_alignment = 2
 
-[node name="LabelKeyOro" type="Label" parent="Control/Fondo/VBox/Grid"]
+[node name="CardOro" type="PanelContainer" parent="Control/Fondo/VBox/Grid"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "🪙 Oro Recolectado:"
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
 
-[node name="LabelValOro" type="Label" parent="Control/Fondo/VBox/Grid"]
+[node name="HBox" type="HBoxContainer" parent="Control/Fondo/VBox/Grid/CardOro"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Icon" type="TextureRect" parent="Control/Fondo/VBox/Grid/CardOro/HBox"]
+custom_minimum_size = Vector2(20, 20)
+layout_mode = 2
+texture = ExtResource("7_gold")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LabelKeyOro" type="Label" parent="Control/Fondo/VBox/Grid/CardOro/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.68, 0.78, 1)
+theme_override_font_sizes/font_size = 13
+text = "Oro Recolectado:"
+
+[node name="LabelValOro" type="Label" parent="Control/Fondo/VBox/Grid/CardOro/HBox"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.98, 0.8, 0.2, 1)
+theme_override_font_sizes/font_size = 15
 text = "0 monedas"
 horizontal_alignment = 2
 
-[node name="LabelKeyIntento" type="Label" parent="Control/Fondo/VBox/Grid"]
+[node name="CardIntento" type="PanelContainer" parent="Control/Fondo/VBox/Grid"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "🔄 Intento en el Coliseo:"
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
 
-[node name="LabelValIntento" type="Label" parent="Control/Fondo/VBox/Grid"]
+[node name="HBox" type="HBoxContainer" parent="Control/Fondo/VBox/Grid/CardIntento"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Icon" type="TextureRect" parent="Control/Fondo/VBox/Grid/CardIntento/HBox"]
+custom_minimum_size = Vector2(20, 20)
+layout_mode = 2
+texture = ExtResource("8_attempt")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LabelKeyIntento" type="Label" parent="Control/Fondo/VBox/Grid/CardIntento/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.68, 0.78, 1)
+theme_override_font_sizes/font_size = 13
+text = "Intento en el Coliseo:"
+
+[node name="LabelValIntento" type="Label" parent="Control/Fondo/VBox/Grid/CardIntento/HBox"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.8, 0.85, 0.9, 1)
+theme_override_font_sizes/font_size = 15
 text = "#1"
 horizontal_alignment = 2
 
-[node name="LabelKeyBanco" type="Label" parent="Control/Fondo/VBox/Grid"]
+[node name="CardBanco" type="PanelContainer" parent="Control/Fondo/VBox"]
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(1, 0.85, 0.35, 1)
-text = "🏛️ Tesoro en Banco (Meta):"
+theme_override_styles/panel = SubResource("StyleBoxFlat_banco")
 
-[node name="LabelValBanco" type="Label" parent="Control/Fondo/VBox/Grid"]
+[node name="HBox" type="HBoxContainer" parent="Control/Fondo/VBox/CardBanco"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Icon" type="TextureRect" parent="Control/Fondo/VBox/CardBanco/HBox"]
+custom_minimum_size = Vector2(22, 22)
+layout_mode = 2
+texture = ExtResource("9_vault")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LabelKeyBanco" type="Label" parent="Control/Fondo/VBox/CardBanco/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.99, 0.88, 0.28, 1)
+theme_override_font_sizes/font_size = 14
+text = "TESORO EN BANCO (META):"
+
+[node name="LabelValBanco" type="Label" parent="Control/Fondo/VBox/CardBanco/HBox"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(1, 0.85, 0.35, 1)
+theme_override_colors/font_color = Color(1, 0.94, 0.54, 1)
+theme_override_font_sizes/font_size = 15
 text = "0 Oro | 0 Clics"
 horizontal_alignment = 2
 
-[node name="HSeparator2" type="HSeparator" parent="Control/Fondo/VBox"]
-layout_mode = 2
-
 [node name="BtnArbolMeta" type="Button" parent="Control/Fondo/VBox"]
+custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
-custom_minimum_size = Vector2(0, 42)
-theme_override_colors/font_color = Color(1, 0.9, 0.4, 1)
-theme_override_colors/font_hover_color = Color(1, 1, 0.7, 1)
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_meta_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_meta_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_meta_hover")
 text = "🌳 ÁRBOL DE HABILIDADES (MEJORAR GLADIADOR) · 0 🪙 | 0 ⚡"
 
 [node name="HBoxBotones" type="HBoxContainer" parent="Control/Fondo/VBox"]
 layout_mode = 2
-theme_override_constants/separation = 16
+theme_override_constants/separation = 14
 
 [node name="BtnReintentar" type="Button" parent="Control/Fondo/VBox/HBoxBotones"]
+custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 36)
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_retry_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_retry_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_retry_hover")
 text = "⚔️ Comenzar Siguiente Run"
 
 [node name="BtnSalir" type="Button" parent="Control/Fondo/VBox/HBoxBotones"]
+custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 36)
+theme_override_colors/font_color = Color(0.8, 0.85, 0.9, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_salir_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_salir_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_salir_hover")
 text = "🚪 Salir al Escritorio"

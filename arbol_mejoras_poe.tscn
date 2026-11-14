@@ -4,64 +4,64 @@
 [ext_resource type="Script" path="res://lienzo_arbol_habilidades.gd" id="2_lienzo"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_TopBar"]
-bg_color = Color(0.10, 0.11, 0.14, 0.95)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
+bg_color = Color(0.05, 0.065, 0.085, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.28, 0.31, 0.38, 0.85)
+border_color = Color(0.12, 0.72, 0.45, 0.85)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
-shadow_color = Color(0, 0, 0, 0.6)
-shadow_size = 8
+shadow_color = Color(0, 0, 0, 0.8)
+shadow_size = 10
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_PillTop"]
-bg_color = Color(0.14, 0.16, 0.20, 0.9)
+bg_color = Color(0.07, 0.09, 0.12, 0.94)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.35, 0.38, 0.46, 0.8)
+border_color = Color(0.18, 0.55, 0.42, 0.8)
 corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_PanelDetalleSlate"]
-bg_color = Color(0.094, 0.102, 0.125, 0.96)
+bg_color = Color(0.045, 0.06, 0.08, 0.97)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.28, 0.31, 0.38, 0.95)
+border_color = Color(0.15, 0.80, 0.50, 0.9)
 corner_radius_top_left = 10
 corner_radius_top_right = 10
 corner_radius_bottom_right = 10
 corner_radius_bottom_left = 10
-shadow_color = Color(0, 0, 0, 0.75)
-shadow_size = 12
+shadow_color = Color(0, 0, 0, 0.85)
+shadow_size = 14
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_BtnAccion"]
-bg_color = Color(0.16, 0.20, 0.28, 0.95)
+bg_color = Color(0.06, 0.20, 0.22, 0.95)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 2
-border_color = Color(0.45, 0.55, 0.72, 0.9)
+border_color = Color(0.20, 0.85, 0.55, 0.9)
 corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_BtnCerrar"]
-bg_color = Color(0.32, 0.12, 0.14, 0.9)
+bg_color = Color(0.28, 0.08, 0.10, 0.95)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.70, 0.25, 0.28, 0.9)
+border_color = Color(0.85, 0.25, 0.28, 0.9)
 corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
@@ -116,13 +116,13 @@ theme_override_constants/separation = 12
 [node name="LabelTitulo" type="Label" parent="Control/PanelTop/HBox"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.92, 0.85, 0.65, 1)
+theme_override_colors/font_color = Color(0.25, 0.95, 0.55, 1)
 theme_override_font_sizes/font_size = 15
-text = "⚔️ CONSTELACIÓN DEL COLISEO · ÁRBOL INTERCONECTADO"
+text = "☢️ TERMINAL DE BIOCONTENCIÓN · MATRIZ DEL REACTOR CERO"
 vertical_alignment = 1
 
 [node name="PanelOro" type="PanelContainer" parent="Control/PanelTop/HBox"]
-custom_minimum_size = Vector2(130, 0)
+custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBox_PillTop")
 
@@ -130,7 +130,7 @@ theme_override_styles/panel = SubResource("StyleBox_PillTop")
 layout_mode = 2
 theme_override_colors/font_color = Color(0.96, 0.82, 0.35, 1)
 theme_override_font_sizes/font_size = 14
-text = "🪙 0 Oro"
+text = "🧪 0 Isótopos"
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -141,17 +141,17 @@ theme_override_styles/panel = SubResource("StyleBox_PillTop")
 
 [node name="LabelClics" type="Label" parent="Control/PanelTop/HBox/PanelClics"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.45, 0.78, 1, 1)
+theme_override_colors/font_color = Color(0.35, 0.88, 1, 1)
 theme_override_font_sizes/font_size = 14
 text = "⚡ 0 Clics"
 horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="BtnCentrar" type="Button" parent="Control/PanelTop/HBox"]
-custom_minimum_size = Vector2(85, 0)
+custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBox_BtnAccion")
-text = "🎯 Origen"
+text = "🎯 Núcleo Cero"
 
 [node name="BtnZoomIn" type="Button" parent="Control/PanelTop/HBox"]
 custom_minimum_size = Vector2(36, 0)
@@ -166,10 +166,10 @@ theme_override_styles/normal = SubResource("StyleBox_BtnAccion")
 text = "➖"
 
 [node name="BtnCerrar" type="Button" parent="Control/PanelTop/HBox"]
-custom_minimum_size = Vector2(110, 0)
+custom_minimum_size = Vector2(130, 0)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBox_BtnCerrar")
-text = "✕ Cerrar [U]"
+text = "✕ Desconectar [U]"
 
 [node name="PanelDetalle" type="PanelContainer" parent="Control"]
 layout_mode = 1
@@ -294,5 +294,5 @@ theme_override_constants/margin_right = 10
 layout_mode = 2
 theme_override_colors/font_color = Color(0.70, 0.74, 0.82, 1)
 theme_override_font_sizes/font_size = 11
-text = "🖱️ Arrastrar lienzo: Clic Derecho / Rueda / Fondo · Zoom: Rueda del ratón · Alternar: [U] o [B]"
+text = "🔬 Telemetría del Reactor: Clic Derecho / Fondo para Arrastrar · Rueda: Zoom Óptico · [U] o [B]: Alternar Terminal"
 vertical_alignment = 1

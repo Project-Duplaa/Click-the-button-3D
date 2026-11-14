@@ -17,6 +17,7 @@ var estado = Estado.JUGANDO
 var tiempo = 0.0
 var hechas = 0
 var reloj = 0.0
+var partida_iniciada: bool = false
 
 func _ready():
 	# Always: este nodo sigue vivo aunque el juego quede en pausa.
@@ -24,8 +25,17 @@ func _ready():
 	add_to_group("partida")
 	tiempo = tiempo_limite
 	print("intento ", intentos, " · mejor tiempo ", snappedf(mejor, 0.01))
+	var boton = get_parent().get_node_or_null("BotonMovil")
+	if boton != null and boton.has_signal("click_presionado"):
+		boton.click_presionado.connect(_on_click_boton)
+
+func _on_click_boton(_clicks: int):
+	partida_iniciada = true
 
 func _physics_process(delta):
+	if not partida_iniciada:
+		return
+		
 	if estado != Estado.JUGANDO:
 		# Si hay pantalla de fin de partida abierta, esperar interacción del usuario
 		var pantalla_fin = get_tree().get_first_node_in_group("pantalla_fin_partida")

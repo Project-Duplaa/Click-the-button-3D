@@ -18,6 +18,9 @@ var vida: float = 650.0
 var jugador: Node3D = null
 var hud: Node = null
 
+var tiene_escudo_runico: bool = true
+var _reloj_escudo_roto: float = 0.0
+
 var _reloj_ataque: float = 0.0
 var _esta_telegrafando: bool = false
 var _posicion_ataque_telegraph: Vector3 = Vector3.ZERO
@@ -46,6 +49,9 @@ func _physics_process(delta):
 	if not is_on_floor():
 		velocity += get_gravity() * delta
 		
+	if _reloj_escudo_roto > 0.0:
+		_reloj_escudo_roto -= delta
+		
 	if _esta_telegrafando:
 		velocity.x = move_toward(velocity.x, 0.0, 10.0 * delta)
 		velocity.z = move_toward(velocity.z, 0.0, 10.0 * delta)
@@ -66,8 +72,12 @@ func _physics_process(delta):
 			_iniciar_ataque_telegrafiado()
 		else:
 			var dir_mov = dir.normalized()
-			velocity.x = dir_mov.x * rapidez
-			velocity.z = dir_mov.z * rapidez
+			var mult_colapso = 1.0
+			var b_movil = get_tree().get_first_node_in_group("boton_movil")
+			if b_movil != null and "en_colapso" in b_movil and b_movil.en_colapso:
+				mult_colapso = 1.25
+			velocity.x = dir_mov.x * rapidez * mult_colapso
+			velocity.z = dir_mov.z * rapidez * mult_colapso
 	else:
 		velocity.x = 0.0
 		velocity.z = 0.0
@@ -104,7 +114,28 @@ func _ejecutar_golpe_telegrafiado():
 			elif jugador.has_node("Salud"):
 				jugador.get_node("Salud").recibir_golpe(int(dano_golpe))
 
+func desactivar_escudo_runico(duracion: float = 7.0):
+	_reloj_escudo_roto = duracion
+	var escena_num = load("res://damage_number_3d.tscn")
+	if escena_num != null:
+		var n = escena_num.instantiate()
+		var pos_num = global_position + Vector3(0, 3.2, 0)
+		get_parent().add_child(n)
+		n.global_position = pos_num
+		n.iniciar(0, true, false, "¡ESCUDO ROTO! ⚡")
+
 func recibir_dano(cantidad: float, es_critico: bool = false):
+	# Mitigación del 85% si el escudo rúnico está activo
+	if tiene_escudo_runico and _reloj_escudo_roto <= 0.0:
+		cantidad *= 0.15
+		var escena_esc = load("res://damage_number_3d.tscn")
+		if escena_esc != null:
+			var n = escena_esc.instantiate()
+			var pos_num = global_position + Vector3(0, 3.2, 0)
+			get_parent().add_child(n)
+			n.global_position = pos_num
+			n.iniciar(0, false, false, "🛡️ ESCUDO RÚNICO")
+			
 	vida = maxf(vida - cantidad, 0.0)
 	
 	# Feedback numérico

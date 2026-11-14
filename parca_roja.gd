@@ -18,6 +18,9 @@ var vida: float = 5000.0
 var jugador: Node3D = null
 var hud: Node = null
 
+var tiene_escudo_runico: bool = true
+var _reloj_escudo_roto: float = 0.0
+
 var _reloj_ataque: float = 0.0
 var _esta_telegrafando: bool = false
 var _en_enrage: bool = false
@@ -51,6 +54,9 @@ func _physics_process(delta):
 	if not is_on_floor():
 		velocity += get_gravity() * delta
 		
+	if _reloj_escudo_roto > 0.0:
+		_reloj_escudo_roto -= delta
+		
 	# Efecto de ondulación del aura sombría
 	if aura_roja != null:
 		aura_roja.rotate_y(delta * 2.5)
@@ -71,8 +77,12 @@ func _physics_process(delta):
 		if dist > 0.1:
 			look_at(global_position + dir.normalized(), Vector3.UP)
 			
-		# Enrage por debajo del 30% de vida
-		var vel_actual = rapidez * (1.18 if _en_enrage else 1.0)
+		# Enrage por debajo del 30% de vida y frenesí por colapso del núcleo
+		var mult_colapso = 1.0
+		var b_movil = get_tree().get_first_node_in_group("boton_movil")
+		if b_movil != null and "en_colapso" in b_movil and b_movil.en_colapso:
+			mult_colapso = 1.20
+		var vel_actual = rapidez * (1.18 if _en_enrage else 1.0) * mult_colapso
 		
 		if dist <= radio_golpe and _reloj_ataque <= 0.001:
 			_iniciar_corte_guadana()
@@ -114,7 +124,28 @@ func _ejecutar_corte_guadana():
 			elif jugador.has_node("Salud"):
 				jugador.get_node("Salud").recibir_golpe(int(dano_guadana))
 
+func desactivar_escudo_runico(duracion: float = 7.0):
+	_reloj_escudo_roto = duracion
+	var escena_num = load("res://damage_number_3d.tscn")
+	if escena_num != null:
+		var n = escena_num.instantiate()
+		var pos_num = global_position + Vector3(0, 3.8, 0)
+		get_parent().add_child(n)
+		n.global_position = pos_num
+		n.iniciar(0, true, false, "¡ESCUDO ROTO! ⚡")
+
 func recibir_dano(cantidad: float, es_critico: bool = false):
+	# Mitigación del 85% si el escudo rúnico de sombras está activo
+	if tiene_escudo_runico and _reloj_escudo_roto <= 0.0:
+		cantidad *= 0.15
+		var escena_esc = load("res://damage_number_3d.tscn")
+		if escena_esc != null:
+			var n = escena_esc.instantiate()
+			var pos_num = global_position + Vector3(0, 3.8, 0)
+			get_parent().add_child(n)
+			n.global_position = pos_num
+			n.iniciar(0, false, false, "🛡️ ESCUDO RÚNICO")
+			
 	vida = maxf(vida - cantidad, 0.0)
 	
 	if not _en_enrage and vida <= (vida_maxima * 0.3):

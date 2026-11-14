@@ -32,7 +32,8 @@ script = ExtResource("1_radial")
 axis = 1
 texture = SubResource("ViewportTexture_Radial")
 pixel_size = 0.0055
-render_priority = 2
+render_priority = 1
+texture_filter = 5
 transparent = true
 shaded = false
 double_sided = true
@@ -77,7 +78,7 @@ script = ExtResource("3_cola")
 visible = false
 offset_right = 240.0
 offset_bottom = 110.0
-mouse_filter = 2
+mouse_filter = 0
 theme_override_styles/panel = SubResource("StyleBox_TooltipBocadillo")
 
 [node name="Margin" type="MarginContainer" parent="CapaUI/TooltipFlotante"]

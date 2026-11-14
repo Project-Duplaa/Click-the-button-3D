@@ -7,42 +7,43 @@ extends Control
 signal nodo_seleccionado(nodo: SkillNodeData, estado: String)
 signal nodo_hover(nodo: SkillNodeData)
 
-const COLOR_FONDO_SLATE = Color(0.094, 0.102, 0.125, 1.0) # #181a20
-const COLOR_HIERRO_BLOQUEADO = Color(0.20, 0.22, 0.27, 0.75)
-const COLOR_DESBLOQUEABLE_PULSO = Color(0.48, 0.54, 0.65, 0.90)
+# Estética Laboratorio Radiactivo / Reactor de Biocontención
+const COLOR_FONDO_SLATE = Color(0.045, 0.055, 0.075, 1.0) # Acero oscuro de búnker #0b0e13
+const COLOR_HIERRO_BLOQUEADO = Color(0.16, 0.20, 0.26, 0.85)
+const COLOR_DESBLOQUEABLE_PULSO = Color(0.20, 0.95, 0.45, 0.90) # Verde radiactivo
 
 const COLORES_RAMA = {
 	"azul": {
-		"base": Color(0.29, 0.53, 0.71),     # Steel Blue #4a88b5
-		"brillo": Color(0.45, 0.73, 0.95),   # Glowing Blue
-		"oscuro": Color(0.12, 0.20, 0.28)
+		"base": Color(0.06, 0.70, 0.88),     # Plasma Cherenkov #0ea5e9
+		"brillo": Color(0.30, 0.90, 1.00),   # Resplandor azul eléctrico
+		"oscuro": Color(0.04, 0.16, 0.24)
 	},
 	"verde": {
-		"base": Color(0.23, 0.54, 0.39),    # Muted Emerald #3c8a64
-		"brillo": Color(0.35, 0.78, 0.56),   # Glowing Emerald
-		"oscuro": Color(0.10, 0.22, 0.16)
+		"base": Color(0.10, 0.82, 0.40),    # Uranio Enriquecido / Biohazard #10b981
+		"brillo": Color(0.32, 1.00, 0.55),   # Resplandor verde tóxico
+		"oscuro": Color(0.03, 0.20, 0.09)
 	},
 	"dorada": {
-		"base": Color(0.77, 0.60, 0.27),    # Antique Gold #c49a45
-		"brillo": Color(0.96, 0.78, 0.40),   # Glowing Gold
-		"oscuro": Color(0.28, 0.22, 0.10)
+		"base": Color(0.95, 0.65, 0.12),    # Extracción de Isótopos / Ámbar #f59e0b
+		"brillo": Color(1.00, 0.82, 0.28),   # Resplandor ámbar radioactivo
+		"oscuro": Color(0.24, 0.14, 0.02)
 	},
 	"hibrido": {
-		"base": Color(0.61, 0.38, 0.71),    # Amatista Trascendente
-		"brillo": Color(0.80, 0.55, 0.92),
-		"oscuro": Color(0.24, 0.14, 0.28)
+		"base": Color(0.72, 0.35, 0.95),    # Fisión Cuántica / Mutación #a855f7
+		"brillo": Color(0.88, 0.55, 1.00),
+		"oscuro": Color(0.22, 0.08, 0.28)
 	},
 	"central": {
-		"base": Color(0.37, 0.76, 0.82),
-		"brillo": Color(0.60, 0.92, 0.98),
-		"oscuro": Color(0.12, 0.28, 0.32)
+		"base": Color(0.15, 0.95, 0.45),    # Biocontenedor Primordial
+		"brillo": Color(0.40, 1.00, 0.65),
+		"oscuro": Color(0.04, 0.24, 0.11)
 	}
 }
 
 var nodos: Dictionary = {}
-var zoom: float = 1.0
-var min_zoom: float = 0.45
-var max_zoom: float = 2.0
+var zoom: float = 0.75
+var min_zoom: float = 0.30
+var max_zoom: float = 2.2
 var pan_offset: Vector2 = Vector2.ZERO
 
 var _arrastrando: bool = false
@@ -69,7 +70,7 @@ func _process(delta: float):
 
 func _centrar_en_origen():
 	pan_offset = Vector2.ZERO
-	zoom = 1.0
+	zoom = 0.75
 	queue_redraw()
 
 func configurar_nodos(diccionario_nodos: Dictionary):
@@ -175,7 +176,9 @@ func _dibujar_rejilla_fondo():
 	if paso_cuadricula < 25.0:
 		return
 	
-	var col_linea = Color(0.13, 0.14, 0.18, 0.45)
+	# 1. Cuadrícula de telemetría de laboratorio
+	var col_linea = Color(0.08, 0.12, 0.16, 0.45)
+	var col_punto = Color(0.12, 0.22, 0.26, 0.65)
 	var offset_x = fmod((size.x * 0.5) + pan_offset.x, paso_cuadricula)
 	var offset_y = fmod((size.y * 0.5) + pan_offset.y, paso_cuadricula)
 	
@@ -188,6 +191,32 @@ func _dibujar_rejilla_fondo():
 	while y < size.y:
 		draw_line(Vector2(0, y), Vector2(size.x, y), col_linea, 1.0)
 		y += paso_cuadricula
+		
+	# 2. Retículas tácticas en las intersecciones
+	if zoom >= 0.55:
+		var ix = offset_x
+		while ix < size.x:
+			var iy = offset_y
+			while iy < size.y:
+				var p_cruz = Vector2(ix, iy)
+				draw_line(p_cruz - Vector2(3, 0), p_cruz + Vector2(3, 0), col_punto, 1.0)
+				draw_line(p_cruz - Vector2(0, 3), p_cruz + Vector2(0, 3), col_punto, 1.0)
+				iy += paso_cuadricula
+			ix += paso_cuadricula
+
+	# 3. Anillos de dispersión y radiación del Biocontenedor Central (0, 0)
+	var centro_pant = to_screen_pos(Vector2.ZERO)
+	var r1 = 120.0 * zoom
+	var r2 = 220.0 * zoom
+	var r3 = 340.0 * zoom
+	draw_arc(centro_pant, r1, 0, TAU, 48, Color(0.08, 0.45, 0.30, 0.22), 1.5 * zoom, false)
+	draw_arc(centro_pant, r2, 0, TAU, 64, Color(0.06, 0.35, 0.45, 0.18), 1.2 * zoom, false)
+	draw_arc(centro_pant, r3, 0, TAU, 64, Color(0.55, 0.38, 0.08, 0.14), 1.0 * zoom, false)
+	
+	# Muescas giratorias de telemetría de radiación
+	var ang_rot = _tiempo_acumulado * 0.25
+	draw_arc(centro_pant, r1, ang_rot, ang_rot + 1.2, 16, Color(0.15, 0.95, 0.50, 0.45), 2.5 * zoom, false)
+	draw_arc(centro_pant, r2, -ang_rot * 0.7, -ang_rot * 0.7 + 1.5, 24, Color(0.20, 0.85, 1.0, 0.35), 2.0 * zoom, false)
 
 func _dibujar_conexiones_grafo():
 	var lineas_dibujadas: Dictionary = {}
@@ -225,36 +254,47 @@ func _dibujar_linea_conexion(p_a: Vector2, p_b: Vector2, n_a: SkillNodeData, n_b
 						((est_b in ["comprado", "maxeado"]) and est_a == "desbloqueable")
 	
 	if activa:
-		# Línea brillante encendida con resplandor según la rama predominante
+		# Tubería de refrigerante radiactivo activa con fluido y resplandor Cherenkov/Biohazard
 		var rama_color = n_a.rama if n_a.rama != "central" else n_b.rama
 		var paleta = COLORES_RAMA.get(rama_color, COLORES_RAMA["dorada"])
 		var color_brillo: Color = paleta["brillo"]
 		var color_base: Color = paleta["base"]
 		
-		# Aura exterior de resplandor (Glow)
-		draw_line(p_a, p_b, Color(color_brillo.r, color_brillo.g, color_brillo.b, 0.35), 7.0 * zoom, true)
-		# Línea central brillante
-		draw_line(p_a, p_b, color_base, 3.2 * zoom, true)
-		# Núcleo blanco fino
-		draw_line(p_a, p_b, Color(1, 1, 1, 0.7), 1.2 * zoom, true)
+		# 1. Aura exterior de radiación / gas disperso (Glow)
+		draw_line(p_a, p_b, Color(color_brillo.r, color_brillo.g, color_brillo.b, 0.28), 8.5 * zoom, true)
+		# 2. Conducto blindado de aleación de titanio
+		draw_line(p_a, p_b, Color(0.08, 0.12, 0.16), 4.5 * zoom, true)
+		# 3. Núcleo de fluido de plasma brillante
+		draw_line(p_a, p_b, color_base, 2.6 * zoom, true)
+		# 4. Flujo de corriente líquida / burbujas de radiación en movimiento continuo
+		var dist = p_a.distance_to(p_b)
+		if dist > 14.0 * zoom:
+			var dir = (p_b - p_a).normalized()
+			var intervalo = 28.0 * zoom
+			var offset_flujo = fmod(_tiempo_acumulado * (45.0 * zoom), intervalo)
+			var d = offset_flujo
+			while d < dist:
+				var pos_burbuja = p_a + dir * d
+				draw_circle(pos_burbuja, 1.6 * zoom, Color(1, 1, 1, 0.85))
+				d += intervalo
 	elif desbloqueable:
-		# Línea con pulso suave que invita a conectar
-		var pulso = 0.5 + sin(_tiempo_acumulado * 3.5) * 0.35
+		# Conducto presurizado listo para inyección con pulso verde radiactivo
+		var pulso = 0.45 + sin(_tiempo_acumulado * 4.0) * 0.40
 		var col_pulso = COLOR_DESBLOQUEABLE_PULSO
 		col_pulso.a = pulso
 		draw_line(p_a, p_b, col_pulso, 2.8 * zoom, true)
 	else:
-		# Cadena de hierro oscuro / línea bloqueada
+		# Conducto sellado por cuarentena / sin corriente de plasma
 		draw_line(p_a, p_b, COLOR_HIERRO_BLOQUEADO, 2.0 * zoom, false)
 		
-		# Eslabones de cadena discretos a lo largo del segmento
+		# Juntas de válvula de bloqueo a lo largo del segmento
 		var dist = p_a.distance_to(p_b)
-		var pasos = int(dist / (24.0 * zoom))
+		var pasos = int(dist / (26.0 * zoom))
 		if pasos > 1:
 			var dir = (p_b - p_a).normalized()
 			for i in range(1, pasos):
-				var pos_eslabon = p_a + dir * (i * 24.0 * zoom)
-				draw_circle(pos_eslabon, 2.2 * zoom, Color(0.14, 0.15, 0.19, 0.9))
+				var pos_valvula = p_a + dir * (i * 26.0 * zoom)
+				draw_circle(pos_valvula, 2.0 * zoom, Color(0.12, 0.15, 0.20, 0.95))
 
 func _dibujar_nodos_grafo():
 	for id in nodos.keys():
@@ -294,28 +334,42 @@ func _renderizar_nodo_circular(n: SkillNodeData, centro: Vector2, estado: String
 		var pulso = 0.20 + sin(_tiempo_acumulado * 4.0) * 0.15
 		draw_circle(centro, radio_base + 4.0 * zoom, Color(0.9, 0.95, 1.0, pulso))
 
-	# 3. Bisel Metálico Exterior (Aro exterior)
-	var col_borde: Color = Color(0.24, 0.26, 0.32) # Hierro base
+	# 3. Bisel Metálico Industrial Blindado (Aleación de Titanio)
+	var col_borde: Color = Color(0.24, 0.28, 0.35) # Titanio oscuro base
 	if estado in ["comprado", "maxeado"]:
-		col_borde = paleta["brillo"] if estado == "comprado" else Color(1.0, 0.88, 0.35)
+		col_borde = paleta["brillo"] if estado == "comprado" else Color(0.35, 1.0, 0.6)
 	elif estado == "desbloqueable":
-		col_borde = Color(0.70, 0.78, 0.90)
+		col_borde = Color(0.30, 0.95, 0.55) # Verde tóxico desbloqueable
 		
 	draw_circle(centro, radio_base, col_borde)
 	
-	# 4. Relleno Interior (Núcleo del botón)
-	var radio_interior = radio_base - (3.5 * zoom if n.es_keystone else 2.5 * zoom)
-	var col_fondo: Color = Color(0.12, 0.13, 0.17) # Slate oscuro interior
+	# Pernos industriales de contención en el perímetro
+	if zoom >= 0.50:
+		var num_pernos = 8 if n.es_keystone else 4
+		for i in range(num_pernos):
+			var ang_p = (TAU / num_pernos) * i + (PI * 0.25)
+			var pos_p = centro + Vector2(cos(ang_p), sin(ang_p)) * (radio_base - 1.6 * zoom)
+			draw_circle(pos_p, 1.15 * zoom, Color(0.85, 0.92, 0.98, 0.85))
+	
+	# 4. Relleno Interior (Cámara de Plasma / Biocontenedor)
+	var radio_interior = radio_base - (4.0 * zoom if n.es_keystone else 2.8 * zoom)
+	var col_fondo: Color = Color(0.08, 0.10, 0.14) # Búnker interior
 	if estado in ["comprado", "maxeado"]:
 		col_fondo = paleta["oscuro"]
 	elif estado == "desbloqueable":
-		col_fondo = Color(0.16, 0.18, 0.24)
+		col_fondo = Color(0.06, 0.18, 0.12)
 		
 	draw_circle(centro, radio_interior, col_fondo)
 	
-	# 5. Adornos geométricos de Keystone (Aro adicional con muescas)
+	# 5. Reflejo especular en media luna superior (Cristal de Biocontención 3D)
+	if estado in ["comprado", "maxeado", "desbloqueable"]:
+		draw_arc(centro, radio_interior * 0.72, -PI * 0.82, -PI * 0.18, 16, Color(1.0, 1.0, 1.0, 0.40), 1.6 * zoom, false)
+	
+	# 6. Adornos de Keystone (Reactor colosal con respiraderos de fisión)
 	if n.es_keystone:
-		draw_arc(centro, radio_interior - 3.0 * zoom, 0, TAU, 32, col_borde * 0.7, 1.5 * zoom, false)
+		draw_arc(centro, radio_interior - 3.2 * zoom, 0, TAU, 32, col_borde * 0.75, 1.6 * zoom, false)
+		var pulso_key = 0.5 + sin(_tiempo_acumulado * 3.0) * 0.5
+		draw_arc(centro, radio_base + 6.0 * zoom, 0, TAU, 32, Color(col_borde.r, col_borde.g, col_borde.b, pulso_key * 0.6), 1.4 * zoom, false)
 		
 	# 6. Icono Central (Emoji / Símbolo)
 	if _font != null:

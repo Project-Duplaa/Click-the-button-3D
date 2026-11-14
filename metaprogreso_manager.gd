@@ -99,14 +99,29 @@ static func puede_comprar(nodo: SkillNodeData) -> bool:
 	var costos = nodo.calcular_costo()
 	return oro_banco >= costos.oro and clics_banco >= costos.clics
 
-static func comprar_nodo(id: String, costo_oro: int, costo_clics: int) -> bool:
+static func comprar_nodo(nodo_o_id, costo_oro: int = -1, costo_clics: int = -1) -> bool:
 	asegurar_inicializado()
-	if oro_banco < costo_oro or clics_banco < costo_clics:
+	var id = ""
+	var c_oro = 0
+	var c_clk = 0
+	if nodo_o_id is SkillNodeData:
+		id = nodo_o_id.id
+		var costos = nodo_o_id.calcular_costo()
+		c_oro = costos.oro
+		c_clk = costos.clics
+	else:
+		id = str(nodo_o_id)
+		c_oro = costo_oro
+		c_clk = costo_clics
+		
+	if oro_banco < c_oro or clics_banco < c_clk:
 		return false
-	oro_banco -= costo_oro
-	clics_banco -= costo_clics
+	oro_banco -= c_oro
+	clics_banco -= c_clk
 	var lvl_actual = mejoras_arbol.get(id, 0)
 	mejoras_arbol[id] = lvl_actual + 1
+	if nodo_o_id is SkillNodeData:
+		nodo_o_id.nivel_actual = mejoras_arbol[id]
 	guardar()
 	print("[MetaprogresoManager] Nodo '%s' mejorado a Nivel %d. Restante en banco: %d Oro, %d Clics." % [
 		id, mejoras_arbol[id], oro_banco, clics_banco

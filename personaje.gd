@@ -3,6 +3,8 @@ extends CharacterBody3D
 const AudioManager = preload("res://audio_manager.gd")
 const EvolucionManager = preload("res://evolucion_manager.gd")
 const ArbolMejorasDatos = preload("res://arbol_mejoras_datos.gd")
+const MetaprogresoManager = preload("res://metaprogreso_manager.gd")
+const ArbolInterconectadoDatos = preload("res://arbol_interconectado_datos.gd")
 
 enum Estado { QUIETO, CAMINAR, CORRER, AIRE }
 const RUIDO = [0.0, 2.5, 6.5, 0.0]
@@ -18,13 +20,13 @@ signal mejora_arbol_comprada(id_mejora, nuevo_nivel)
 @export var tiempo_arranque = 0.20
 @onready var anim = $Modelo/AnimationPlayer
 
-# Estadísticas RPG / Autobattler
+# Estadísticas RPG / Autobattler (Novato débil al inicio para sensación incremental real)
 var clase: String = "Novato"
-var vida_maxima: float = 100.0
-var vida: float = 100.0
-var dano: float = 12.0
-var rango_ataque: float = 2.8
-var cadencia_ataque: float = 0.80
+var vida_maxima: float = 55.0
+var vida: float = 55.0
+var dano: float = 5.5
+var rango_ataque: float = 2.0
+var cadencia_ataque: float = 1.35
 var oro: int = 0
 var xp: int = 0
 var xp_siguiente_nivel: int = 60
@@ -37,21 +39,78 @@ var clics_totales: int = 0
 var mejoras_arbol: Dictionary = {}
 
 # Estadísticas base puras según clase
-var base_vida_maxima: float = 100.0
-var base_dano: float = 12.0
-var base_cadencia_ataque: float = 0.80
-var base_rango_ataque: float = 2.8
-var base_speed_caminar: float = 3.2
-var base_speed_correr: float = 5.5
+var base_vida_maxima: float = 55.0
+var base_dano: float = 5.5
+var base_cadencia_ataque: float = 1.35
+var base_rango_ataque: float = 2.0
+var base_speed_caminar: float = 2.3
+var base_speed_correr: float = 3.8
 
-# Modificadores activos calculados del árbol
+# Sistema de Vidas, Reapariciones y Derrota Definitiva
+var vidas_base: int = 1
+var bonus_vidas_arbol: int = 0
+@export var reapariciones: int = 0 # 0 reapariciones = 1 vida base al inicio (modo roguelike hardcore incremental)
+@export var invulnerable_tiempo: float = 2.0
+@export var punto_reaparicion: Vector3 = Vector3(0, 0.5, 0)
+var _reloj_invulnerable: float = 0.0
+var _muerto_definitivo: bool = false
+var _cooldown_ultimo_aliento: float = 0.0
+
+# Estadísticas Incrementales del Árbol (55 Nodos en 5 Tiers)
+var escudo_almas: float = 0.0
+var max_escudo_almas: float = 0.0
+var armadura_plana: float = 0.0
+var mitigacion_pasiva_pct: float = 0.0
 var bonus_dano_pct: float = 0.0
+var bonus_dano_armas_pct: float = 0.0
+var bonus_dano_clic_pct: float = 0.0
+var clics_por_pulsacion: int = 1
+var bonus_radio_aoe_clic: float = 0.0
+var bonus_empuje_clic_pct: float = 0.0
+var bonus_eco_clic_prob: float = 0.0
+var bonus_critico_clic_prob: float = 0.0
+var bonus_dano_critico_pct: float = 0.0
+var bonus_velocidad_mov_pct: float = 0.0
+var radio_iman_extra: float = 0.0
+var regen_vida_seg: float = 0.0
+var vida_por_baja: float = 0.0
+var bonus_invulnerable_seg: float = 0.0
+var reflejo_dano_pct: float = 0.0
+var oro_por_baja_pct: float = 0.0
+var xp_ganada_pct: float = 0.0
+var bonus_cadencia_pct: float = 0.0
+var autoclick_tasa: float = 0.0
+var _autoclick_acumulador: float = 0.0
+var proyectiles_extra: int = 0
+var perforacion_armas: int = 0
+var oro_pasivo_seg: float = 0.0
+var _oro_pasivo_acum: float = 0.0
+var interes_oleada_pct: float = 0.0
+var clic_cura_escudo: float = 0.0
+var xp_a_oro_pct: float = 0.0
+var clic_genera_oro_pct: float = 0.0
+var tempestad_oro_dmg: float = 0.0
+var contador_cataclismo: int = 0
+
+# Keystones Supremos
+var keystone_cataclismo: bool = false
+var keystone_soberania: bool = false
+var keystone_segunda_vida: bool = false
+var keystone_coloso: bool = false
+var keystone_aliento: bool = false
+var keystone_usura: bool = false
+var keystone_fabrica: bool = false
+var keystone_bucle: bool = false
+var keystone_oro_liquido: bool = false
+var keystone_zenit: bool = false
+var ascension_suprema: bool = false
+
+# Modificadores de compatibilidad legacy
 var bonus_vida_max: float = 0.0
 var bonus_velocidad_pct: float = 0.0
 var bonus_oro_pct: float = 0.0
-var bonus_cadencia_pct: float = 0.0
-var prob_critico: float = 0.0
-var mult_critico: float = 2.2
+var prob_critico: float = 0.05
+var mult_critico: float = 2.0
 var contador_clics_sobrecarga: int = 0
 var _reloj_incremental_pasivo: float = 0.0
 var _clics_pasivos_frac: float = 0.0
@@ -78,12 +137,8 @@ var _preview_baston: Node3D = null
 var _preview_espada: Node3D = null
 var _preview_arco: Node3D = null
 
-# Sistema de Vidas, Reapariciones y Derrota Definitiva (Tarea 3)
-@export var reapariciones: int = 2 # 2 reapariciones = 3 vidas en total
-@export var invulnerable_tiempo: float = 2.0
-@export var punto_reaparicion: Vector3 = Vector3(0, 0.5, 0)
-var _reloj_invulnerable: float = 0.0
-var _muerto_definitivo: bool = false
+func obtener_vidas_maximas() -> int:
+	return vidas_base + bonus_vidas_arbol
 
 func _ready():
 	add_to_group("jugador")
@@ -103,6 +158,9 @@ func _ready():
 	evolucion_manager.configurar_con_personaje(self)
 	_crear_escudo_visual()
 	aplicar_clase("Novato")
+	MetaprogresoManager.aplicar_a_personaje(self)
+	reapariciones = max(0, obtener_vidas_maximas() - 1)
+	vida = vida_maxima
 	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
 
 func _unhandled_input(event):
@@ -353,7 +411,12 @@ func recibir_dano(cantidad: float):
 	if _reloj_invulnerable > 0.0 or _muerto_definitivo:
 		return
 
-	# Mitigación por Bloqueo de Escudo (Mecánica Tanque del Guerrero)
+	# 1. Mitigación Pasiva por Armadura Rúnica y Constitución (Fórmula asintótica PoE)
+	var mitigacion_armadura = armadura_plana / (armadura_plana + 120.0)
+	var mitigacion_total = clampf(mitigacion_pasiva_pct + mitigacion_armadura, 0.0, 0.75)
+	cantidad *= (1.0 - mitigacion_total)
+
+	# 2. Mitigación por Bloqueo Activo de Escudo (Mecánica Tanque del Guerrero)
 	if bloqueando and clase == "Guerrero":
 		var dano_mitigado = cantidad * (1.0 - reduccion_dano_bloqueo)
 		var mitigado_total = cantidad - dano_mitigado
@@ -366,6 +429,46 @@ func recibir_dano(cantidad: float):
 		
 		cantidad = dano_mitigado
 		if cantidad <= 0.0:
+			return
+
+	# 3. Retribución de Espinas (Devuelve daño en cono frontal)
+	if reflejo_dano_pct > 0.0:
+		_repeler_enemigos_alrededor(3.5, 4.0)
+
+	# 4. Absorción por Escudo de Almas (Aegis)
+	if escudo_almas > 0.0:
+		if escudo_almas >= cantidad:
+			escudo_almas -= cantidad
+			cantidad = 0.0
+		else:
+			cantidad -= escudo_almas
+			escudo_almas = 0.0
+		if cantidad <= 0.0:
+			AudioManager.play("escudo_bloqueo", 1.25)
+			emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
+			return
+
+	# 5. Keystones Supremos Preventivos de Muerte (Último Aliento y Armadura de Oro Líquido)
+	if vida - cantidad <= 0.0:
+		# Keystone: Armadura de Oro Líquido (Consume 150 oro en vez de vida)
+		if keystone_oro_liquido and oro >= 150:
+			oro -= 150
+			vida = maxf(vida_maxima * 0.35, 1.0)
+			_reloj_invulnerable = 2.0
+			AudioManager.play("altar_activado", 1.25, 2.0)
+			_spawn_texto_3d("🪙 ¡ORO LÍQUIDO ABSORBIÓ EL IMPACTO!", Color(1.0, 0.85, 0.2))
+			emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
+			emit_signal("economia_actualizada", oro, clics_disponibles, clics_totales)
+			return
+		# Keystone: Último Aliento (Sobrevive a 1 HP con 3.5s i-frames)
+		if keystone_aliento and _cooldown_ultimo_aliento <= 0.0:
+			vida = 1.0
+			_reloj_invulnerable = 3.5
+			_cooldown_ultimo_aliento = 90.0
+			_repeler_enemigos_alrededor(10.0, 14.0)
+			AudioManager.play("altar_activado", 1.4, 3.0)
+			_spawn_texto_3d("🔥 ¡ÚLTIMO ALIENTO ACTIVADO! (3.5s Invulnerable)", Color(1.0, 0.45, 0.15))
+			emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
 			return
 
 	vida = maxf(vida - cantidad, 0.0)
@@ -385,12 +488,17 @@ func recibir_dano(cantidad: float):
 func recoger_drop(tipo: int, valor: int):
 	match tipo:
 		0: # ORO
-			var bonus_mult = 1.0 + (float(mejoras_arbol.get("mon_oro", 0)) * 0.25)
+			var bonus_mult = 1.0 + oro_por_baja_pct + (float(mejoras_arbol.get("mon_oro", 0)) * 0.25)
+			if ascension_suprema:
+				bonus_mult *= 2.0
 			oro += int(ceil(valor * bonus_mult))
 		1: # EXP
-			xp += valor
-			if xp >= xp_siguiente_nivel:
-				subir_nivel()
+			var xp_final = int(ceil(valor * (1.0 + xp_ganada_pct)))
+			xp += xp_final
+			# Puente Verde-Dorada: Alquimia de Recolección (XP a Oro)
+			if xp_a_oro_pct > 0.0:
+				var oro_alquimia = max(1, int(ceil(xp_final * xp_a_oro_pct)))
+				oro += oro_alquimia
 		2: # CORAZON
 			vida = minf(vida + valor, vida_maxima)
 	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
@@ -399,8 +507,13 @@ func recoger_drop(tipo: int, valor: int):
 func registrar_baja():
 	bajas += 1
 	AudioManager.play("enemigo_muerte", randf_range(0.9, 1.2))
+	# Vampirismo: curación inmediata al abatir enemigo
+	if vida_por_baja > 0.0 and vida < vida_maxima:
+		vida = minf(vida + vida_por_baja, vida_maxima)
 	recoger_drop(1, 6) # 6 XP por baja
-	recoger_drop(0, 3) # 3 Oro base por baja (afectado por el multiplicador de Codicia)
+	recoger_drop(0, 3) # 3 Oro base por baja
+	if evolucion_manager != null and evolucion_manager.has_method("notificar_baja"):
+		evolucion_manager.notificar_baja()
 
 func subir_nivel():
 	xp -= xp_siguiente_nivel
@@ -547,12 +660,12 @@ func aplicar_clase(nombre: String):
 		_crear_escudo_visual()
 	match nombre:
 		"Novato":
-			base_vida_maxima = 100.0
-			base_dano = 12.0
-			base_rango_ataque = 2.8
-			base_cadencia_ataque = 0.80
-			base_speed_caminar = 3.2
-			base_speed_correr = 5.5
+			base_vida_maxima = 55.0
+			base_dano = 5.5
+			base_rango_ataque = 2.0
+			base_cadencia_ataque = 1.35
+			base_speed_caminar = 2.3
+			base_speed_correr = 3.8
 		"Guerrero":
 			base_vida_maxima = 160.0
 			base_dano = 22.0
@@ -592,155 +705,343 @@ func aplicar_mejora(tipo_mejora: String):
 	recalcular_stats_incrementales()
 
 # ==============================================================================
-# SISTEMA INCREMENTAL: CÁLCULOS DEL ÁRBOL DE ASCENSIÓN Y COMERCIO
+# SISTEMA INCREMENTAL: CÁLCULOS DEL ÁRBOL DE CONSTELACIONES EN 5 TIERS
 # ==============================================================================
 
 func recalcular_stats_incrementales():
-	var lvl_dano = mejoras_arbol.get("mon_dano", 0)
-	var lvl_vida = mejoras_arbol.get("mon_vida", 0)
-	var lvl_vel = mejoras_arbol.get("mon_vel", 0)
-	var lvl_oro = mejoras_arbol.get("mon_oro", 0)
-	var lvl_cad = mejoras_arbol.get("mon_cadencia", 0)
-	var lvl_crit = mejoras_arbol.get("clk_critico", 0)
-	var lvl_filo = mejoras_arbol.get("hib_filo_crit", 0)
-	var lvl_asc = mejoras_arbol.get("hib_ascension", 0)
-	
-	bonus_dano_pct = (lvl_dano * 0.18) + (0.75 if lvl_asc >= 1 else 0.0)
-	bonus_vida_max = (lvl_vida * 25.0)
-	bonus_velocidad_pct = (lvl_vel * 0.10)
-	bonus_oro_pct = (lvl_oro * 0.25)
-	bonus_cadencia_pct = (lvl_cad * 0.12)
-	prob_critico = (lvl_crit * 0.08)
-	mult_critico = 2.2 + (lvl_filo * 0.60)
-	
-	dano = base_dano * (1.0 + bonus_dano_pct)
-	cadencia_ataque = maxf(0.15, base_cadencia_ataque * (1.0 - bonus_cadencia_pct))
+	# 1. Reiniciar a estadísticas base de clase
+	dano = base_dano
+	cadencia_ataque = base_cadencia_ataque
 	rango_ataque = base_rango_ataque
-	speed_caminar = base_speed_caminar * (1.0 + bonus_velocidad_pct)
-	speed_correr = base_speed_correr * (1.0 + bonus_velocidad_pct)
-	
+	speed_caminar = base_speed_caminar
+	speed_correr = base_speed_correr
+	prob_critico = 0.05
+	mult_critico = 2.0
+
+	# 2. Resetear acumuladores del Árbol de Constelaciones
+	bonus_vidas_arbol = 0
+	escudo_almas = 0.0
+	max_escudo_almas = 0.0
+	armadura_plana = 0.0
+	mitigacion_pasiva_pct = 0.0
+	bonus_dano_pct = 0.0
+	bonus_dano_armas_pct = 0.0
+	bonus_dano_clic_pct = 0.0
+	clics_por_pulsacion = 1
+	bonus_radio_aoe_clic = 0.0
+	bonus_empuje_clic_pct = 0.0
+	bonus_eco_clic_prob = 0.0
+	bonus_critico_clic_prob = 0.0
+	bonus_dano_critico_pct = 0.0
+	bonus_velocidad_mov_pct = 0.0
+	radio_iman_extra = 0.0
+	regen_vida_seg = 0.0
+	vida_por_baja = 0.0
+	bonus_invulnerable_seg = 0.0
+	reflejo_dano_pct = 0.0
+	oro_por_baja_pct = 0.0
+	xp_ganada_pct = 0.0
+	bonus_cadencia_pct = 0.0
+	autoclick_tasa = 0.0
+	proyectiles_extra = 0
+	perforacion_armas = 0
+	oro_pasivo_seg = 0.0
+	interes_oleada_pct = 0.0
+	clic_cura_escudo = 0.0
+	xp_a_oro_pct = 0.0
+	clic_genera_oro_pct = 0.0
+	tempestad_oro_dmg = 0.0
+
+	# Keystones Supremos
+	keystone_cataclismo = false
+	keystone_soberania = false
+	keystone_segunda_vida = false
+	keystone_coloso = false
+	keystone_aliento = false
+	keystone_usura = false
+	keystone_fabrica = false
+	keystone_bucle = false
+	keystone_oro_liquido = false
+	keystone_zenit = false
+	ascension_suprema = false
+
+	var bonus_vida_plana: float = 0.0
+
+	# 3. Mapeo genérico desde ArbolInterconectadoDatos
+	var arbol_nodos = ArbolInterconectadoDatos.generar_arbol()
+	for id in mejoras_arbol.keys():
+		var lvl = int(mejoras_arbol[id])
+		if lvl <= 0 or not arbol_nodos.has(id):
+			continue
+		var nodo: SkillNodeData = arbol_nodos[id]
+		var val = nodo.valor_por_nivel * lvl
+
+		match nodo.estadistica_afectada:
+			"salud_maxima":
+				bonus_vida_plana += val
+			"mitigacion_dano_pct":
+				mitigacion_pasiva_pct += (val * 0.01)
+			"armadura_plana":
+				armadura_plana += val
+			"escudo_almas":
+				max_escudo_almas += val
+			"vidas_extra":
+				bonus_vidas_arbol += int(val)
+			"keystone_segunda_vida":
+				bonus_vidas_arbol += 1
+				keystone_segunda_vida = true
+			"velocidad_mov_pct":
+				bonus_velocidad_mov_pct += (val * 0.01)
+			"radio_iman":
+				radio_iman_extra += val
+			"regen_vida_seg":
+				regen_vida_seg += val
+			"vida_por_baja":
+				vida_por_baja += val
+			"invulnerable_extra_seg":
+				bonus_invulnerable_seg += val
+			"reflejo_dano_pct":
+				reflejo_dano_pct += (val * 0.01)
+			"dano_clic_pct":
+				bonus_dano_clic_pct += (val * 0.01)
+			"clics_por_pulsacion":
+				clics_por_pulsacion += int(val)
+			"radio_aoe_clic":
+				bonus_radio_aoe_clic += val
+			"empuje_clic_pct":
+				bonus_empuje_clic_pct += (val * 0.01)
+			"critico_clic_prob":
+				bonus_critico_clic_prob += (val * 0.01)
+				prob_critico += (val * 0.01)
+			"dano_critico_pct":
+				bonus_dano_critico_pct += (val * 0.01)
+				mult_critico += (val * 0.01)
+			"eco_clic_prob":
+				bonus_eco_clic_prob += (val * 0.01)
+			"oro_por_baja_pct":
+				oro_por_baja_pct += (val * 0.01)
+			"xp_ganada_pct":
+				xp_ganada_pct += (val * 0.01)
+			"cadencia_armas_pct":
+				bonus_cadencia_pct += (val * 0.01)
+			"dano_armas_pct":
+				bonus_dano_armas_pct += (val * 0.01)
+			"autoclick_tasa":
+				autoclick_tasa += val
+			"autoclick_overclock_pct":
+				autoclick_tasa *= (1.0 + (val * 0.01))
+			"proyectiles_extra":
+				proyectiles_extra += int(val)
+			"perforacion_armas":
+				perforacion_armas += int(val)
+			"rango_ataque_pct":
+				rango_ataque *= (1.0 + (val * 0.01))
+			"oro_pasivo_seg":
+				oro_pasivo_seg += val
+			"interes_oleada_pct":
+				interes_oleada_pct += (val * 0.01)
+			"clic_cura_escudo":
+				clic_cura_escudo += val
+			"xp_a_oro_pct":
+				xp_a_oro_pct += (val * 0.01)
+			"clic_genera_oro_pct":
+				clic_genera_oro_pct += (val * 0.01)
+			"tempestad_oro_dmg":
+				tempestad_oro_dmg += val
+			"keystone_cataclismo":
+				keystone_cataclismo = true
+			"keystone_soberania":
+				keystone_soberania = true
+			"keystone_coloso":
+				keystone_coloso = true
+			"keystone_aliento":
+				keystone_aliento = true
+			"keystone_usura":
+				keystone_usura = true
+			"keystone_fabrica":
+				keystone_fabrica = true
+			"keystone_bucle":
+				keystone_bucle = true
+			"keystone_oro_liquido":
+				keystone_oro_liquido = true
+			"keystone_zenit":
+				keystone_zenit = true
+			"ascension_suprema":
+				ascension_suprema = true
+
+	# 4. Modificadores de compatibilidad legacy
+	var lvl_dano_old = mejoras_arbol.get("mon_dano", 0)
+	var lvl_vida_old = mejoras_arbol.get("mon_vida", 0)
+	var lvl_vel_old = mejoras_arbol.get("mon_vel", 0)
+	bonus_dano_pct += (lvl_dano_old * 0.18)
+	bonus_vida_plana += (lvl_vida_old * 25.0)
+	bonus_velocidad_mov_pct += (lvl_vel_old * 0.10)
+
+	# 5. Aplicar efectos de Keystones especiales
+	if keystone_coloso:
+		armadura_plana += vida_maxima * 0.25
+	if ascension_suprema:
+		bonus_dano_pct += 1.0
+		bonus_velocidad_mov_pct += 0.50
+
+	# 6. Consolidar estadísticas
+	dano = base_dano * (1.0 + bonus_dano_pct + bonus_dano_armas_pct)
+	cadencia_ataque = maxf(0.12, base_cadencia_ataque * (1.0 - minf(bonus_cadencia_pct, 0.70)))
+	speed_caminar = base_speed_caminar * (1.0 + bonus_velocidad_mov_pct)
+	speed_correr = base_speed_correr * (1.0 + bonus_velocidad_mov_pct)
+
 	var vida_anterior_max = vida_maxima
-	vida_maxima = base_vida_maxima + bonus_vida_max
+	vida_maxima = base_vida_maxima + bonus_vida_plana
 	if vida_maxima > vida_anterior_max:
 		vida = minf(vida + (vida_maxima - vida_anterior_max), vida_maxima)
-		
+
+	escudo_almas = max_escudo_almas
+
+	# Ajustar reapariciones acordes a las vidas desbloqueadas
+	if not _muerto_definitivo:
+		reapariciones = max(reapariciones, obtener_vidas_maximas() - 1)
+
 	# Sincronizar componente Salud si existe
 	if has_node("Salud"):
 		var s = get_node("Salud")
 		s.vida = int(vida)
 		s.vida_inicial = int(vida_maxima)
-		
+		s.reapariciones = reapariciones
+
 	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
 	emit_signal("economia_actualizada", oro, clics_disponibles, clics_totales)
 
 func puede_comprar_mejora(id: String) -> bool:
-	if not ArbolMejorasDatos.MEJORAS.has(id):
-		return false
-	var datos = ArbolMejorasDatos.MEJORAS[id]
-	var lvl_actual = mejoras_arbol.get(id, 0)
-	if lvl_actual >= datos.max_nivel:
-		return false
-	if not ArbolMejorasDatos.cumple_requisitos(id, mejoras_arbol):
-		return false
-	var costos = ArbolMejorasDatos.calcular_costo(id, lvl_actual)
-	if oro < costos.monedas or clics_disponibles < costos.clicks:
-		return false
-	return true
+	if ArbolInterconectadoDatos != null:
+		var nodos = ArbolInterconectadoDatos.generar_arbol()
+		if nodos.has(id):
+			var n: SkillNodeData = nodos[id]
+			return MetaprogresoManager.puede_comprar(n)
+	return false
 
 func comprar_mejora(id: String) -> bool:
-	if not puede_comprar_mejora(id):
-		return false
-	var lvl_actual = mejoras_arbol.get(id, 0)
-	var costos = ArbolMejorasDatos.calcular_costo(id, lvl_actual)
-	
-	oro -= costos.monedas
-	clics_disponibles -= costos.clicks
-	mejoras_arbol[id] = lvl_actual + 1
-	
-	# Efectos inmediatos especiales
-	if id == "mon_vida":
-		vida = minf(vida + 25.0, vida_maxima + 25.0)
-	elif id == "hib_pacto":
-		reapariciones = min(reapariciones + 1, 5)
-		vida = vida_maxima
-		AudioManager.play("altar_activado", 1.25, 2.0)
-	elif id == "hib_ascension":
-		AudioManager.play("victoria", 1.1, 3.0)
-		_spawn_efecto_ascension()
-		
-	recalcular_stats_incrementales()
-	emit_signal("mejora_arbol_comprada", id, mejoras_arbol[id])
-	AudioManager.play("altar_activado", 1.0 + (mejoras_arbol[id] * 0.04), -2.0)
-	return true
+	if ArbolInterconectadoDatos != null:
+		var nodos = ArbolInterconectadoDatos.generar_arbol()
+		if nodos.has(id):
+			var n: SkillNodeData = nodos[id]
+			var exito = MetaprogresoManager.comprar_nodo(n)
+			if exito:
+				recalcular_stats_incrementales()
+				return true
+	return false
 
 func registrar_click_jugador(es_anomalia: bool = false):
-	var lvl_pot = mejoras_arbol.get("clk_potencia", 0)
-	var lvl_alq = mejoras_arbol.get("hib_alquimia", 0)
-	var lvl_sob = mejoras_arbol.get("clk_sobrecarga", 0)
-	
-	var clics_ganados = 1 + lvl_pot
+	var clics_ganados = clics_por_pulsacion
 	if es_anomalia:
 		clics_ganados += 3
 		
+	# Eco de Clic (probabilidad de duplicar)
+	if bonus_eco_clic_prob > 0.0 and randf() < bonus_eco_clic_prob:
+		clics_ganados *= 2
+		_spawn_texto_3d("🔁 ¡ECO DE CLIC!", Color(0.4, 0.8, 1.0))
+
 	clics_disponibles += clics_ganados
 	clics_totales += clics_ganados
-	
-	# Oro extra por Clic Potenciado
-	if lvl_pot > 0:
-		recoger_drop(0, lvl_pot)
-		
-	# Alquimia Rúnica: convierte poder de daño en oro
-	if lvl_alq > 0:
-		var oro_alquimia = int(ceil(dano * 0.15 * lvl_alq))
-		recoger_drop(0, max(1, oro_alquimia))
-		
-	# Sobrecarga de Tormenta: relámpago cada 8 clics
-	if lvl_sob > 0:
+
+	# Puente Azul-Verde: Clic cura escudo
+	if clic_cura_escudo > 0.0:
+		escudo_almas = minf(escudo_almas + clic_cura_escudo, max_escudo_almas + 60.0)
+
+	# Puente Dorada-Azul: Clic genera oro
+	if clic_genera_oro_pct > 0.0:
+		var oro_alquimia = max(1, int(ceil(dano * clic_genera_oro_pct)))
+		recoger_drop(0, oro_alquimia)
+
+	# Sobrecarga de Tormenta
+	if mejoras_arbol.has("clk_sobrecarga_1") or mejoras_arbol.has("clk_sobrecarga"):
 		contador_clics_sobrecarga += 1
-		if contador_clics_sobrecarga >= 8:
+		if contador_clics_sobrecarga >= 6:
 			contador_clics_sobrecarga = 0
-			_detonar_tormenta_arcana(60.0 + (lvl_sob - 1) * 25.0)
-			
+			var mult_sob = float(mejoras_arbol.get("clk_sobrecarga_1", mejoras_arbol.get("clk_sobrecarga", 1)))
+			_detonar_tormenta_arcana(80.0 * mult_sob)
+
+	# Keystone: Cataclismo Cinético
+	if keystone_cataclismo:
+		contador_cataclismo += 1
+		if contador_cataclismo >= 8:
+			contador_cataclismo = 0
+			_reloj_ataque = 0.0
+			_repeler_enemigos_alrededor(16.0, 18.0)
+			_spawn_texto_3d("⚡⚡ ¡CATACLISMO CINÉTICO!", Color(0.3, 0.85, 1.0))
+			AudioManager.play("victoria", 1.25)
+
 	if evolucion_manager != null:
 		evolucion_manager.registrar_click()
-		
+
 	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
 	emit_signal("economia_actualizada", oro, clics_disponibles, clics_totales)
 
 func obtener_radio_atraccion_extra() -> float:
-	return float(mejoras_arbol.get("clk_iman", 0)) * 2.5
+	return radio_iman_extra + (float(mejoras_arbol.get("clk_iman", 0)) * 2.5)
 
 func obtener_bonus_onda_clic() -> Dictionary:
-	var lvl_onda = mejoras_arbol.get("clk_onda", 0)
+	var r_mult = 1.0 + (bonus_radio_aoe_clic * 0.20) + (float(mejoras_arbol.get("clk_onda", 0)) * 0.30)
+	var d_mult = 1.0 + bonus_dano_clic_pct + (float(mejoras_arbol.get("clk_dano_1", 0)) * 0.20)
+	if keystone_soberania:
+		d_mult += 2.0
 	return {
-		"radio_mult": 1.0 + (lvl_onda * 0.30),
-		"dano_mult": 1.0 + (lvl_onda * 0.35)
+		"radio_mult": r_mult,
+		"dano_mult": d_mult
 	}
 
 func _procesar_incremental_pasivo(delta: float):
-	var lvl_minero = mejoras_arbol.get("mon_pasivo", 0)
-	var lvl_clk_pas = mejoras_arbol.get("clk_pasivo", 0)
-	if lvl_minero <= 0 and lvl_clk_pas <= 0:
-		return
-		
+	if _cooldown_ultimo_aliento > 0.0:
+		_cooldown_ultimo_aliento = maxf(0.0, _cooldown_ultimo_aliento - delta)
+
+	# 1. Regeneración pasiva de vida
+	if regen_vida_seg > 0.0 and vida < vida_maxima and not _muerto_definitivo:
+		vida = minf(vida + (regen_vida_seg * delta), vida_maxima)
+
+	# 2. Generación pasiva de oro
+	if oro_pasivo_seg > 0.0:
+		_oro_pasivo_acum += oro_pasivo_seg * delta
+		if _oro_pasivo_acum >= 1.0:
+			var g = int(_oro_pasivo_acum)
+			_oro_pasivo_acum -= g
+			oro += g
+
+	# 3. Autoclicker interno
+	if autoclick_tasa > 0.0:
+		_autoclick_acumulador += autoclick_tasa * delta
+		if _autoclick_acumulador >= 1.0:
+			var clk_ent = int(_autoclick_acumulador)
+			_autoclick_acumulador -= clk_ent
+			clics_disponibles += clk_ent
+			clics_totales += clk_ent
+			if keystone_fabrica:
+				var boton = get_tree().get_first_node_in_group("boton_movil")
+				if boton != null and boton.has_method("_detonar_onda_choque"):
+					boton._detonar_onda_choque()
+
+	# 4. Contador de compatibilidad por segundo
 	_reloj_incremental_pasivo += delta
 	if _reloj_incremental_pasivo >= 1.0:
 		_reloj_incremental_pasivo -= 1.0
-		var hubo_cambio = false
+		var lvl_minero = mejoras_arbol.get("mon_pasivo", 0)
 		if lvl_minero > 0:
 			oro += lvl_minero * 1
-			hubo_cambio = true
-		if lvl_clk_pas > 0:
-			_clics_pasivos_frac += lvl_clk_pas * 0.4
-			if _clics_pasivos_frac >= 1.0:
-				var enteroclics = int(_clics_pasivos_frac)
-				_clics_pasivos_frac -= enteroclics
-				clics_disponibles += enteroclics
-				clics_totales += enteroclics
-				hubo_cambio = true
-		if hubo_cambio:
-			emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
-			emit_signal("economia_actualizada", oro, clics_disponibles, clics_totales)
+		emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
+		emit_signal("economia_actualizada", oro, clics_disponibles, clics_totales)
+
+func _spawn_texto_3d(texto: String, color: Color = Color.WHITE):
+	if not is_inside_tree() or get_parent() == null:
+		return
+	var escena = load("res://damage_number_3d.tscn")
+	if escena != null:
+		var txt = escena.instantiate()
+		var pos = global_position + Vector3(0, 2.4, 0)
+		get_parent().add_child(txt)
+		txt.global_position = pos
+		if txt.has_method("iniciar"):
+			txt.iniciar(0.0, false, false, texto)
+			var label = txt.get_node_or_null("Label3D") as Label3D
+			if label != null:
+				label.modulate = color
 
 func _detonar_tormenta_arcana(dano_descarga: float):
 	AudioManager.play("orbe_explosion", 1.3)
@@ -780,6 +1081,8 @@ func elegir_estado():
 	return Estado.CAMINAR
 
 func animar():
+	if anim == null:
+		return
 	if accion != "":
 		anim.play(accion)
 		return
@@ -1014,14 +1317,21 @@ func _procesar_caida_jugador():
 	if reapariciones > 0:
 		reapariciones -= 1
 		vida = vida_maxima
+		escudo_almas = max_escudo_almas
 		global_position = punto_reaparicion
 		velocity = Vector3.ZERO
 		avance = Vector3.ZERO
 		empuje = Vector3.ZERO
-		_reloj_invulnerable = invulnerable_tiempo
+		_reloj_invulnerable = invulnerable_tiempo + bonus_invulnerable_seg
 		
-		AudioManager.play("danio_jugador", 0.65, 3.0)
-		_crear_feedback_reaparicion()
+		# Keystone: Segunda Oportunidad Sagrada (Nova masiva de repulsión y purga)
+		if keystone_segunda_vida:
+			_repeler_enemigos_alrededor(16.0, 18.0)
+			AudioManager.play("victoria", 1.25)
+			_spawn_texto_3d("✝️ ¡NOVA SAGRADA DE SEGUNDA OPORTUNIDAD!", Color(1.0, 0.9, 0.3))
+		else:
+			AudioManager.play("danio_jugador", 0.65, 3.0)
+			_crear_feedback_reaparicion()
 		
 		# Sincronizar nodo Salud secundario
 		if has_node("Salud"):
@@ -1031,12 +1341,15 @@ func _procesar_caida_jugador():
 			s.cambio.emit(s.vida)
 			
 		emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
-		print("⚡ [Personaje] ¡Caíste en combate! Reapareciendo en el centro. Reapariciones restantes: %d (Vidas: %d)" % [reapariciones, reapariciones + 1])
+		print("⚡ [Personaje] ¡Caíste en combate! Reapareciendo en el centro. Reapariciones restantes: %d (Vidas: %d / %d)" % [reapariciones, reapariciones + 1, obtener_vidas_maximas()])
 	else:
 		_muerto_definitivo = true
 		vida = 0.0
 		emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
-		print("💀 [Personaje] ¡Agotaste tus 3 vidas! Fin de la partida por derrota definitiva...")
+		if obtener_vidas_maximas() == 1:
+			print("💀 [Personaje] ¡Caíste en combate (1 vida)! Fin de la partida por derrota definitiva...")
+		else:
+			print("💀 [Personaje] ¡Agotaste tus %d vidas! Fin de la partida por derrota definitiva..." % obtener_vidas_maximas())
 		
 		if has_node("Salud"):
 			var s = get_node("Salud")
@@ -1048,7 +1361,10 @@ func _procesar_caida_jugador():
 		if tree != null:
 			var partida = tree.get_first_node_in_group("partida")
 			if partida != null and partida.has_method("perder"):
-				partida.perder("Agotaste tus 3 vidas en combate")
+				if obtener_vidas_maximas() == 1:
+					partida.perder("Caíste en combate (1 vida)")
+				else:
+					partida.perder("Agotaste tus %d vidas en combate" % obtener_vidas_maximas())
 
 func _crear_feedback_reaparicion():
 	if not is_inside_tree() or get_parent() == null:
