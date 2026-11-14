@@ -2,29 +2,38 @@ class_name EvolucionManager
 extends Node
 
 ## EvolucionManager (FSM de Evolución de Clases y Metamorfosis 3D)
-## Administra la transición de estados de clase del jugador y el intercambio de mallas 3D en tiempo real.
+## Administra la transición de estados de clase del jugador (Tier 1 y Ascensión Tier 2)
+## y el intercambio de mallas 3D en tiempo real preservando bonos de run.
 
 enum EstadoFSM {
-	NOVATO,        # Clase base inicial
-	DISPONIBLE,    # Cumplió hito (Nivel 3 o 15 clics), listo para elegir
-	METAMORFOSIS,  # Modal activo / proceso de transformación
-	EVOLUCIONADO   # Clase definitiva seleccionada
+	NOVATO,             # Clase base inicial
+	DISPONIBLE,         # Cumplió hito Tier 1 (Nivel 3 + 15 clics + 8 bajas), listo para elegir
+	METAMORFOSIS,       # Modal activo / proceso de transformación
+	EVOLUCIONADO,       # Clase Tier 1 seleccionada (Guerrero / Cazador / Mago)
+	ASCENDIDO_TIER_2    # Subclase Suprema Tier 2 desbloqueada (Nivel 8 + 60 clics)
 }
 
 signal metamorfosis_disponible()
 signal clase_evolucionada(nombre_clase: String, stats: Dictionary)
+signal subclase_ascendida(nombre_subclase: String, stats: Dictionary)
 signal malla_cambiada(nuevo_modelo: Node3D)
 
-# Requisitos de Metamorfosis (Calibrados para alcanzarse tras superar el juego inicial, ~minuto 2 a 3)
-@export var hito_nivel: int = 5
-@export var hito_clics: int = 25
-@export var hito_bajas: int = 15
+# Requisitos de Metamorfosis Tier 1 (Acelerados al minuto 1:15 - 1:30 para dopamina temprana)
+@export var hito_nivel: int = 3
+@export var hito_clics: int = 15
+@export var hito_bajas: int = 8
 @export var requiere_todos_los_hitos: bool = true
 
+# Requisitos de Ascensión Tier 2 (Mitad de partida ~minuto 4:30 - 5:30)
+@export var hito_nivel_tier2: int = 8
+@export var hito_clics_tier2: int = 60
+
 # Constantes de compatibilidad
-const HITO_NIVEL: int = 5
-const HITO_CLICS: int = 25
-const HITO_BAJAS: int = 15
+const HITO_NIVEL: int = 3
+const HITO_CLICS: int = 15
+const HITO_BAJAS: int = 8
+const HITO_NIVEL_TIER2: int = 8
+const HITO_CLICS_TIER2: int = 60
 
 const MALLAS_CLASE = {
 	"Novato": "res://personaje/character-male-a.glb",
@@ -40,10 +49,10 @@ const STATS_CLASE = {
 		"descripcion": "Combatiente novato que recién ingresa al Coliseo.",
 		"vida_maxima": 100.0,
 		"dano": 12.0,
-		"rango_ataque": 2.8,
-		"cadencia_ataque": 0.80,
-		"speed_caminar": 3.2,
-		"speed_correr": 5.5
+		"rango_ataque": 2.6,
+		"cadencia_ataque": 0.85,
+		"speed_caminar": 3.4,
+		"speed_correr": 5.4
 	},
 	"Guerrero": {
 		"nombre": "Guerrero",
@@ -51,7 +60,7 @@ const STATS_CLASE = {
 		"descripcion": "Especialista en combate cuerpo a cuerpo y resistencia extrema.",
 		"vida_maxima": 160.0,
 		"dano": 22.0,
-		"rango_ataque": 3.0,
+		"rango_ataque": 3.2,
 		"cadencia_ataque": 0.70,
 		"speed_caminar": 3.2,
 		"speed_correr": 5.6
@@ -80,8 +89,33 @@ const STATS_CLASE = {
 	}
 }
 
+const SUBCLASES_TIER2 = {
+	"Guerrero": {
+		"nombre": "Paladín Solar",
+		"bonus_vida": 80.0,
+		"mult_dano": 1.35,
+		"mult_cadencia": 0.85,
+		"bonus_armadura": 30.0
+	},
+	"Cazador": {
+		"nombre": "Francotirador Astral",
+		"bonus_vida": 45.0,
+		"mult_dano": 1.35,
+		"mult_cadencia": 0.82,
+		"proyectiles_extra": 1
+	},
+	"Mago": {
+		"nombre": "Archimago del Vacío",
+		"bonus_vida": 50.0,
+		"mult_dano": 1.45,
+		"mult_cadencia": 0.85,
+		"bonus_aoe": 1.5
+	}
+}
+
 var estado_actual: EstadoFSM = EstadoFSM.NOVATO
 var total_clics_acumulados: int = 0
+var subclase_activa: String = ""
 var personaje_ref: CharacterBody3D = null
 var modal_instancia: Node = null
 
@@ -109,17 +143,14 @@ func _vincular_eventos_externos():
 			boton.click_presionado.connect(_on_boton_movil_click)
 
 func _on_boton_movil_click(total_clicks: int):
-	# Sincronización exacta con el contador oficial de clics de boton_movil (evita conteo doble)
-	total_clics_acumulados = total_clicks
+	total_clics_acumulados = max(total_clics_acumulados, total_clicks)
 	_evaluar_hito_evolucion()
 
 func registrar_click():
-	if estado_actual != EstadoFSM.NOVATO:
-		return
 	var tree = _obtener_tree()
 	if tree != null:
 		var b = tree.get_first_node_in_group("boton_movil")
-		if b != null and "total_clicks" in b:
+		if b != null and "total_clicks" in b and b.total_clicks > total_clics_acumulados:
 			total_clics_acumulados = b.total_clicks
 		else:
 			total_clics_acumulados += 1
@@ -128,13 +159,9 @@ func registrar_click():
 	_evaluar_hito_evolucion()
 
 func notificar_nivel(_nuevo_nivel: int):
-	if estado_actual != EstadoFSM.NOVATO:
-		return
 	_evaluar_hito_evolucion()
 
 func notificar_baja():
-	if estado_actual != EstadoFSM.NOVATO:
-		return
 	_evaluar_hito_evolucion()
 
 func puede_evolucionar() -> bool:
@@ -142,34 +169,49 @@ func puede_evolucionar() -> bool:
 		return false
 	var nivel_actual = personaje_ref.nivel if personaje_ref != null else 1
 	var bajas_actuales = personaje_ref.bajas if personaje_ref != null else 0
+	var clics_reales = max(total_clics_acumulados, personaje_ref.clics_totales if personaje_ref != null else 0)
 	
 	if requiere_todos_los_hitos:
-		# Requiere maestría en combate (nivel y bajas) Y en interacción con el núcleo (clics)
 		return (nivel_actual >= hito_nivel 
-			and total_clics_acumulados >= hito_clics 
+			and clics_reales >= hito_clics 
 			and bajas_actuales >= hito_bajas)
 	else:
-		return (nivel_actual >= hito_nivel or total_clics_acumulados >= hito_clics)
+		return (nivel_actual >= hito_nivel or clics_reales >= hito_clics)
+
+func puede_ascender_tier2() -> bool:
+	if estado_actual != EstadoFSM.EVOLUCIONADO:
+		return false
+	var nivel_actual = personaje_ref.nivel if personaje_ref != null else 1
+	var clics_reales = max(total_clics_acumulados, personaje_ref.clics_totales if personaje_ref != null else 0)
+	return nivel_actual >= hito_nivel_tier2 and clics_reales >= hito_clics_tier2
 
 func obtener_texto_progreso_evolucion() -> String:
-	if estado_actual != EstadoFSM.NOVATO:
-		return ""
 	var nivel_actual = personaje_ref.nivel if personaje_ref != null else 1
 	var bajas_actuales = personaje_ref.bajas if personaje_ref != null else 0
-	if puede_evolucionar():
-		return "¡METAMORFOSIS DISPONIBLE!"
-	return "Metamorfosis: Nv.%d/%d · Clics:%d/%d · Bajas:%d/%d" % [
-		nivel_actual, hito_nivel,
-		total_clics_acumulados, hito_clics,
-		bajas_actuales, hito_bajas
-	]
+	var clics_reales = max(total_clics_acumulados, personaje_ref.clics_totales if personaje_ref != null else 0)
+	
+	if estado_actual == EstadoFSM.NOVATO:
+		if puede_evolucionar():
+			return "¡METAMORFOSIS DISPONIBLE!"
+		return "Metamorfosis T1: Nv.%d/%d · Clics:%d/%d · Bajas:%d/%d" % [
+			nivel_actual, hito_nivel,
+			clics_reales, hito_clics,
+			bajas_actuales, hito_bajas
+		]
+	elif estado_actual == EstadoFSM.EVOLUCIONADO:
+		return "Ascensión T2: Nv.%d/%d · Clics:%d/%d" % [
+			nivel_actual, hito_nivel_tier2,
+			clics_reales, hito_clics_tier2
+		]
+	elif estado_actual == EstadoFSM.ASCENDIDO_TIER_2:
+		return "👑 " + subclase_activa
+	return ""
 
 func _evaluar_hito_evolucion():
-	if estado_actual != EstadoFSM.NOVATO:
-		return
-	
-	if puede_evolucionar():
+	if estado_actual == EstadoFSM.NOVATO and puede_evolucionar():
 		disparar_metamorfosis()
+	elif estado_actual == EstadoFSM.EVOLUCIONADO and puede_ascender_tier2():
+		_ascender_a_subclase_tier2()
 
 func disparar_metamorfosis():
 	if estado_actual != EstadoFSM.NOVATO:
@@ -177,11 +219,6 @@ func disparar_metamorfosis():
 	
 	estado_actual = EstadoFSM.DISPONIBLE
 	emit_signal("metamorfosis_disponible")
-	print("⚡ [FSM Evolución] ¡Hito alcanzado! (Nivel %d/%d, Clics %d/%d, Bajas %d/%d). Metamorfosis disponible." % [
-		personaje_ref.nivel if personaje_ref != null else 1, hito_nivel,
-		total_clics_acumulados, hito_clics,
-		personaje_ref.bajas if personaje_ref != null else 0, hito_bajas
-	])
 	
 	AudioManager.play("altar_activado", 1.25, 2.0)
 	if personaje_ref != null and personaje_ref.has_method("_spawn_texto_3d"):
@@ -212,7 +249,6 @@ func abrir_modal_evolucion():
 			if not radial.evolucion_seleccionada.is_connected(_on_clase_elegida_en_modal):
 				radial.evolucion_seleccionada.connect(_on_clase_elegida_en_modal)
 			radial.abrir()
-			print("✨ [FSM Evolución] Menú radial in-world desplegado a los pies del héroe.")
 			return
 
 	# 2. Fallback: Modal tradicional si no hay personaje disponible
@@ -224,8 +260,6 @@ func abrir_modal_evolucion():
 			tree.root.add_child(modal_instancia)
 			if modal_instancia.has_signal("clase_seleccionada"):
 				modal_instancia.clase_seleccionada.connect(_on_clase_elegida_en_modal)
-	else:
-		push_error("No se encontró la escena res://modal_evolucion.tscn")
 
 func _on_clase_elegida_en_modal(nombre_clase: String):
 	if modal_instancia != null and is_instance_valid(modal_instancia):
@@ -240,6 +274,8 @@ func _on_clase_elegida_en_modal(nombre_clase: String):
 	evolucionar_a(nombre_clase)
 
 func evolucionar_a(nombre_clase: String):
+	if estado_actual == EstadoFSM.EVOLUCIONADO or estado_actual == EstadoFSM.ASCENDIDO_TIER_2:
+		return # Evita doble ejecución
 	if not STATS_CLASE.has(nombre_clase):
 		push_error("Clase desconocida para evolución: " + nombre_clase)
 		return
@@ -248,18 +284,8 @@ func evolucionar_a(nombre_clase: String):
 	var stats = STATS_CLASE[nombre_clase]
 	
 	if personaje_ref != null:
-		# 1. Actualizar clase y atributos con preservación del árbol incremental
 		if personaje_ref.has_method("aplicar_clase"):
 			personaje_ref.aplicar_clase(nombre_clase)
-		else:
-			personaje_ref.clase = nombre_clase
-			personaje_ref.vida_maxima = stats["vida_maxima"]
-			personaje_ref.vida = stats["vida_maxima"]
-			personaje_ref.dano = stats["dano"]
-			personaje_ref.rango_ataque = stats["rango_ataque"]
-			personaje_ref.cadencia_ataque = stats["cadencia_ataque"]
-			personaje_ref.speed_caminar = stats["speed_caminar"]
-			personaje_ref.speed_correr = stats["speed_correr"]
 		
 		# Sincronizar componente desacoplado Salud si existe
 		var nodo_salud = personaje_ref.get_node_or_null("Salud")
@@ -269,7 +295,7 @@ func evolucionar_a(nombre_clase: String):
 			if "vida_inicial" in nodo_salud:
 				nodo_salud.vida_inicial = int(personaje_ref.vida_maxima)
 		
-		# 2. Intercambio de malla 3D en tiempo real
+		# Intercambio de malla 3D en tiempo real
 		var ruta_malla = MALLAS_CLASE.get(nombre_clase, "")
 		if ruta_malla != "":
 			var nuevo_anim = cambiar_malla_3d(personaje_ref, ruta_malla)
@@ -277,10 +303,8 @@ func evolucionar_a(nombre_clase: String):
 				personaje_ref.anim = nuevo_anim
 				personaje_ref.animar()
 		
-		# 3. Disparo de feedback visual / popup
 		_emitir_feedback_metamorfosis(nombre_clase)
 		
-		# 4. Notificar actualización de estadísticas
 		personaje_ref.emit_signal("stats_actualizadas",
 			personaje_ref.vida,
 			personaje_ref.vida_maxima,
@@ -292,7 +316,36 @@ func evolucionar_a(nombre_clase: String):
 		)
 	
 	emit_signal("clase_evolucionada", nombre_clase, stats)
-	print("✨ [FSM Evolución] ¡Metamorfosis completada! Nueva clase activa: %s" % nombre_clase)
+	_evaluar_hito_evolucion()
+
+func _ascender_a_subclase_tier2():
+	if estado_actual != EstadoFSM.EVOLUCIONADO or personaje_ref == null:
+		return
+	var datos_t2 = SUBCLASES_TIER2.get(personaje_ref.clase, null)
+	if datos_t2 == null:
+		return
+	estado_actual = EstadoFSM.ASCENDIDO_TIER_2
+	subclase_activa = datos_t2["nombre"]
+	
+	if "bono_run_vida_plana" in personaje_ref:
+		personaje_ref.bono_run_vida_plana += float(datos_t2.get("bonus_vida", 50.0))
+	if "bono_run_dano_mult" in personaje_ref:
+		personaje_ref.bono_run_dano_mult *= float(datos_t2.get("mult_dano", 1.35))
+	if "bono_run_cadencia_mult" in personaje_ref:
+		personaje_ref.bono_run_cadencia_mult *= float(datos_t2.get("mult_cadencia", 0.85))
+	if "bono_run_armadura_plana" in personaje_ref and datos_t2.has("bonus_armadura"):
+		personaje_ref.bono_run_armadura_plana += float(datos_t2["bonus_armadura"])
+	if "bono_run_proyectiles_extra" in personaje_ref and datos_t2.has("proyectiles_extra"):
+		personaje_ref.bono_run_proyectiles_extra += int(datos_t2["proyectiles_extra"])
+		
+	if personaje_ref.has_method("recalcular_stats_incrementales"):
+		personaje_ref.recalcular_stats_incrementales()
+	personaje_ref.vida = personaje_ref.vida_maxima
+	
+	AudioManager.play("victoria", 1.2)
+	if personaje_ref.has_method("_spawn_texto_3d"):
+		personaje_ref._spawn_texto_3d("👑 ¡ASCENSIÓN TIER 2: %s!" % subclase_activa.to_upper(), Color(1.0, 0.85, 0.2))
+	emit_signal("subclase_ascendida", subclase_activa, datos_t2)
 
 func cambiar_malla_3d(personaje: CharacterBody3D, ruta_malla: String) -> AnimationPlayer:
 	if not ResourceLoader.exists(ruta_malla):
@@ -310,6 +363,7 @@ func cambiar_malla_3d(personaje: CharacterBody3D, ruta_malla: String) -> Animati
 	if modelo_actual != null:
 		transform_base = modelo_actual.transform
 		modelo_actual.name = "Modelo_Antiguo"
+		personaje.remove_child(modelo_actual)
 		modelo_actual.queue_free()
 	
 	var nuevo_modelo = escena_glb.instantiate()
@@ -317,26 +371,17 @@ func cambiar_malla_3d(personaje: CharacterBody3D, ruta_malla: String) -> Animati
 	nuevo_modelo.transform = transform_base
 	personaje.add_child(nuevo_modelo)
 	
-	var nuevo_anim = nuevo_modelo.get_node_or_null("AnimationPlayer") as AnimationPlayer
+	var nuevo_anim = AnimadorEntidad.buscar_animation_player(nuevo_modelo)
 	if nuevo_anim == null:
 		push_warning("El modelo nuevo %s no contiene nodo AnimationPlayer" % ruta_malla)
-	
 	emit_signal("malla_cambiada", nuevo_modelo)
 	return nuevo_anim
 
 func _emitir_feedback_metamorfosis(nombre_clase: String):
 	if personaje_ref == null or not personaje_ref.is_inside_tree():
 		return
-	
-	if personaje_ref.get_parent() != null:
-		var escena_num = load("res://damage_number_3d.tscn")
-		if escena_num != null:
-			var txt = escena_num.instantiate()
-			var pos = personaje_ref.global_position + Vector3(0, 2.4, 0)
-			personaje_ref.get_parent().add_child(txt)
-			txt.global_position = pos
-			if txt.has_method("iniciar"):
-				txt.iniciar(0.0, true, false, "¡EVOLUCIÓN A %s!" % nombre_clase.to_upper())
+	if personaje_ref.has_method("_spawn_texto_3d"):
+		personaje_ref._spawn_texto_3d("¡EVOLUCIÓN A %s!" % nombre_clase.to_upper(), Color(1.0, 0.9, 0.3))
 	
 	var luz = OmniLight3D.new()
 	luz.light_color = Color(1.0, 0.9, 0.4)

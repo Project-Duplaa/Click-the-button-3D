@@ -1,45 +1,83 @@
 extends CharacterBody3D
 
-@export var rapidez: float = 4.4
-@export var vida_maxima: float = 18.0
-@export var dano_ataque: float = 5.0
-@export var cadencia_ataque: float = 0.8
+@export var rapidez: float = 2.85
+@export var vida_maxima: float = 14.0
+@export var dano_ataque: float = 4.5
+@export var cadencia_ataque: float = 1.0
 @export var rango_ataque: float = 1.1
 
-var vida: float = 18.0
+var vida: float = 14.0
 var jugador: Node3D = null
 var _reloj_ataque: float = 0.0
-var _escala_base: Vector3 = Vector3(1.8, 1.8, 1.8)
+var _escala_base: Vector3 = Vector3.ONE
+var _muerto: bool = false
+var _anim_ctrl: AnimadorEntidad = AnimadorEntidad.new()
 
-@onready var anim = $Modelo/AnimationPlayer
-@onready var modelo = $Modelo
+var knockback_vel: Vector3 = Vector3.ZERO
+var resistencia_knockback: float = 0.0
+var _stun_timer: float = 0.0
+var marca_conductiva_timer: float = 0.0
+
+@onready var anim = $Modelo/AnimationPlayer if has_node("Modelo/AnimationPlayer") else null
+@onready var modelo = $Modelo if has_node("Modelo") else null
 
 func _ready():
+	add_to_group("enemies")
 	add_to_group("enemigos")
 	vida = vida_maxima
-	_escala_base = modelo.scale
-	jugador = get_tree().get_first_node_in_group("jugador")
-
-func _physics_process(delta):
-	velocity += get_gravity() * delta
-	_reloj_ataque = maxf(_reloj_ataque - delta, 0.0)
-	
+	if modelo != null:
+		_escala_base = modelo.scale
+		_anim_ctrl.vincular_modelo(modelo)
+	jugador = get_tree().get_first_node_in_group("player")
 	if jugador == null:
 		jugador = get_tree().get_first_node_in_group("jugador")
+
+func aplicar_knockback(impulso: Vector3, duracion_stun: float = 0.08) -> void:
+	var factor: float = clampf(1.0 - resistencia_knockback, 0.1, 1.0)
+	knockback_vel += Vector3(impulso.x, 0.0, impulso.z) * factor
+	if knockback_vel.length() > 25.0:
+		knockback_vel = knockback_vel.normalized() * 25.0
+	_stun_timer = maxf(_stun_timer, duracion_stun * factor)
+
+func aplicar_marca_conductiva(duracion: float = 2.5) -> void:
+	marca_conductiva_timer = maxf(marca_conductiva_timer, duracion)
+
+func _physics_process(delta):
+	if _muerto:
+		return
+
+	if not is_on_floor():
+		velocity += get_gravity() * delta
+
+	_reloj_ataque = maxf(_reloj_ataque - delta, 0.0)
+	_stun_timer = maxf(_stun_timer - delta, 0.0)
+	marca_conductiva_timer = maxf(marca_conductiva_timer - delta, 0.0)
+	_anim_ctrl.actualizar(delta)
+	knockback_vel = knockback_vel.move_toward(Vector3.ZERO, 28.0 * delta)
+
+	if jugador == null or not is_instance_valid(jugador):
+		jugador = get_tree().get_first_node_in_group("player")
+		if jugador == null:
+			jugador = get_tree().get_first_node_in_group("jugador")
+		velocity.x = knockback_vel.x
+		velocity.z = knockback_vel.z
 		move_and_slide()
 		return
-		
+
 	var d = distancia_a(jugador.global_position)
 	if d <= rango_ataque:
 		frenar()
-		if anim != null and anim.has_animation("attack-melee-right"):
-			anim.play("attack-melee-right")
-		if _reloj_ataque <= 0.001:
+		if _stun_timer > 0.0:
+			_anim_ctrl.reproducir_bucle("stunned", 0.10, 1.0, 1)
+		elif _reloj_ataque <= 0.001:
 			_reloj_ataque = cadencia_ataque
+			_anim_ctrl.reproducir_accion("attack-melee-right", 2, 0.07, 1.15)
 			_golpear_jugador()
 	else:
 		ir_a(jugador.global_position)
-		
+
+	velocity.x += knockback_vel.x
+	velocity.z += knockback_vel.z
 	move_and_slide()
 
 func ir_a(destino: Vector3):
@@ -47,60 +85,85 @@ func ir_a(destino: Vector3):
 	hacia.y = 0.0
 	if hacia.length_squared() > 0.01:
 		var dir = hacia.normalized()
-		velocity.x = dir.x * rapidez
-		velocity.z = dir.z * rapidez
+		var mult_stun = 0.15 if _stun_timer > 0.0 else 1.0
+		velocity.x = dir.x * rapidez * mult_stun
+		velocity.z = dir.z * rapidez * mult_stun
 		basis = Basis.looking_at(dir)
-		if anim != null and anim.has_animation("run"):
-			anim.play("run")
+		if _stun_timer > 0.0:
+			_anim_ctrl.reproducir_bucle("stunned", 0.10, 1.0, 1)
+		else:
+			_anim_ctrl.actualizar_locomocion(Vector2(velocity.x, velocity.z).length(), true, is_on_floor(), rapidez)
 
 func frenar():
 	velocity.x = 0.0
 	velocity.z = 0.0
-	if anim != null and anim.has_animation("idle"):
-		anim.play("idle")
+	if _stun_timer > 0.0:
+		_anim_ctrl.reproducir_bucle("stunned", 0.10, 1.0, 1)
+	elif not _anim_ctrl.esta_bloqueado():
+		_anim_ctrl.actualizar_locomocion(0.0, false, is_on_floor(), rapidez)
 
 func distancia_a(p: Vector3) -> float:
 	var o = global_position
 	return Vector2(p.x - o.x, p.z - o.z).length()
 
 func _golpear_jugador():
-	if jugador != null:
+	if jugador != null and is_instance_valid(jugador):
 		if jugador.has_method("recibir_dano"):
 			jugador.recibir_dano(dano_ataque)
 		elif jugador.has_node("Salud"):
 			jugador.get_node("Salud").recibir_golpe(int(dano_ataque))
 
-func recibir_dano(cantidad: float, es_critico: bool = false):
-	vida -= cantidad
+func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
+	if _muerto:
+		return
+	if typeof(fuente) == TYPE_BOOL:
+		es_critico = fuente
+		fuente = "normal"
+
+	var cantidad_final: float = cantidad
+	if marca_conductiva_timer > 0.0:
+		cantidad_final *= 1.25
+
+	vida -= cantidad_final
+	_anim_ctrl.disparar_golpe()
 	
-	# Retroceso / Hit Shudder visual
 	if modelo != null:
 		var tw = create_tween()
 		tw.tween_property(modelo, "scale", _escala_base * 1.2, 0.05)
 		tw.tween_property(modelo, "scale", _escala_base, 0.08)
-		
-	# Spawn Damage Number 3D
-	_spawn_damage_number(cantidad, es_critico)
-	
+
+	_notificar_dano(cantidad_final, es_critico, str(fuente))
+
 	if vida <= 0.0:
 		morir()
 
-func _spawn_damage_number(cantidad: float, es_critico: bool):
-	var escena = load("res://damage_number_3d.tscn")
-	if escena != null:
-		var num = escena.instantiate()
-		var pos_num = global_position + Vector3(randf_range(-0.2, 0.2), 1.4, randf_range(-0.2, 0.2))
-		get_parent().add_child(num)
-		num.global_position = pos_num
-		num.iniciar(cantidad, es_critico, false)
+func _notificar_dano(cantidad: float, es_critico: bool, fuente: String):
+	var dmg_pool = get_tree().get_first_node_in_group("damage_numbers")
+	if dmg_pool != null and dmg_pool.has_method("mostrar_dano"):
+		dmg_pool.mostrar_dano(global_position + Vector3(0, 1.4, 0), int(round(cantidad)), es_critico, fuente)
+	else:
+		var escena = load("res://damage_number_3d.tscn")
+		if escena != null and is_inside_tree() and get_parent() != null:
+			var num = escena.instantiate()
+			var pos_num = global_position + Vector3(randf_range(-0.2, 0.2), 1.4, randf_range(-0.2, 0.2))
+			get_parent().add_child(num)
+			num.global_position = pos_num
+			if num.has_method("iniciar"):
+				num.iniciar(cantidad, es_critico, false)
 
 func morir():
-	var drop_escena = load("res://drop_item.tscn")
-	if drop_escena != null:
-		var drop = drop_escena.instantiate()
-		var pos_drop = global_position + Vector3(0, 0.4, 0)
-		get_parent().add_child(drop)
-		drop.global_position = pos_drop
-	if jugador != null and jugador.has_method("registrar_baja"):
+	if _muerto:
+		return
+	_muerto = true
+
+	FortunaManager.soltar_drops(get_parent(), global_position, "espectro")
+	if jugador != null and is_instance_valid(jugador) and jugador.has_method("registrar_baja"):
 		jugador.registrar_baja()
-	queue_free()
+
+	if modelo != null:
+		var tw = create_tween().set_parallel(true)
+		tw.tween_property(modelo, "scale", _escala_base * 1.35, 0.10).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(self, "position:y", position.y + 0.35, 0.10).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.chain().tween_callback(queue_free)
+	else:
+		queue_free()

@@ -1,65 +1,87 @@
 extends CharacterBody3D
 
 # Gólem Ígneo Kamikaze - Enemigo Explosivo Táctico
-# Avanza rápidamente hacia el jugador. Al acercarse a menos de 2.2 m, activa su mecha durante 0.95 s y detona en un área masiva, dañando al jugador y a enemigos adyacentes.
+# Avanza rápidamente hacia el jugador. Al acercarse a menos de 2.2 m, activa su mecha durante 0.95 s y detona en un área masiva.
+# Incluye física real de Knockback acumulativo (_knockback_velocity) para poder repelerlo con ondas de clic.
 
 const AudioManager = preload("res://audio_manager.gd")
 
-@export var rapidez: float = 4.0
-@export var vida_maxima: float = 18.0
-@export var radio_explosion: float = 4.5
-@export var dano_a_jugador: float = 18.0
+@export var rapidez: float = 3.2
+@export var vida_maxima: float = 16.0
+@export var radio_explosion: float = 3.4
+@export var dano_a_jugador: float = 14.0
 @export var dano_a_enemigos: float = 35.0
 @export var tiempo_mecha: float = 0.95
 
-var vida: float = 18.0
+var vida: float = 16.0
+var muerto: bool = false
 var jugador: Node3D = null
 var _armado: bool = false
 var _detonado: bool = false
 var _tiempo_restante_mecha: float = 0.95
 var _reloj_efecto: float = 0.0
+var _knockback_velocity: Vector3 = Vector3.ZERO
 
+var _escala_base: Vector3 = Vector3.ONE
+var _anim_ctrl: AnimadorEntidad = AnimadorEntidad.new()
+
+@onready var modelo: Node3D = $Modelo if has_node("Modelo") else null
 @onready var nucleo_fuego: MeshInstance3D = $NucleoFuego
 @onready var anillo_magma: MeshInstance3D = $AnilloMagma
 @onready var luz_fuego: OmniLight3D = $LuzFuego
 
 func _ready():
 	add_to_group("enemigos")
+	add_to_group("enemies")
 	add_to_group("kamikazes")
 	vida = vida_maxima
+	if modelo != null:
+		_escala_base = modelo.scale
+		_anim_ctrl.vincular_modelo(modelo)
 	jugador = get_tree().get_first_node_in_group("jugador")
+
+func aplicar_knockback(impulso: Vector3):
+	var kb = impulso
+	kb.y = 0.0
+	_knockback_velocity += kb
+	if _knockback_velocity.length() > 18.0:
+		_knockback_velocity = _knockback_velocity.normalized() * 18.0
 
 func _physics_process(delta):
 	if _detonado:
 		return
-		
+
 	if not is_on_floor():
 		velocity += get_gravity() * delta
-		
+
+	_anim_ctrl.actualizar(delta)
+	_knockback_velocity = _knockback_velocity.move_toward(Vector3.ZERO, 18.0 * delta)
+
 	if jugador == null or not is_instance_valid(jugador):
 		jugador = get_tree().get_first_node_in_group("jugador")
 		if jugador == null:
+			velocity.x = _knockback_velocity.x
+			velocity.z = _knockback_velocity.z
 			move_and_slide()
 			return
-			
+
 	var pos_jugador = jugador.global_position
 	var dif = pos_jugador - global_position
 	dif.y = 0.0
 	var dist = dif.length()
-	
+
 	_reloj_efecto += delta * 6.0
 	if anillo_magma != null:
 		anillo_magma.rotate_y(delta * 4.0)
 		anillo_magma.rotate_x(delta * 2.5)
-		
+
 	if _armado:
-		# Frenado y cuenta regresiva de explosión
-		velocity.x = move_toward(velocity.x, 0.0, 15.0 * delta)
-		velocity.z = move_toward(velocity.z, 0.0, 15.0 * delta)
-		
+		velocity.x = move_toward(velocity.x, 0.0, 15.0 * delta) + _knockback_velocity.x
+		velocity.z = move_toward(velocity.z, 0.0, 15.0 * delta) + _knockback_velocity.z
+		_anim_ctrl.reproducir_bucle("telegraph", 0.12, 1.25, 1)
+
 		_tiempo_restante_mecha -= delta
-		
-		# Parpadeo rápido y expansión visual
+
 		var pulso = sin(_reloj_efecto * 4.0) * 0.5 + 0.5
 		if nucleo_fuego != null:
 			var s = 1.0 + (1.0 - (_tiempo_restante_mecha / tiempo_mecha)) * 0.6 + pulso * 0.15
@@ -67,20 +89,20 @@ func _physics_process(delta):
 		if luz_fuego != null:
 			luz_fuego.light_energy = 3.0 + pulso * 3.0
 			luz_fuego.light_color = Color(1.0, 0.2, 0.1).lerp(Color(1.0, 0.9, 0.2), pulso)
-			
+
 		if _tiempo_restante_mecha <= 0.0:
 			detonar()
 	else:
-		# Persecución continua
 		if dist <= 2.2:
 			_iniciar_mecha()
 		else:
 			var dir = dif.normalized()
-			velocity.x = dir.x * rapidez
-			velocity.z = dir.z * rapidez
+			velocity.x = dir.x * rapidez + _knockback_velocity.x
+			velocity.z = dir.z * rapidez + _knockback_velocity.z
 			if dif.length_squared() > 0.01:
 				basis = Basis.looking_at(dir)
-				
+			_anim_ctrl.actualizar_locomocion(Vector2(velocity.x, velocity.z).length(), true, is_on_floor(), rapidez)
+
 	move_and_slide()
 
 func _iniciar_mecha():
@@ -91,37 +113,42 @@ func _iniciar_mecha():
 	AudioManager.play("alerta_oleada", 2.2, -3.0)
 
 func recibir_dano(cantidad: float, es_critico: bool = false):
+	if _detonado:
+		return
 	vida -= cantidad
-	
-	var escena_num = load("res://damage_number_3d.tscn")
-	if escena_num != null:
-		var n = escena_num.instantiate()
-		var pos_num = global_position + Vector3(randf_range(-0.2, 0.2), 1.5, randf_range(-0.2, 0.2))
-		get_parent().add_child(n)
-		n.global_position = pos_num
-		n.iniciar(cantidad, es_critico, false)
-		
-	if vida <= 0.0:
-		# Al ser derrotado también detona inmediatamente
-		detonar()
+	_anim_ctrl.disparar_golpe()
 
-func detonar():
+	var pool = get_tree().get_first_node_in_group("damage_numbers")
+	var pos_num = global_position + Vector3(randf_range(-0.2, 0.2), 1.5, randf_range(-0.2, 0.2))
+	if pool != null and pool.has_method("mostrar_dano"):
+		pool.mostrar_dano(pos_num, cantidad, es_critico, false)
+	else:
+		var escena_num = load("res://damage_number_3d.tscn")
+		if escena_num != null and get_parent() != null:
+			var n = escena_num.instantiate()
+			get_parent().add_child(n)
+			n.global_position = pos_num
+			n.iniciar(cantidad, es_critico, false)
+
+	if vida <= 0.0:
+		detonar(false)
+
+func detonar(danar_jugador: bool = true):
 	if _detonado:
 		return
 	_detonado = true
-	
+	muerto = true
+
 	AudioManager.play("orbe_explosion", 0.9)
-	
-	# Daño al jugador si está en radio
-	if jugador != null and is_instance_valid(jugador):
+
+	if danar_jugador and jugador != null and is_instance_valid(jugador):
 		var dist_j = global_position.distance_to(jugador.global_position)
 		if dist_j <= radio_explosion:
 			if jugador.has_method("recibir_dano"):
 				jugador.recibir_dano(dano_a_jugador)
 			elif jugador.has_node("Salud"):
 				jugador.get_node("Salud").recibir_golpe(int(dano_a_jugador))
-				
-	# Daño a otros enemigos (Fuego amigo táctico)
+
 	var enemigos = get_tree().get_nodes_in_group("enemigos")
 	for e in enemigos:
 		if e != self and is_instance_valid(e) and e is Node3D:
@@ -131,41 +158,52 @@ func detonar():
 					e.recibir_dano(dano_a_enemigos)
 				var dir_empuje = (e.global_position - global_position).normalized()
 				dir_empuje.y = 0.0
-				if "velocity" in e:
+				if e.has_method("aplicar_knockback"):
+					e.aplicar_knockback(dir_empuje * 11.0)
+				elif "velocity" in e:
 					e.velocity += dir_empuje * 10.0
-					
-	# Recompensa por baja
+
+	if not danar_jugador and is_inside_tree() and get_parent() != null:
+		var drop_escena = load("res://drop_item.tscn")
+		if drop_escena != null:
+			var drop = drop_escena.instantiate()
+			get_parent().add_child(drop)
+			drop.global_position = global_position + Vector3(0, 0.4, 0)
+			if drop.has_method("iniciar"):
+				drop.iniciar(1, 14)
+
 	if jugador != null and jugador.has_method("registrar_baja"):
 		jugador.registrar_baja()
-		
-	# Efecto visual de onda explosiva de fuego
+
 	_crear_onda_explosion()
 
 func _crear_onda_explosion():
 	if not is_inside_tree() or get_parent() == null:
 		queue_free()
 		return
-		
+
 	var onda = MeshInstance3D.new()
 	var mesh = SphereMesh.new()
 	mesh.radius = 0.5
 	mesh.height = 1.0
-	
+
 	var mat = StandardMaterial3D.new()
 	mat.shading_mode = StandardMaterial3D.SHADING_MODE_UNSHADED
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.albedo_color = Color(1.0, 0.45, 0.1, 0.9)
 	mesh.material = mat
 	onda.mesh = mesh
-	
+
 	get_parent().add_child(onda)
 	onda.global_position = global_position
-	
+
 	if nucleo_fuego != null:
 		nucleo_fuego.visible = false
 	if anillo_magma != null:
 		anillo_magma.visible = false
-		
+	if modelo != null:
+		modelo.visible = false
+
 	var tw = create_tween()
 	tw.set_parallel(true)
 	tw.tween_property(onda, "scale", Vector3.ONE * (radio_explosion * 2.0), 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
