@@ -253,18 +253,18 @@ shader_parameter/color_shield_bot = Color(0.05, 0.48, 0.78, 0.92)
 shader_parameter/border_color = Color(0.82, 0.65, 0.35, 0.95)
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_ModalMejora"]
-bg_color = Color(0.035, 0.043, 0.075, 0.98)
+bg_color = Color(0.027, 0.033, 0.058, 0.985)
 border_width_left = 2
-border_width_top = 2
+border_width_top = 3
 border_width_right = 2
 border_width_bottom = 3
-border_color = Color(0.79, 0.64, 0.35, 0.98)
-corner_radius_top_left = 14
-corner_radius_top_right = 14
-corner_radius_bottom_right = 14
-corner_radius_bottom_left = 14
-shadow_color = Color(0, 0, 0, 0.92)
-shadow_size = 24
+border_color = Color(0.83, 0.68, 0.36, 0.98)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+shadow_color = Color(0, 0, 0, 0.95)
+shadow_size = 36
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_CartaDefault"]
 content_margin_left = 14.0
@@ -1305,7 +1305,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.02, 0.025, 0.045, 0.68)
+color = Color(0.015, 0.018, 0.035, 0.78)
 
 [node name="ModalMejora" type="Panel" parent="Control"]
 visible = false
@@ -1315,13 +1315,13 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -440.0
-offset_top = -196.0
-offset_right = 440.0
-offset_bottom = 196.0
+offset_left = -468.0
+offset_top = -226.0
+offset_right = 468.0
+offset_bottom = 226.0
 grow_horizontal = 2
 grow_vertical = 2
-pivot_offset = Vector2(440, 196)
+pivot_offset = Vector2(468, 226)
 theme_override_styles/panel = SubResource("StyleBox_ModalMejora")
 
 [node name="ModalEsquinaTL" type="TextureRect" parent="Control/ModalMejora"]

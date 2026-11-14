@@ -37,9 +37,11 @@ const CLASS_ACCENTS := {
 
 const TEX_CORAZON_LLENO := preload("res://ui_assets/hud_gem_heart.png")
 const TEX_CORAZON_VACIO := preload("res://ui_assets/hud_gem_heart_empty.png")
+const TEX_CORNER_GOTHIC := preload("res://ui_assets/hud_corner_gothic.png")
 const TEX_ICO_CLASS := preload("res://ui_assets/icon_class_hades.svg")
 const TEX_ICO_CLICKS := preload("res://ui_assets/icon_clicks_hades.svg")
 const TEX_ICO_FEVER := preload("res://ui_assets/icon_fever_hades.svg")
+const TEX_ICO_GOLD := preload("res://ui_assets/icon_gold_hades.svg")
 const TEX_ICO_KILLS := preload("res://ui_assets/icon_kills_hades.svg")
 const TEX_ICO_LUCK := preload("res://ui_assets/icon_luck_hades.svg")
 const TEX_ICO_PACTO := preload("res://ui_assets/icon_pacto_hades.svg")
@@ -48,6 +50,21 @@ const TEX_ICO_SKULL := preload("res://ui_assets/icon_skull_hades.svg")
 const TEX_ICO_TIME := preload("res://ui_assets/icon_time_hades.svg")
 const TEX_ICO_VAULT := preload("res://ui_assets/icon_vault_hades.svg")
 const TEX_ICO_VICTORY := preload("res://ui_assets/icon_victory_hades.svg")
+const TEX_ICO_BOLT := preload("res://ui_assets/icon_bolt_hades.svg")
+const TEX_ICO_DAGGERS := preload("res://ui_assets/icon_daggers_hades.svg")
+const TEX_ICO_FROST := preload("res://ui_assets/icon_frost_hades.svg")
+const TEX_ICO_BLOOD := preload("res://ui_assets/icon_blood_hades.svg")
+const TEX_ICO_PRISM := preload("res://ui_assets/icon_prism_hades.svg")
+const TEX_ICO_SYNERGY := preload("res://ui_assets/icon_synergy_hades.svg")
+
+const RESOLUCIONES_DISPONIBLES := [
+	{"label": "1152 × 648 (Base 16:9)", "size": Vector2i(1152, 648)},
+	{"label": "1280 × 720 (HD 720p)", "size": Vector2i(1280, 720)},
+	{"label": "1366 × 768 (WXGA)", "size": Vector2i(1366, 768)},
+	{"label": "1600 × 900 (HD+ 900p)", "size": Vector2i(1600, 900)},
+	{"label": "1920 × 1080 (Full HD)", "size": Vector2i(1920, 1080)},
+	{"label": "2560 × 1440 (QHD 2K)", "size": Vector2i(2560, 1440)},
+]
 
 const ArbolMejorasPoEEscena := preload("res://arbol_mejoras_poe.tscn")
 const CatalogoBendiciones := preload("res://catalogo_bendiciones.gd")
@@ -165,6 +182,8 @@ var _ultimo_txt_tiempo: String = ""
 var _ultimo_txt_oleada: String = ""
 var _ultimo_txt_nucleo: String = ""
 var _panel_test_jefes: VBoxContainer = null
+var _panel_resoluciones: VBoxContainer = null
+var _btn_resolucion_ref: Button = null
 var _avatar_reloj_idle: float = 0.0
 var _avatar_reloj_redraw: float = 0.06
 var _reloj_jefe_sync: float = 0.0
@@ -200,6 +219,7 @@ func _ready() -> void:
 	_inicializar_estilos_dinamicos()
 	_calibrar_avatar()
 	_configurar_tarot_hover()
+	_conectar_escalado_resolucion()
 
 	if btn_arbol_poe != null:
 		btn_arbol_poe.pressed.connect(_toggle_arbol_poe)
@@ -216,6 +236,7 @@ func _ready() -> void:
 	_conectar_boton_movil()
 	call_deferred("_conectar_boton_movil")
 	_crear_boton_test_parca()
+	call_deferred("_ajustar_layout_resolucion")
 
 
 func _inicializar_estilos_dinamicos() -> void:
@@ -864,7 +885,7 @@ func _on_nivel_subido(nuevo_nivel: int) -> void:
 	mostrar_selector_bendiciones(nuevo_nivel)
 
 
-func mostrar_selector_bendiciones(nivel_evento: int = 0) -> void:
+func mostrar_selector_bendiciones(nivel_evento: int = 0, cartas_forzadas: Array = []) -> void:
 	if modal_mejora == null:
 		return
 	if nivel_evento > 0:
@@ -875,17 +896,36 @@ func mostrar_selector_bendiciones(nivel_evento: int = 0) -> void:
 		_niveles_pendientes += 1
 		return
 
-	modal_mejora.offset_left = -440.0
-	modal_mejora.offset_top = -196.0
-	modal_mejora.offset_right = 440.0
-	modal_mejora.offset_bottom = 196.0
-	modal_mejora.pivot_offset = Vector2(440.0, 196.0)
+	if _panel_resoluciones != null:
+		_panel_resoluciones.visible = false
+	if _panel_test_jefes != null:
+		_panel_test_jefes.visible = false
+
+	modal_mejora.offset_left = -468.0
+	modal_mejora.offset_top = -226.0
+	modal_mejora.offset_right = 468.0
+	modal_mejora.offset_bottom = 226.0
+	modal_mejora.pivot_offset = Vector2(468.0, 226.0)
+
+	var lbl_tit := modal_mejora.get_node_or_null("VBox/HeaderModal/LabelTitulo") as Label
+	if lbl_tit != null:
+		var niv_mostrar := _ultimo_nivel_procesado
+		if jugador != null and "nivel" in jugador:
+			niv_mostrar = maxi(niv_mostrar, int(jugador.nivel))
+		lbl_tit.text = "NIVEL %d ALCANZADO — CONSAGRA TU BENDICIÓN" % maxi(niv_mostrar, 2)
 
 	var actuales: Dictionary = {}
 	if jugador != null and "bendiciones_run" in jugador:
 		actuales = jugador.bendiciones_run
 
-	_opciones_bendicion_actuales = CatalogoBendiciones.obtener_3_opciones(actuales)
+	var suerte_actual: float = 0.0
+	if FortunaManager != null and "suerte_total" in FortunaManager:
+		suerte_actual = float(FortunaManager.suerte_total)
+
+	if not cartas_forzadas.is_empty():
+		_opciones_bendicion_actuales = cartas_forzadas
+	else:
+		_opciones_bendicion_actuales = CatalogoBendiciones.obtener_3_opciones(actuales, suerte_actual)
 	var botones := [btn_opc1, btn_opc2, btn_opc3]
 	for i in range(botones.size()):
 		var btn: Button = botones[i]
@@ -895,10 +935,10 @@ func mostrar_selector_bendiciones(nivel_evento: int = 0) -> void:
 			var b: Dictionary = _opciones_bendicion_actuales[i]
 			btn.text = ""
 			btn.scale = Vector2.ONE
-			btn.custom_minimum_size = Vector2(256.0, 260.0)
+			btn.custom_minimum_size = Vector2(280.0, 356.0)
 			btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			btn.size_flags_vertical = Control.SIZE_EXPAND_FILL
-			_poblar_contenido_carta_tarot(btn, b)
+			_poblar_contenido_carta_tarot(btn, b, i)
 			_aplicar_estilo_carta_bendicion(btn, b)
 			btn.visible = true
 		else:
@@ -911,11 +951,12 @@ func mostrar_selector_bendiciones(nivel_evento: int = 0) -> void:
 		tw_dim.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 		tw_dim.tween_property(modal_dimmer, "modulate:a", 1.0, 0.18)
 
+	var escala_objetivo := _calcular_escala_modal_mejora()
 	modal_mejora.visible = true
-	modal_mejora.scale = Vector2(0.88, 0.88)
+	modal_mejora.scale = escala_objetivo * 0.88
 	var tw := create_tween()
 	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
-	tw.tween_property(modal_mejora, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(modal_mejora, "scale", escala_objetivo, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 	if is_inside_tree() and get_tree() != null:
 		get_tree().paused = true
@@ -923,34 +964,199 @@ func mostrar_selector_bendiciones(nivel_evento: int = 0) -> void:
 
 func _resolver_icono_bendicion(b: Dictionary) -> Texture2D:
 	if bool(b.get("es_sinergia", false)):
-		return TEX_ICO_VICTORY
+		return TEX_ICO_SYNERGY
 	var id_str := String(b.get("id", "")).to_lower()
 	var cat_str := String(b.get("categoria", "")).to_lower()
-	if id_str.contains("escudo") or id_str.contains("vida") or id_str.contains("armadura") or id_str.contains("titan"):
+	if id_str.contains("rayo") or id_str.contains("estatico") or id_str.contains("relampago") or id_str.contains("faraday"):
+		return TEX_ICO_BOLT
+	if id_str.contains("daga") or id_str.contains("perforante") or id_str.contains("sed_de_sangre") or id_str.contains("verdugo"):
+		return TEX_ICO_DAGGERS
+	if id_str.contains("helada") or id_str.contains("hielo") or id_str.contains("etereo"):
+		return TEX_ICO_FROST
+	if id_str.contains("sangre") or id_str.contains("vampirismo"):
+		return TEX_ICO_BLOOD
+	if id_str.contains("prisma") or id_str.contains("lentes") or id_str.contains("corazon_runico"):
+		return TEX_ICO_PRISM
+	if id_str.contains("escudo") or id_str.contains("vida") or id_str.contains("armadura") or id_str.contains("bastion"):
 		return TEX_ICO_SHIELD
-	if id_str.contains("fuego") or id_str.contains("fiebre") or id_str.contains("overdrive") or id_str.contains("meteoro") or id_str.contains("infernal"):
+	if id_str.contains("fuego") or id_str.contains("fiebre") or id_str.contains("supernova") or id_str.contains("meteoro"):
 		return TEX_ICO_FEVER
-	if id_str.contains("clic") or id_str.contains("rayo") or id_str.contains("tormenta") or cat_str.contains("clic"):
-		return TEX_ICO_CLICKS
-	if id_str.contains("suerte") or id_str.contains("oro") or id_str.contains("vel") or id_str.contains("fortuna"):
+	if id_str.contains("moneda") or id_str.contains("midas") or id_str.contains("canon"):
+		return TEX_ICO_GOLD
+	if id_str.contains("iman") or id_str.contains("suerte") or id_str.contains("fortuna"):
 		return TEX_ICO_LUCK
-	return TEX_ICO_KILLS
+	if id_str.contains("hilo") or id_str.contains("clic") or cat_str.contains("clic") or cat_str.contains("hilo"):
+		return TEX_ICO_CLICKS
+	return TEX_ICO_PACTO
 
 
-func _poblar_contenido_carta_tarot(btn: Button, b: Dictionary) -> void:
-	for viejo in btn.get_children():
-		if viejo.name == "TarotLayout":
-			viejo.queue_free()
+func _obtener_arquetipo_bendicion(b: Dictionary) -> String:
+	if bool(b.get("es_sinergia", false)):
+		return "✦ FUSIÓN DUAL"
+	var cat := String(b.get("categoria", "")).to_lower()
+	match cat:
+		"ataque":
+			return "⚔ ARSENAL"
+		"defensa":
+			return "🛡 BALUARTE"
+		"clic":
+			return "⚡ PULSO CLIC"
+		"hilo":
+			return "🔗 HILO RÚNICO"
+		"movilidad":
+			return "💨 AGILIDAD"
+		"utilidad":
+			return "🪙 FORTUNA"
+		_:
+			return "❖ ARCANO"
+
+
+func _extraer_chips_estadisticas(desc: String, b: Dictionary) -> PackedStringArray:
+	var chips := PackedStringArray()
+	var regex := RegEx.new()
+	regex.compile("(\\+[0-9]+(?:\\.[0-9]+)?(?:%|m|s| HP)?|x[0-9]+|[0-9]+%)")
+	var matches := regex.search_all(desc)
+	var palabras := desc.split(" ")
+	for m in matches:
+		var token := m.get_string()
+		var etiqueta := token
+		for idx in range(palabras.size()):
+			if palabras[idx].contains(token):
+				if idx + 1 < palabras.size():
+					var sig := palabras[idx + 1].trim_suffix(",").trim_suffix(".").trim_suffix(")")
+					if sig.length() >= 3 and sig.to_lower() not in ["de", "del", "en", "por", "al", "la", "el", "que", "con"]:
+						etiqueta = "%s %s" % [token, sig.capitalize()]
+					elif idx + 2 < palabras.size():
+						var sig2 := palabras[idx + 2].trim_suffix(",").trim_suffix(".").trim_suffix(")")
+						if sig2.length() >= 3:
+							etiqueta = "%s %s" % [token, sig2.capitalize()]
+				break
+		if not chips.has(etiqueta):
+			chips.append(etiqueta)
+		if chips.size() >= 2:
+			break
+	if chips.is_empty():
+		if bool(b.get("es_sinergia", false)):
+			chips.append("✦ Poder Supremo")
+			chips.append("Sinergia Permanente")
+		else:
+			chips.append("Efecto Pasivo")
+	return chips
+
+
+func _obtener_paleta_rareza(rareza: String, es_sinergia: bool, col_fallback: Color) -> Dictionary:
+	if es_sinergia or rareza == "MITICA":
+		return {
+			"borde": Color(0.98, 0.28, 0.56, 0.98),
+			"acento": Color(1.0, 0.42, 0.68, 1.0),
+			"corona": Color(0.98, 0.30, 0.58, 0.95),
+			"sombra": Color(0.92, 0.16, 0.46, 0.42),
+			"badge_bg": Color(0.28, 0.06, 0.16, 0.96),
+			"texto": Color(1.0, 0.78, 0.88, 1.0),
+		}
+	match rareza:
+		"LEGENDARIA":
+			return {
+				"borde": Color(0.98, 0.76, 0.22, 0.98),
+				"acento": Color(1.0, 0.86, 0.36, 1.0),
+				"corona": Color(0.98, 0.74, 0.18, 0.95),
+				"sombra": Color(0.95, 0.65, 0.12, 0.38),
+				"badge_bg": Color(0.26, 0.18, 0.04, 0.96),
+				"texto": Color(1.0, 0.91, 0.58, 1.0),
+			}
+		"EPICA":
+			return {
+				"borde": Color(0.74, 0.38, 0.98, 0.96),
+				"acento": Color(0.84, 0.56, 1.0, 1.0),
+				"corona": Color(0.70, 0.34, 0.96, 0.95),
+				"sombra": Color(0.62, 0.22, 0.92, 0.34),
+				"badge_bg": Color(0.18, 0.08, 0.28, 0.96),
+				"texto": Color(0.90, 0.76, 1.0, 1.0),
+			}
+		"RARA":
+			return {
+				"borde": Color(0.24, 0.72, 0.98, 0.95),
+				"acento": Color(0.42, 0.84, 1.0, 1.0),
+				"corona": Color(0.20, 0.68, 0.96, 0.92),
+				"sombra": Color(0.14, 0.56, 0.88, 0.30),
+				"badge_bg": Color(0.06, 0.18, 0.28, 0.96),
+				"texto": Color(0.72, 0.92, 1.0, 1.0),
+			}
+		_:
+			var c := col_fallback.lightened(0.15)
+			return {
+				"borde": Color(0.58, 0.65, 0.76, 0.92),
+				"acento": c,
+				"corona": Color(0.52, 0.60, 0.72, 0.88),
+				"sombra": Color(0.0, 0.0, 0.0, 0.65),
+				"badge_bg": Color(0.11, 0.14, 0.20, 0.96),
+				"texto": Color(0.86, 0.90, 0.96, 1.0),
+			}
+
+
+func _poblar_contenido_carta_tarot(btn: Button, b: Dictionary, indice_carta: int = 0) -> void:
+	# CRÍTICO: Desvincular inmediatamente del árbol ANTES de queue_free() para evitar
+	# colisión de nombres ("TarotLayout" -> "@MarginContainer@...") y solapamiento entre niveles.
+	var hijos_previos := btn.get_children()
+	for viejo in hijos_previos:
+		btn.remove_child(viejo)
+		viejo.queue_free()
 
 	var rareza := str(b.get("rareza", "COMUN"))
 	var es_sinergia := bool(b.get("es_sinergia", false))
 	var col_base: Color = b.get("color", Color(0.45, 0.65, 0.95))
+	var pal := _obtener_paleta_rareza(rareza, es_sinergia, col_base)
+	var col_borde: Color = pal["borde"]
+	var col_acento: Color = pal["acento"]
+	var col_texto_rar: Color = pal["texto"]
+
 	var niv_act := int(b.get("nivel_actual", 0))
-	var niv_max := int(b.get("max_nivel", 5))
+	var niv_max := maxi(1, int(b.get("max_nivel", 5)))
 	var nombre := str(b.get("nombre", "Bendición"))
-	var desc := str(b.get("desc", ""))
+	var desc := str(b.get("desc", b.get("descripcion", "")))
 	var etiqueta_rareza := _obtener_etiqueta_rareza(rareza, es_sinergia)
-	var texto_nivel := "FUSIÓN DUAL MÍTICA" if es_sinergia else ("Nivel %d / %d" % [niv_act + 1, niv_max])
+	var arquetipo := _obtener_arquetipo_bendicion(b)
+
+	# Capa decorativa de corona superior + filigranas góticas en las 4 esquinas
+	var overlay_deco := Control.new()
+	overlay_deco.name = "TarotDeco"
+	overlay_deco.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay_deco.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	btn.add_child(overlay_deco)
+
+	var corona_top := ColorRect.new()
+	corona_top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	corona_top.anchor_left = 0.08
+	corona_top.anchor_right = 0.92
+	corona_top.offset_top = 2.0
+	corona_top.offset_bottom = 5.0
+	corona_top.color = pal["corona"]
+	overlay_deco.add_child(corona_top)
+
+	var esquinas_cfg := [
+		{"ax": 0.0, "ay": 0.0, "ox1": 3.0, "oy1": 3.0, "ox2": 19.0, "oy2": 19.0, "fh": false, "fv": false},
+		{"ax": 1.0, "ay": 0.0, "ox1": -19.0, "oy1": 3.0, "ox2": -3.0, "oy2": 19.0, "fh": true, "fv": false},
+		{"ax": 0.0, "ay": 1.0, "ox1": 3.0, "oy1": -19.0, "ox2": 19.0, "oy2": -3.0, "fh": false, "fv": true},
+		{"ax": 1.0, "ay": 1.0, "ox1": -19.0, "oy1": -19.0, "ox2": -3.0, "oy2": -3.0, "fh": true, "fv": true},
+	]
+	for ec in esquinas_cfg:
+		var tex_c := TextureRect.new()
+		tex_c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tex_c.texture = TEX_CORNER_GOTHIC
+		tex_c.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex_c.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tex_c.anchor_left = float(ec["ax"])
+		tex_c.anchor_right = float(ec["ax"])
+		tex_c.anchor_top = float(ec["ay"])
+		tex_c.anchor_bottom = float(ec["ay"])
+		tex_c.offset_left = float(ec["ox1"])
+		tex_c.offset_top = float(ec["oy1"])
+		tex_c.offset_right = float(ec["ox2"])
+		tex_c.offset_bottom = float(ec["oy2"])
+		tex_c.flip_h = bool(ec["fh"])
+		tex_c.flip_v = bool(ec["fv"])
+		tex_c.modulate = Color(col_borde.r, col_borde.g, col_borde.b, 0.72)
+		overlay_deco.add_child(tex_c)
 
 	var margin := MarginContainer.new()
 	margin.name = "TarotLayout"
@@ -964,46 +1170,89 @@ func _poblar_contenido_carta_tarot(btn: Button, b: Dictionary) -> void:
 
 	var vbox := VBoxContainer.new()
 	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vbox.add_theme_constant_override("separation", 8)
-	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_theme_constant_override("separation", 7)
 	margin.add_child(vbox)
 
-	# 1. Banda superior de rareza
+	# 1. Fila superior: Insignia de Rareza + Píldora de Arquetipo
+	var top_row := HBoxContainer.new()
+	top_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	top_row.add_theme_constant_override("separation", 6)
+	vbox.add_child(top_row)
+
 	var banner := PanelContainer.new()
 	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	banner.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	var sb_ban := StyleBoxFlat.new()
-	sb_ban.bg_color = Color(col_base.r * 0.25, col_base.g * 0.25, col_base.b * 0.25, 0.9)
-	sb_ban.border_color = col_base.lightened(0.25)
+	sb_ban.bg_color = pal["badge_bg"]
+	sb_ban.border_color = col_borde
 	sb_ban.set_border_width_all(1)
 	sb_ban.set_corner_radius_all(5)
-	sb_ban.content_margin_left = 10.0
-	sb_ban.content_margin_right = 10.0
+	sb_ban.content_margin_left = 8.0
+	sb_ban.content_margin_right = 8.0
 	sb_ban.content_margin_top = 2.0
 	sb_ban.content_margin_bottom = 2.0
 	banner.add_theme_stylebox_override("panel", sb_ban)
-	vbox.add_child(banner)
+	top_row.add_child(banner)
 
 	var lbl_rar := Label.new()
 	lbl_rar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	lbl_rar.text = etiqueta_rareza
-	lbl_rar.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_rar.text = ("◆ " if rareza != "COMUN" or es_sinergia else "◇ ") + etiqueta_rareza
 	lbl_rar.add_theme_font_size_override("font_size", 10)
-	lbl_rar.add_theme_color_override("font_color", col_base.lightened(0.55))
+	lbl_rar.add_theme_color_override("font_color", col_texto_rar)
 	banner.add_child(lbl_rar)
 
-	# 2. Medallón central de icono vectorizado
+	var pill_cat := PanelContainer.new()
+	pill_cat.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb_cat := StyleBoxFlat.new()
+	sb_cat.bg_color = Color(0.08, 0.10, 0.16, 0.92)
+	sb_cat.border_color = Color(0.45, 0.50, 0.62, 0.45)
+	sb_cat.set_border_width_all(1)
+	sb_cat.set_corner_radius_all(5)
+	sb_cat.content_margin_left = 7.0
+	sb_cat.content_margin_right = 7.0
+	sb_cat.content_margin_top = 2.0
+	sb_cat.content_margin_bottom = 2.0
+	pill_cat.add_theme_stylebox_override("panel", sb_cat)
+	top_row.add_child(pill_cat)
+
+	var lbl_cat := Label.new()
+	lbl_cat.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl_cat.text = arquetipo
+	lbl_cat.add_theme_font_size_override("font_size", 9)
+	lbl_cat.add_theme_color_override("font_color", Color(0.78, 0.83, 0.92, 0.92))
+	pill_cat.add_child(lbl_cat)
+
+	# 2. Medallón Arcano de Doble Anillo (60x60 exterior + 48x48 núcleo + icono 30x30)
+	var crest_outer := PanelContainer.new()
+	crest_outer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	crest_outer.custom_minimum_size = Vector2(58, 58)
+	crest_outer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var sb_outer := StyleBoxFlat.new()
+	sb_outer.bg_color = Color(col_borde.r * 0.16, col_borde.g * 0.16, col_borde.b * 0.18, 0.45)
+	sb_outer.border_color = Color(col_borde.r, col_borde.g, col_borde.b, 0.55)
+	sb_outer.set_border_width_all(1)
+	sb_outer.set_corner_radius_all(29)
+	sb_outer.content_margin_left = 5.0
+	sb_outer.content_margin_right = 5.0
+	sb_outer.content_margin_top = 5.0
+	sb_outer.content_margin_bottom = 5.0
+	crest_outer.add_theme_stylebox_override("panel", sb_outer)
+	vbox.add_child(crest_outer)
+
 	var crest := PanelContainer.new()
 	crest.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	crest.custom_minimum_size = Vector2(48, 48)
 	crest.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	crest.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var sb_crest := StyleBoxFlat.new()
-	sb_crest.bg_color = Color(0.05, 0.06, 0.10, 0.95)
-	sb_crest.border_color = col_base
+	sb_crest.bg_color = Color(0.04, 0.05, 0.09, 0.98)
+	sb_crest.border_color = col_acento
 	sb_crest.set_border_width_all(2)
 	sb_crest.set_corner_radius_all(24)
+	sb_crest.shadow_color = Color(col_borde.r, col_borde.g, col_borde.b, 0.45)
+	sb_crest.shadow_size = 8
 	crest.add_theme_stylebox_override("panel", sb_crest)
-	vbox.add_child(crest)
+	crest_outer.add_child(crest)
 
 	var ico := TextureRect.new()
 	ico.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1013,38 +1262,132 @@ func _poblar_contenido_carta_tarot(btn: Button, b: Dictionary) -> void:
 	ico.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	ico.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	ico.texture = _resolver_icono_bendicion(b)
-	ico.modulate = col_base.lightened(0.35)
+	ico.modulate = col_acento.lightened(0.22)
 	crest.add_child(ico)
 
-	# 3. Nombre y Nivel
+	# 3. Título de la Bendición
 	var lbl_nom := Label.new()
 	lbl_nom.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	lbl_nom.text = nombre
 	lbl_nom.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl_nom.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lbl_nom.add_theme_font_size_override("font_size", 15)
-	lbl_nom.add_theme_color_override("font_color", Color(0.98, 0.96, 0.90))
-	lbl_nom.add_theme_color_override("font_outline_color", Color(0.05, 0.04, 0.08))
-	lbl_nom.add_theme_constant_override("outline_size", 2)
+	lbl_nom.add_theme_color_override("font_color", Color(0.99, 0.96, 0.88))
+	lbl_nom.add_theme_color_override("font_outline_color", Color(0.03, 0.03, 0.06))
+	lbl_nom.add_theme_constant_override("outline_size", 3)
 	vbox.add_child(lbl_nom)
 
-	var lbl_niv := Label.new()
-	lbl_niv.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	lbl_niv.text = texto_nivel
-	lbl_niv.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl_niv.add_theme_font_size_override("font_size", 11)
-	lbl_niv.add_theme_color_override("font_color", col_base.lightened(0.45))
-	vbox.add_child(lbl_niv)
+	# 4. Barra de Rango con Gemas Rúnicas (◆ ◆ ◇ ◇ ◇) o Receta de Fusión Mítica
+	if es_sinergia:
+		var req_nombres := PackedStringArray()
+		if b.has("requisitos") and b["requisitos"] is Array:
+			for req_id in b["requisitos"]:
+				var d_req := CatalogoBendiciones.obtener_bendicion(str(req_id))
+				req_nombres.append(str(d_req.get("nombre", req_id)))
+		var pill_syn := PanelContainer.new()
+		pill_syn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pill_syn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		var sb_syn := StyleBoxFlat.new()
+		sb_syn.bg_color = Color(0.22, 0.05, 0.14, 0.92)
+		sb_syn.border_color = Color(0.98, 0.68, 0.30, 0.85)
+		sb_syn.set_border_width_all(1)
+		sb_syn.set_corner_radius_all(4)
+		sb_syn.content_margin_left = 8.0
+		sb_syn.content_margin_right = 8.0
+		sb_syn.content_margin_top = 2.0
+		sb_syn.content_margin_bottom = 2.0
+		pill_syn.add_theme_stylebox_override("panel", sb_syn)
+		vbox.add_child(pill_syn)
 
-	# 4. Separador esculpido
-	var sep := ColorRect.new()
-	sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	sep.custom_minimum_size = Vector2(180, 1)
-	sep.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	sep.color = Color(col_base.r, col_base.g, col_base.b, 0.45)
-	vbox.add_child(sep)
+		var lbl_syn := Label.new()
+		lbl_syn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lbl_syn.text = ("✦ " + " + ".join(req_nombres)) if not req_nombres.is_empty() else "✦ FUSIÓN DUAL MÍTICA ✦"
+		lbl_syn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl_syn.add_theme_font_size_override("font_size", 9)
+		lbl_syn.add_theme_color_override("font_color", Color(1.0, 0.88, 0.56))
+		pill_syn.add_child(lbl_syn)
+	else:
+		var fila_rango := HBoxContainer.new()
+		fila_rango.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		fila_rango.alignment = BoxContainer.ALIGNMENT_CENTER
+		fila_rango.add_theme_constant_override("separation", 5)
+		vbox.add_child(fila_rango)
 
-	# 5. Descripción
+		for r_i in range(niv_max):
+			var pip := Panel.new()
+			pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			pip.custom_minimum_size = Vector2(12, 6)
+			pip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			var sb_pip := StyleBoxFlat.new()
+			sb_pip.set_corner_radius_all(2)
+			if r_i < niv_act:
+				sb_pip.bg_color = Color(0.96, 0.78, 0.28, 0.98)
+				sb_pip.border_color = Color(1.0, 0.92, 0.58, 1.0)
+				sb_pip.set_border_width_all(1)
+			elif r_i == niv_act:
+				sb_pip.bg_color = col_acento
+				sb_pip.border_color = Color.WHITE
+				sb_pip.set_border_width_all(1)
+			else:
+				sb_pip.bg_color = Color(0.10, 0.13, 0.20, 0.90)
+				sb_pip.border_color = Color(0.28, 0.34, 0.46, 0.65)
+				sb_pip.set_border_width_all(1)
+			pip.add_theme_stylebox_override("panel", sb_pip)
+			fila_rango.add_child(pip)
+
+		var lbl_niv := Label.new()
+		lbl_niv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lbl_niv.text = ("NUEVO · Nv. 1/%d" % niv_max) if niv_act == 0 else ("Nv. %d → %d/%d" % [niv_act, niv_act + 1, niv_max])
+		lbl_niv.add_theme_font_size_override("font_size", 10)
+		lbl_niv.add_theme_color_override("font_color", col_texto_rar)
+		fila_rango.add_child(lbl_niv)
+
+	# 5. Chips de Estadísticas Clave extraídas automáticamente
+	var chips_stats := _extraer_chips_estadisticas(desc, b)
+	var fila_chips := HBoxContainer.new()
+	fila_chips.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fila_chips.alignment = BoxContainer.ALIGNMENT_CENTER
+	fila_chips.add_theme_constant_override("separation", 6)
+	vbox.add_child(fila_chips)
+
+	for st_txt in chips_stats:
+		var chip_st := PanelContainer.new()
+		chip_st.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var sb_st := StyleBoxFlat.new()
+		sb_st.bg_color = Color(0.08, 0.12, 0.20, 0.95)
+		sb_st.border_color = Color(col_acento.r, col_acento.g, col_acento.b, 0.60)
+		sb_st.set_border_width_all(1)
+		sb_st.set_corner_radius_all(4)
+		sb_st.content_margin_left = 7.0
+		sb_st.content_margin_right = 7.0
+		sb_st.content_margin_top = 1.0
+		sb_st.content_margin_bottom = 1.0
+		chip_st.add_theme_stylebox_override("panel", sb_st)
+		fila_chips.add_child(chip_st)
+
+		var lbl_st := Label.new()
+		lbl_st.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lbl_st.text = st_txt
+		lbl_st.add_theme_font_size_override("font_size", 10)
+		lbl_st.add_theme_color_override("font_color", Color(0.96, 0.94, 0.84))
+		chip_st.add_child(lbl_st)
+
+	# 6. Pozo de Pergamino / Obsidiana con la Descripción Completa
+	var desc_well := PanelContainer.new()
+	desc_well.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	desc_well.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var sb_well := StyleBoxFlat.new()
+	sb_well.bg_color = Color(0.035, 0.045, 0.078, 0.92)
+	sb_well.border_color = Color(col_borde.r, col_borde.g, col_borde.b, 0.24)
+	sb_well.set_border_width_all(1)
+	sb_well.set_corner_radius_all(7)
+	sb_well.content_margin_left = 10.0
+	sb_well.content_margin_right = 10.0
+	sb_well.content_margin_top = 6.0
+	sb_well.content_margin_bottom = 6.0
+	desc_well.add_theme_stylebox_override("panel", sb_well)
+	vbox.add_child(desc_well)
+
 	var lbl_desc := Label.new()
 	lbl_desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	lbl_desc.text = desc
@@ -1052,17 +1395,59 @@ func _poblar_contenido_carta_tarot(btn: Button, b: Dictionary) -> void:
 	lbl_desc.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	lbl_desc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	lbl_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	lbl_desc.add_theme_font_size_override("font_size", 12)
-	lbl_desc.add_theme_color_override("font_color", Color(0.84, 0.88, 0.95))
-	vbox.add_child(lbl_desc)
+	lbl_desc.add_theme_font_size_override("font_size", 11)
+	lbl_desc.add_theme_color_override("font_color", Color(0.86, 0.90, 0.96))
+	desc_well.add_child(lbl_desc)
+
+	# 7. Barra de Acción Forjada con Atajo de Teclado [1] [2] [3]
+	var cta_bar := PanelContainer.new()
+	cta_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb_cta := StyleBoxFlat.new()
+	sb_cta.bg_color = Color(col_borde.r * 0.22 + 0.05, col_borde.g * 0.18 + 0.05, col_borde.b * 0.22 + 0.08, 0.96)
+	sb_cta.border_color = Color(col_borde.r, col_borde.g, col_borde.b, 0.80)
+	sb_cta.set_border_width_all(1)
+	sb_cta.set_corner_radius_all(6)
+	sb_cta.content_margin_left = 10.0
+	sb_cta.content_margin_right = 10.0
+	sb_cta.content_margin_top = 4.0
+	sb_cta.content_margin_bottom = 4.0
+	cta_bar.add_theme_stylebox_override("panel", sb_cta)
+	vbox.add_child(cta_bar)
+
+	var cta_row := HBoxContainer.new()
+	cta_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cta_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	cta_row.add_theme_constant_override("separation", 8)
+	cta_bar.add_child(cta_row)
+
+	var key_badge := PanelContainer.new()
+	key_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb_key := StyleBoxFlat.new()
+	sb_key.bg_color = Color(0.04, 0.05, 0.09, 0.95)
+	sb_key.border_color = Color(0.92, 0.78, 0.42, 0.90)
+	sb_key.set_border_width_all(1)
+	sb_key.set_corner_radius_all(4)
+	sb_key.content_margin_left = 5.0
+	sb_key.content_margin_right = 5.0
+	sb_key.content_margin_top = 1.0
+	sb_key.content_margin_bottom = 1.0
+	key_badge.add_theme_stylebox_override("panel", sb_key)
+	cta_row.add_child(key_badge)
+
+	var lbl_key := Label.new()
+	lbl_key.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl_key.text = "[%d]" % (indice_carta + 1)
+	lbl_key.add_theme_font_size_override("font_size", 10)
+	lbl_key.add_theme_color_override("font_color", Color(1.0, 0.88, 0.50))
+	key_badge.add_child(lbl_key)
 
 	var lbl_cta := Label.new()
 	lbl_cta.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	lbl_cta.text = "INVOCAR BENDICIÓN"
+	lbl_cta.text = "CONSAGRAR FUSIÓN" if es_sinergia else ("MEJORAR RANGO" if niv_act > 0 else "CONSAGRAR BENDICIÓN")
 	lbl_cta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl_cta.add_theme_font_size_override("font_size", 10)
-	lbl_cta.add_theme_color_override("font_color", Color(0.79, 0.64, 0.35, 0.90))
-	vbox.add_child(lbl_cta)
+	lbl_cta.add_theme_font_size_override("font_size", 11)
+	lbl_cta.add_theme_color_override("font_color", Color(0.98, 0.92, 0.74))
+	cta_row.add_child(lbl_cta)
 
 
 func _obtener_etiqueta_rareza(rareza: String, es_sinergia: bool) -> String:
@@ -1083,32 +1468,36 @@ func _aplicar_estilo_carta_bendicion(btn: Button, b: Dictionary) -> void:
 	var col_base: Color = b.get("color", Color(0.35, 0.65, 0.95))
 	var rareza := str(b.get("rareza", "COMUN"))
 	var es_sinergia := bool(b.get("es_sinergia", false))
+	var pal := _obtener_paleta_rareza(rareza, es_sinergia, col_base)
+	var col_borde: Color = pal["borde"]
+	var col_sombra: Color = pal["sombra"]
 
 	var ancho_borde := 2
-	var tam_sombra := 10
+	var tam_sombra := 14
 	if es_sinergia or rareza == "MITICA":
-		ancho_borde = 3
-		tam_sombra = 20
+		ancho_borde = 2
+		tam_sombra = 22
 	elif rareza == "LEGENDARIA" or rareza == "EPICA":
-		ancho_borde = 3
-		tam_sombra = 16
+		ancho_borde = 2
+		tam_sombra = 18
 
 	var sb_normal := StyleBoxFlat.new()
-	sb_normal.bg_color = Color(col_base.r * 0.14 + 0.04, col_base.g * 0.14 + 0.05, col_base.b * 0.16 + 0.08, 0.97)
-	sb_normal.border_color = Color(col_base.r, col_base.g, col_base.b, 0.90)
+	sb_normal.bg_color = Color(0.048, 0.060, 0.098, 0.985)
+	sb_normal.border_color = col_borde
 	sb_normal.set_border_width_all(ancho_borde)
+	sb_normal.border_width_top = ancho_borde + 1
 	sb_normal.set_corner_radius_all(12)
-	sb_normal.shadow_color = Color(col_base.r, col_base.g, col_base.b, 0.35)
+	sb_normal.shadow_color = col_sombra
 	sb_normal.shadow_size = tam_sombra
 
 	var sb_hover := sb_normal.duplicate() as StyleBoxFlat
-	sb_hover.bg_color = Color(col_base.r * 0.24 + 0.07, col_base.g * 0.24 + 0.08, col_base.b * 0.24 + 0.12, 0.99)
-	sb_hover.border_color = col_base.lightened(0.30)
-	sb_hover.shadow_color = Color(col_base.r, col_base.g, col_base.b, 0.62)
+	sb_hover.bg_color = Color(0.082, 0.102, 0.162, 0.995)
+	sb_hover.border_color = col_borde.lightened(0.28)
+	sb_hover.shadow_color = Color(col_borde.r, col_borde.g, col_borde.b, 0.55)
 	sb_hover.shadow_size = tam_sombra + 8
 
 	var sb_pressed := sb_normal.duplicate() as StyleBoxFlat
-	sb_pressed.bg_color = Color(col_base.r * 0.30 + 0.10, col_base.g * 0.30 + 0.10, col_base.b * 0.30 + 0.14, 1.0)
+	sb_pressed.bg_color = Color(0.11, 0.13, 0.21, 1.0)
 	sb_pressed.border_color = Color(1.0, 0.94, 0.72, 1.0)
 
 	btn.add_theme_stylebox_override("normal", sb_normal)
@@ -1255,6 +1644,23 @@ func _sincronizar_jefe_prioritario() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
+		if modal_mejora != null and modal_mejora.visible:
+			if event.keycode == KEY_1 or event.keycode == KEY_KP_1:
+				_seleccionar_carta_bendicion(0)
+				get_viewport().set_input_as_handled()
+				return
+			elif event.keycode == KEY_2 or event.keycode == KEY_KP_2:
+				_seleccionar_carta_bendicion(1)
+				get_viewport().set_input_as_handled()
+				return
+			elif event.keycode == KEY_3 or event.keycode == KEY_KP_3:
+				_seleccionar_carta_bendicion(2)
+				get_viewport().set_input_as_handled()
+				return
+		if event.keycode == KEY_F11:
+			_toggle_pantalla_completa()
+			get_viewport().set_input_as_handled()
+			return
 		if event.keycode == KEY_U or event.keycode == KEY_B:
 			_toggle_arbol_poe()
 			get_viewport().set_input_as_handled()
@@ -1272,7 +1678,92 @@ func _toggle_arbol_poe() -> void:
 
 
 # ==============================================================================
-# DRAWER PLEGABLE DE JEFES DE PRUEBA (COMPACTO, SIN EMOJIS CRUDOS)
+# ESCALADO MULTI-RESOLUCIÓN Y SELECTOR DE PANTALLA (16:9 / 16:10 / 21:9 / 4:3)
+# ==============================================================================
+
+func _conectar_escalado_resolucion() -> void:
+	var vp := get_viewport()
+	if vp != null and not vp.size_changed.is_connected(_ajustar_layout_resolucion):
+		vp.size_changed.connect(_ajustar_layout_resolucion)
+
+
+func _calcular_escala_modal_mejora() -> Vector2:
+	var vp := get_viewport()
+	if vp == null:
+		return Vector2.ONE
+	var rect_vis := vp.get_visible_rect().size
+	if rect_vis.x <= 1.0 or rect_vis.y <= 1.0:
+		return Vector2.ONE
+	var max_w := rect_vis.x - 44.0
+	var max_h := rect_vis.y - 126.0
+	var factor := minf(1.0, minf(max_w / 936.0, max_h / 452.0))
+	factor = clampf(factor, 0.72, 1.08)
+	return Vector2(factor, factor)
+
+
+func _ajustar_layout_resolucion() -> void:
+	var vp := get_viewport()
+	if vp == null:
+		return
+	var vis_size := vp.get_visible_rect().size
+	if vis_size.x <= 1.0 or vis_size.y <= 1.0:
+		return
+
+	# Ajustar escala y centrado de ModalMejora según el aspect ratio actual
+	if modal_mejora != null:
+		modal_mejora.pivot_offset = modal_mejora.size * 0.5
+		if modal_mejora.visible:
+			modal_mejora.scale = _calcular_escala_modal_mejora()
+
+	# Ajustar barra superior en resoluciones estrechas o ultrawide
+	var top_bar := get_node_or_null("Control/MarginTop") as Control
+	if top_bar != null:
+		var margen_lateral := clampf((vis_size.x - 1152.0) * 0.18, 12.0, 140.0)
+		top_bar.offset_left = margen_lateral
+		top_bar.offset_right = -margen_lateral
+
+	_actualizar_texto_boton_resolucion()
+
+
+func _aplicar_resolucion_ventana(tam: Vector2i) -> void:
+	var modo_actual := DisplayServer.window_get_mode()
+	if modo_actual == DisplayServer.WINDOW_MODE_FULLSCREEN or modo_actual == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+	DisplayServer.window_set_size(tam)
+	var pantalla := DisplayServer.window_get_current_screen()
+	var rect_usable := DisplayServer.screen_get_usable_rect(pantalla)
+	if rect_usable.size.x >= tam.x and rect_usable.size.y >= tam.y:
+		var pos_centrada := rect_usable.position + (rect_usable.size - tam) / 2
+		DisplayServer.window_set_position(pos_centrada)
+	if _panel_resoluciones != null:
+		_panel_resoluciones.visible = false
+	call_deferred("_ajustar_layout_resolucion")
+
+
+func _toggle_pantalla_completa() -> void:
+	var modo := DisplayServer.window_get_mode()
+	if modo == DisplayServer.WINDOW_MODE_FULLSCREEN or modo == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+	else:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+	if _panel_resoluciones != null:
+		_panel_resoluciones.visible = false
+	call_deferred("_ajustar_layout_resolucion")
+
+
+func _actualizar_texto_boton_resolucion() -> void:
+	if _btn_resolucion_ref == null or not is_instance_valid(_btn_resolucion_ref):
+		return
+	var modo := DisplayServer.window_get_mode()
+	if modo == DisplayServer.WINDOW_MODE_FULLSCREEN or modo == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
+		_btn_resolucion_ref.text = "Pantalla: Full [F11]"
+	else:
+		var win_sz := DisplayServer.window_get_size()
+		_btn_resolucion_ref.text = "%dx%d ▾" % [win_sz.x, win_sz.y]
+
+
+# ==============================================================================
+# DRAWER PLEGABLE DE JEFES DE PRUEBA Y SELECTOR DE RESOLUCIÓN
 # ==============================================================================
 
 func _crear_boton_test_parca() -> void:
@@ -1282,13 +1773,37 @@ func _crear_boton_test_parca() -> void:
 	cont.anchor_top = 1.0
 	cont.anchor_right = 1.0
 	cont.anchor_bottom = 1.0
-	cont.offset_left = -225.0
-	cont.offset_top = -225.0
+	cont.offset_left = -280.0
+	cont.offset_top = -275.0
 	cont.offset_right = -18.0
 	cont.offset_bottom = -14.0
 	cont.alignment = BoxContainer.ALIGNMENT_END
 	cont.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cont.add_theme_constant_override("separation", 5)
+
+	_panel_resoluciones = VBoxContainer.new()
+	_panel_resoluciones.name = "ListaResoluciones"
+	_panel_resoluciones.visible = false
+	_panel_resoluciones.add_theme_constant_override("separation", 3)
+
+	var btn_full := Button.new()
+	btn_full.text = "⛶ Pantalla Completa / Ventana (F11)"
+	btn_full.focus_mode = Control.FOCUS_NONE
+	_aplicar_estilo_boton(btn_full, Color(0.92, 0.74, 0.30))
+	btn_full.pressed.connect(func(): _toggle_pantalla_completa())
+	_panel_resoluciones.add_child(btn_full)
+
+	for res_entry in RESOLUCIONES_DISPONIBLES:
+		var b_res := Button.new()
+		var etiqueta_res: String = String(res_entry["label"])
+		var tam_res: Vector2i = res_entry["size"]
+		b_res.text = "◈ " + etiqueta_res
+		b_res.focus_mode = Control.FOCUS_NONE
+		_aplicar_estilo_boton(b_res, Color(0.45, 0.72, 0.94))
+		b_res.pressed.connect(func(): _aplicar_resolucion_ventana(tam_res))
+		_panel_resoluciones.add_child(b_res)
+
+	cont.add_child(_panel_resoluciones)
 
 	_panel_test_jefes = VBoxContainer.new()
 	_panel_test_jefes.name = "ListaJefesTest"
@@ -1317,6 +1832,21 @@ func _crear_boton_test_parca() -> void:
 	var hbox_botones := HBoxContainer.new()
 	hbox_botones.alignment = BoxContainer.ALIGNMENT_END
 	hbox_botones.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox_botones.add_theme_constant_override("separation", 6)
+
+	var btn_res := Button.new()
+	btn_res.name = "BtnResolucion"
+	btn_res.text = "1280x720 ▾"
+	btn_res.tooltip_text = "Cambiar resolución de ventana o Pantalla Completa (F11)"
+	btn_res.focus_mode = Control.FOCUS_NONE
+	_aplicar_estilo_boton(btn_res, Color(0.45, 0.72, 0.94))
+	btn_res.pressed.connect(func():
+		_panel_resoluciones.visible = not _panel_resoluciones.visible
+		if _panel_resoluciones.visible and _panel_test_jefes != null:
+			_panel_test_jefes.visible = false
+	)
+	_btn_resolucion_ref = btn_res
+	hbox_botones.add_child(btn_res)
 
 	var btn_toggle := Button.new()
 	btn_toggle.name = "BtnToggleJefes"
@@ -1326,12 +1856,15 @@ func _crear_boton_test_parca() -> void:
 	_aplicar_estilo_boton(btn_toggle, Color(0.75, 0.58, 0.28))
 	btn_toggle.pressed.connect(func():
 		_panel_test_jefes.visible = not _panel_test_jefes.visible
+		if _panel_test_jefes.visible and _panel_resoluciones != null:
+			_panel_resoluciones.visible = false
 		btn_toggle.text = "Arena Sandbox -" if _panel_test_jefes.visible else "Arena Sandbox +"
 	)
 	hbox_botones.add_child(btn_toggle)
 
 	cont.add_child(hbox_botones)
 	$Control.add_child(cont)
+	_actualizar_texto_boton_resolucion()
 
 
 func _aplicar_estilo_boton(btn: Button, color_acento: Color) -> void:
