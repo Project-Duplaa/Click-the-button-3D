@@ -12,33 +12,16 @@
 [ext_resource type="PackedScene" path="res://assets/modelos/prop_hazard_barrier.glb" id="10_barrier"]
 [ext_resource type="PackedScene" path="res://assets/modelos/prop_pressure_tank.glb" id="11_tank"]
 [ext_resource type="PackedScene" path="res://assets/modelos/prop_medical_stretcher.glb" id="12_stretcher"]
-[ext_resource type="PackedScene" path="res://assets/modelos/bunker_arch_pillar.glb" id="13_arch_pillar"]
-[ext_resource type="PackedScene" path="res://assets/modelos/prop_cable_bundle.glb" id="14_cables"]
-[ext_resource type="PackedScene" path="res://assets/modelos/puddle_toxic_acid.glb" id="15_puddle"]
 
 [sub_resource type="StandardMaterial3D" id="MatArenaPiso"]
-albedo_color = Color(0.68, 0.72, 0.76, 1)
+albedo_color = Color(0.72, 0.75, 0.80, 1)
 albedo_texture = ExtResource("1_floor_tex")
-metallic = 0.38
-roughness = 0.60
+metallic = 0.30
+roughness = 0.65
 uv1_scale = Vector3(32, 32, 1)
 
-[sub_resource type="StandardMaterial3D" id="MatVaporBajo"]
-transparency = 1
-shading_mode = 0
-albedo_color = Color(0.65, 0.95, 0.75, 0.12)
-billboard_mode = 3
-billboard_keep_scale = true
-particles_anim_h_frames = 1
-particles_anim_v_frames = 1
-particles_anim_loop = false
-
-[sub_resource type="QuadMesh" id="MeshParticulaVapor"]
-material = SubResource("MatVaporBajo")
-size = Vector2(3.0, 3.0)
-
 [sub_resource type="StandardMaterial3D" id="MatMuroSolido"]
-albedo_color = Color(0.12, 0.13, 0.15, 1)
+albedo_color = Color(0.18, 0.20, 0.24, 1)
 metallic = 0.25
 roughness = 0.75
 
@@ -78,23 +61,6 @@ mesh = SubResource("MeshPiso")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0)
 shape = SubResource("ColPiso")
 
-[node name="VaporBajoSuelo" type="CPUParticles3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
-amount = 32
-lifetime = 3.6
-preprocess = 2.0
-speed_scale = 0.8
-mesh = SubResource("MeshParticulaVapor")
-emission_shape = 3
-emission_box_extents = Vector3(6.5, 0.1, 6.5)
-gravity = Vector3(0, 0.04, 0)
-initial_velocity_min = 0.1
-initial_velocity_max = 0.35
-angular_velocity_min = -15.0
-angular_velocity_max = 15.0
-scale_amount_min = 2.2
-scale_amount_max = 3.8
-
 [node name="PlataformaCentral" parent="." instance=ExtResource("4_pad")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, 0)
 
@@ -109,10 +75,10 @@ shape = SubResource("ColNucleoCentral")
 
 [node name="LuzRadioactivaCentral" type="OmniLight3D" parent="NucleoBioEstatico"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 0)
-light_color = Color(0.12, 1.0, 0.28, 1)
-light_energy = 5.2
+light_color = Color(0.15, 0.95, 0.35, 1)
+light_energy = 3.2
 shadow_enabled = false
-omni_range = 14.5
+omni_range = 12.0
 omni_attenuation = 1.15
 
 [node name="AnilloRejillas" type="Node3D" parent="."]
@@ -175,24 +141,6 @@ transform = Transform3D(0.866025, 0, -0.500000, 0, 1, 0, 0.500000, 0, 0.866025, 
 [node name="CamillaMockup_3" parent="DetallesCentro" instance=ExtResource("12_stretcher")]
 transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, 3.80, 0, 3.60)
 
-[node name="CharcoAcido_1" parent="DetallesCentro" instance=ExtResource("15_puddle")]
-transform = Transform3D(1.1, 0, 0, 0, 1, 0, 0, 0, 1.1, 1.8, 0.01, -3.2)
-
-[node name="CharcoAcido_2" parent="DetallesCentro" instance=ExtResource("15_puddle")]
-transform = Transform3D(0.9, 0, 0.4, 0, 1, 0, -0.4, 0, 0.9, -3.2, 0.01, 1.6)
-
-[node name="CharcoAcido_3" parent="DetallesCentro" instance=ExtResource("15_puddle")]
-transform = Transform3D(0.8, 0, -0.6, 0, 1, 0, 0.6, 0, 0.8, 3.4, 0.01, 2.2)
-
-[node name="CablesPiso_1" parent="DetallesCentro" instance=ExtResource("14_cables")]
-transform = Transform3D(0.766044, 0, 0.642788, 0, 1, 0, -0.642788, 0, 0.766044, -2.8, 0.02, 2.5)
-
-[node name="CablesPiso_2" parent="DetallesCentro" instance=ExtResource("14_cables")]
-transform = Transform3D(0.422618, 0, -0.906308, 0, 1, 0, 0.906308, 0, 0.422618, 4.8, 0.02, -1.8)
-
-[node name="CablesPiso_3" parent="DetallesCentro" instance=ExtResource("14_cables")]
-transform = Transform3D(0.965926, 0, 0.258819, 0, 1, 0, -0.258819, 0, 0.965926, -2.0, 0.02, -2.8)
-
 [node name="Pilares" type="Node3D" parent="."]
 
 [node name="Pilar_N" parent="Pilares" instance=ExtResource("2_pilar")]
@@ -230,88 +178,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25.00, 0, 0.00)
 
 [node name="Pilar_O" parent="Pilares" instance=ExtResource("2_pilar")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25.00, 0, 0.00)
-
-[node name="AnilloCamaraInterior" type="Node3D" parent="."]
-
-[node name="ArcoCamara_0" parent="AnilloCamaraInterior" instance=ExtResource("13_arch_pillar")]
-transform = Transform3D(0.000000, 0, 1.000000, 0, 1, 0, -1.000000, 0, 0.000000, 9.80, 0, 0.00)
-
-[node name="LuzArco_0" type="OmniLight3D" parent="AnilloCamaraInterior"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.21, 3.2, 0.00)
-light_color = Color(1.0, 0.15, 0.1, 1)
-light_energy = 1.2
-shadow_enabled = false
-omni_range = 5.5
-
-[node name="ArcoCamara_1" parent="AnilloCamaraInterior" instance=ExtResource("13_arch_pillar")]
-transform = Transform3D(-0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, -0.707107, 6.93, 0, 6.93)
-
-[node name="LuzArco_1" type="OmniLight3D" parent="AnilloCamaraInterior"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.51, 3.2, 6.51)
-light_color = Color(1.0, 0.15, 0.1, 1)
-light_energy = 1.2
-shadow_enabled = false
-omni_range = 5.5
-
-[node name="ArcoCamara_2" parent="AnilloCamaraInterior" instance=ExtResource("13_arch_pillar")]
-transform = Transform3D(-1.000000, 0, 0.000000, 0, 1, 0, -0.000000, 0, -1.000000, 0.00, 0, 9.80)
-
-[node name="LuzArco_2" type="OmniLight3D" parent="AnilloCamaraInterior"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.00, 3.2, 9.21)
-light_color = Color(1.0, 0.15, 0.1, 1)
-light_energy = 1.2
-shadow_enabled = false
-omni_range = 5.5
-
-[node name="ArcoCamara_3" parent="AnilloCamaraInterior" instance=ExtResource("13_arch_pillar")]
-transform = Transform3D(-0.707107, 0, -0.707107, 0, 1, 0, 0.707107, 0, -0.707107, -6.93, 0, 6.93)
-
-[node name="LuzArco_3" type="OmniLight3D" parent="AnilloCamaraInterior"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.51, 3.2, 6.51)
-light_color = Color(1.0, 0.15, 0.1, 1)
-light_energy = 1.2
-shadow_enabled = false
-omni_range = 5.5
-
-[node name="ArcoCamara_4" parent="AnilloCamaraInterior" instance=ExtResource("13_arch_pillar")]
-transform = Transform3D(-0.000000, 0, -1.000000, 0, 1, 0, 1.000000, 0, -0.000000, -9.80, 0, 0.00)
-
-[node name="LuzArco_4" type="OmniLight3D" parent="AnilloCamaraInterior"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.21, 3.2, 0.00)
-light_color = Color(1.0, 0.15, 0.1, 1)
-light_energy = 1.2
-shadow_enabled = false
-omni_range = 5.5
-
-[node name="ArcoCamara_5" parent="AnilloCamaraInterior" instance=ExtResource("13_arch_pillar")]
-transform = Transform3D(0.707107, 0, -0.707107, 0, 1, 0, 0.707107, 0, 0.707107, -6.93, 0, -6.93)
-
-[node name="LuzArco_5" type="OmniLight3D" parent="AnilloCamaraInterior"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.51, 3.2, -6.51)
-light_color = Color(1.0, 0.15, 0.1, 1)
-light_energy = 1.2
-shadow_enabled = false
-omni_range = 5.5
-
-[node name="ArcoCamara_6" parent="AnilloCamaraInterior" instance=ExtResource("13_arch_pillar")]
-transform = Transform3D(1.000000, 0, -0.000000, 0, 1, 0, 0.000000, 0, 1.000000, -0.00, 0, -9.80)
-
-[node name="LuzArco_6" type="OmniLight3D" parent="AnilloCamaraInterior"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00, 3.2, -9.21)
-light_color = Color(1.0, 0.15, 0.1, 1)
-light_energy = 1.2
-shadow_enabled = false
-omni_range = 5.5
-
-[node name="ArcoCamara_7" parent="AnilloCamaraInterior" instance=ExtResource("13_arch_pillar")]
-transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, 6.93, 0, -6.93)
-
-[node name="LuzArco_7" type="OmniLight3D" parent="AnilloCamaraInterior"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.51, 3.2, -6.51)
-light_color = Color(1.0, 0.15, 0.1, 1)
-light_energy = 1.2
-shadow_enabled = false
-omni_range = 5.5
 
 [node name="Muros" type="Node3D" parent="."]
 

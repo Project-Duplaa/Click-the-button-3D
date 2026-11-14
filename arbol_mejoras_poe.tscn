@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://derm37t6r5umt"]
+[gd_scene load_steps=8 format=3 uid="uid://cpoeskilltree3d"]
 
 [ext_resource type="Script" path="res://arbol_mejoras_poe.gd" id="1_poe"]
 [ext_resource type="Script" path="res://lienzo_arbol_habilidades.gd" id="2_lienzo"]
