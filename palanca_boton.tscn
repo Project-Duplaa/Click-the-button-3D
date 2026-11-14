@@ -2,44 +2,129 @@
 
 [ext_resource type="Script" path="res://palanca_boton.gd" id="1_palanca"]
 [ext_resource type="PackedScene" path="res://assets/modelos/beacon_pillar.glb" id="2_beacon"]
+[ext_resource type="Shader" path="res://shaders/beacon_beam.gdshader" id="3_beam_shader"]
+[ext_resource type="Shader" path="res://shaders/hazard_stripes.gdshader" id="4_hazard_shader"]
 
 [sub_resource type="CylinderShape3D" id="ColPalanca"]
 height = 2.4
 radius = 1.6
 
-[sub_resource type="StandardMaterial3D" id="MatCajaTerminal"]
-albedo_color = Color(0.18, 0.22, 0.28, 1)
-metallic = 0.8
+[sub_resource type="StandardMaterial3D" id="MatBaseConcreto"]
+albedo_color = Color(0.133, 0.149, 0.18, 1)
+metallic = 0.1
+roughness = 0.85
+
+[sub_resource type="CylinderMesh" id="MeshPlintoPilar"]
+material = SubResource("MatBaseConcreto")
+top_radius = 0.54
+bottom_radius = 0.64
+height = 0.045
+radial_segments = 8
+
+[sub_resource type="StandardMaterial3D" id="MatAceroCarbono"]
+albedo_color = Color(0.082, 0.09, 0.11, 1)
+metallic = 0.85
 roughness = 0.3
 
 [sub_resource type="BoxMesh" id="MeshCajaTerminal"]
-material = SubResource("MatCajaTerminal")
-size = Vector3(0.35, 0.22, 0.25)
+material = SubResource("MatAceroCarbono")
+size = Vector3(0.5, 0.34, 0.28)
 
-[sub_resource type="StandardMaterial3D" id="MatManija"]
-albedo_color = Color(1, 0.2, 0.2, 1)
+[sub_resource type="StandardMaterial3D" id="MatBlindajeGris"]
+albedo_color = Color(0.208, 0.231, 0.278, 1)
+metallic = 0.65
+roughness = 0.45
+
+[sub_resource type="BoxMesh" id="MeshMarcoTerminal"]
+material = SubResource("MatBlindajeGris")
+size = Vector3(0.44, 0.26, 0.05)
+
+[sub_resource type="ShaderMaterial" id="MatPlacaHazard"]
+resource_local_to_scene = true
+shader = ExtResource("4_hazard_shader")
+shader_parameter/color_a = Color(1, 0.718, 0.012, 1)
+shader_parameter/color_b = Color(0.082, 0.09, 0.11, 1)
+shader_parameter/stripe_frequency = 6.0
+shader_parameter/stripe_angle_deg = 45.0
+shader_parameter/stripe_ratio = 0.5
+shader_parameter/uv_scale = Vector2(3.6, 1)
+
+[sub_resource type="BoxMesh" id="MeshPlacaHazard"]
+material = SubResource("MatPlacaHazard")
+size = Vector3(0.52, 0.09, 0.3)
+
+[sub_resource type="StandardMaterial3D" id="MatLedEstado"]
+resource_local_to_scene = true
+albedo_color = Color(1, 0.118, 0.259, 1)
+metallic = 0.2
+roughness = 0.25
 emission_enabled = true
-emission = Color(1, 0.15, 0.15, 1)
-emission_energy_multiplier = 3.5
+emission = Color(1, 0.118, 0.259, 1)
+emission_energy_multiplier = 2.8
 
-[sub_resource type="CylinderMesh" id="MeshManija"]
-material = SubResource("MatManija")
-top_radius = 0.035
-bottom_radius = 0.035
+[sub_resource type="BoxMesh" id="MeshLedEstado"]
+material = SubResource("MatLedEstado")
+size = Vector3(0.44, 0.055, 0.08)
+
+[sub_resource type="StandardMaterial3D" id="MatCromoEje"]
+albedo_color = Color(0.72, 0.76, 0.82, 1)
+metallic = 0.96
+roughness = 0.14
+
+[sub_resource type="CylinderMesh" id="MeshPivoteEje"]
+material = SubResource("MatCromoEje")
+top_radius = 0.045
+bottom_radius = 0.045
 height = 0.38
+radial_segments = 16
 
-[sub_resource type="StandardMaterial3D" id="MatHazLuz"]
-transparency = 1
-blend_mode = 1
-cull_mode = 2
-shading_mode = 0
-albedo_color = Color(1, 0.2, 0.2, 0.35)
+[sub_resource type="StandardMaterial3D" id="MatTitanio"]
+albedo_color = Color(0.322, 0.357, 0.424, 1)
+metallic = 0.9
+roughness = 0.22
+
+[sub_resource type="BoxMesh" id="MeshBrazoHorquilla"]
+material = SubResource("MatTitanio")
+size = Vector3(0.05, 0.44, 0.06)
+
+[sub_resource type="BoxMesh" id="MeshBarraTransversal"]
+material = SubResource("MatTitanio")
+size = Vector3(0.52, 0.075, 0.075)
+
+[sub_resource type="StandardMaterial3D" id="MatEmpunadura"]
+resource_local_to_scene = true
+albedo_color = Color(1, 0.118, 0.259, 1)
+metallic = 0.15
+roughness = 0.3
+emission_enabled = true
+emission = Color(1, 0.118, 0.259, 1)
+emission_energy_multiplier = 2.8
+
+[sub_resource type="CylinderMesh" id="MeshEmpunadura"]
+material = SubResource("MatEmpunadura")
+top_radius = 0.062
+bottom_radius = 0.062
+height = 0.36
+radial_segments = 16
+
+[sub_resource type="ShaderMaterial" id="MatHazLuz"]
+resource_local_to_scene = true
+shader = ExtResource("3_beam_shader")
+shader_parameter/beam_color = Color(1, 0.118, 0.259, 1)
+shader_parameter/core_color = Color(1, 0.8, 0.74, 1)
+shader_parameter/energy = 2.6
+shader_parameter/alpha_multiplier = 0.7
+shader_parameter/fresnel_power = 1.4
 
 [sub_resource type="CylinderMesh" id="MeshHazLuz"]
 material = SubResource("MatHazLuz")
 top_radius = 0.22
-bottom_radius = 0.42
+bottom_radius = 0.52
 height = 14.0
+radial_segments = 24
+rings = 4
+cap_top = false
+cap_bottom = false
 
 [node name="PalancaBoton" type="Area3D"]
 script = ExtResource("1_palanca")
@@ -48,25 +133,69 @@ script = ExtResource("1_palanca")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
 shape = SubResource("ColPalanca")
 
+[node name="BasePlinth" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0225, 0)
+mesh = SubResource("MeshPlintoPilar")
+
 [node name="ModeloPilar" parent="." instance=ExtResource("2_beacon")]
-transform = Transform3D(0.55, 0, 0, 0, 0.55, 0, 0, 0, 0.55, 0, 0, 0)
+transform = Transform3D(0.65, 0, 0, 0, 0.65, 0, 0, 0, 0.65, 0, 0.04, 0)
 
 [node name="BaseControl" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.95, 0.28)
+transform = Transform3D(1, 0, 0, 0, 0.882948, 0.469472, 0, -0.469472, 0.882948, 0, 0.88, 0.24)
 
 [node name="Caja" type="MeshInstance3D" parent="BaseControl"]
 mesh = SubResource("MeshCajaTerminal")
 
-[node name="Manija" type="MeshInstance3D" parent="BaseControl"]
-transform = Transform3D(1, 0, 0, 0, 0.819152, 0.573576, 0, -0.573576, 0.819152, 0, 0.08, 0)
-mesh = SubResource("MeshManija")
+[node name="MarcoAcero" type="MeshInstance3D" parent="BaseControl"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0.13)
+mesh = SubResource("MeshMarcoTerminal")
+
+[node name="PlacaHazard" type="MeshInstance3D" parent="BaseControl"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.15, 0.01)
+mesh = SubResource("MeshPlacaHazard")
+
+[node name="TiraLedEstado" type="MeshInstance3D" parent="BaseControl"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.185, 0.1)
+mesh = SubResource("MeshLedEstado")
+
+[node name="Manija" type="Node3D" parent="BaseControl"]
+transform = Transform3D(1, 0, 0, 0, 0.766044, 0.642788, 0, -0.642788, 0.766044, 0, 0.02, 0.13)
+
+[node name="PivoteEje" type="MeshInstance3D" parent="BaseControl/Manija"]
+transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("MeshPivoteEje")
+
+[node name="BrazoIzq" type="MeshInstance3D" parent="BaseControl/Manija"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.15, 0.22, 0)
+mesh = SubResource("MeshBrazoHorquilla")
+
+[node name="BrazoDer" type="MeshInstance3D" parent="BaseControl/Manija"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.15, 0.22, 0)
+mesh = SubResource("MeshBrazoHorquilla")
+
+[node name="BarraTransversal" type="MeshInstance3D" parent="BaseControl/Manija"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.44, 0)
+mesh = SubResource("MeshBarraTransversal")
+
+[node name="Empunadura" type="MeshInstance3D" parent="BaseControl/Manija"]
+transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0.44, 0)
+mesh = SubResource("MeshEmpunadura")
 
 [node name="LuzIndicador" type="OmniLight3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, 0.3)
-light_color = Color(1, 0.18, 0.18, 1)
-light_energy = 3.2
-omni_range = 5.5
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.58, 0.22)
+light_color = Color(1, 0.118, 0.259, 1)
+light_energy = 3.0
+omni_range = 6.0
 
 [node name="HazLuz" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 7.0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 7, 0)
+cast_shadow = 0
 mesh = SubResource("MeshHazLuz")
+
+[node name="EtiquetaTerminal" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.25, 0)
+billboard = 1
+text = "DISYUNTOR 01
+[ACTIVAR]"
+font_size = 30
+outline_size = 10

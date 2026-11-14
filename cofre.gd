@@ -61,6 +61,9 @@ func recolectar(_por_click: bool = false):
 		
 	_en_cooldown = true
 	_reloj_cooldown = TIEMPO_RECARGA
+	input_ray_pickable = false
+	set_deferred("monitoring", false)
+	set_deferred("monitorable", false)
 	
 	var oleada = 1
 	var spawner = get_tree().get_first_node_in_group("spawner")
@@ -90,13 +93,20 @@ func recolectar(_por_click: bool = false):
 		pool_dano.mostrar_texto(global_position + Vector3(0, 1.8, 0), "¡COFRE RÚNICO! +%d🪙 +%d✨ +15 HP" % [oro_ganado, xp_ganada], Color(1.0, 0.85, 0.2), 1.25)
 		
 	var tw = create_tween()
-	tw.tween_property(self, "scale", Vector3(1.25, 0.8, 1.25), 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tw.tween_property(self, "scale", Vector3(0.9, 0.9, 0.9), 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	if mesh_inst != null:
+		tw.tween_property(mesh_inst, "scale", Vector3(1.25, 0.8, 1.25), 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.tween_property(mesh_inst, "scale", Vector3(0.9, 0.9, 0.9), 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	else:
+		tw.tween_property(self, "scale", Vector3(1.18, 1.18, 1.18), 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.tween_property(self, "scale", Vector3(0.9, 0.9, 0.9), 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	
 	_establecer_transparencia(0.25)
 
 func _reactivar_suministro():
 	_en_cooldown = false
+	input_ray_pickable = true
+	monitoring = true
+	monitorable = true
 	
 	var nueva_x = randf_range(-24.0, 24.0)
 	var nueva_z = randf_range(-24.0, 24.0)
@@ -104,9 +114,14 @@ func _reactivar_suministro():
 	
 	_establecer_transparencia(1.0)
 	
-	scale = Vector3(0.1, 0.1, 0.1)
+	scale = Vector3.ONE
 	var tw = create_tween()
-	tw.tween_property(self, "scale", Vector3.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	if mesh_inst != null:
+		mesh_inst.scale = Vector3(0.1, 0.1, 0.1)
+		tw.tween_property(mesh_inst, "scale", Vector3.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	else:
+		scale = Vector3(0.1, 0.1, 0.1)
+		tw.tween_property(self, "scale", Vector3.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	
 	var pool_dano = get_tree().get_first_node_in_group("damage_numbers")
 	if pool_dano != null and pool_dano.has_method("mostrar_texto"):

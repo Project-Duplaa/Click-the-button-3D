@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3 uid="uid://bevolucionradial3d"]
+[gd_scene load_steps=9 format=3 uid="uid://bevolucionradial3d"]
 
 [ext_resource type="Script" path="res://evolucion_radial.gd" id="1_radial"]
 [ext_resource type="Script" path="res://control_radial.gd" id="2_control"]
@@ -8,22 +8,43 @@
 viewport_path = NodePath("SubViewport")
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_TooltipBocadillo"]
-content_margin_left = 16.0
-content_margin_top = 10.0
+content_margin_left = 14.0
+content_margin_top = 12.0
 content_margin_right = 16.0
 content_margin_bottom = 12.0
-bg_color = Color(0.08, 0.09, 0.13, 0.96)
+bg_color = Color(0.06, 0.08, 0.14, 0.97)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.85, 0.72, 0.38, 1)
+border_color = Color(0.92, 0.76, 0.36, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+shadow_color = Color(0, 0, 0, 0.82)
+shadow_size = 16
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_MarcoPreview3D"]
+bg_color = Color(0.09, 0.11, 0.18, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.92, 0.76, 0.36, 0.95)
 corner_radius_top_left = 10
 corner_radius_top_right = 10
 corner_radius_bottom_right = 10
 corner_radius_bottom_left = 10
-shadow_color = Color(0, 0, 0, 0.7)
-shadow_size = 8
+shadow_color = Color(0, 0, 0, 0.65)
+shadow_size = 6
+
+[sub_resource type="Environment" id="Environment_PreviewHeroe"]
+background_mode = 1
+background_color = Color(0.08, 0.10, 0.17, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.92, 0.94, 1, 1)
+ambient_light_energy = 1.45
 
 [node name="EvolucionRadial" type="Node3D"]
 script = ExtResource("1_radial")
@@ -31,7 +52,7 @@ script = ExtResource("1_radial")
 [node name="Sprite3D" type="Sprite3D" parent="."]
 axis = 1
 texture = SubResource("ViewportTexture_Radial")
-pixel_size = 0.0055
+pixel_size = 0.0056
 render_priority = 1
 texture_filter = 5
 transparent = true
@@ -41,11 +62,11 @@ double_sided = true
 [node name="SubViewport" type="SubViewport" parent="."]
 transparent_bg = true
 handle_input_locally = false
-size = Vector2i(768, 768)
+size = Vector2i(1024, 1024)
 render_target_update_mode = 4
 
 [node name="ControlRadial" type="Control" parent="SubViewport"]
-custom_minimum_size = Vector2(768, 768)
+custom_minimum_size = Vector2(1024, 1024)
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -56,10 +77,10 @@ mouse_filter = 1
 script = ExtResource("2_control")
 
 [node name="LuzFlash" type="OmniLight3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
 light_color = Color(1, 1, 1, 1)
 light_energy = 0.0
-omni_range = 4.5
+omni_range = 6.5
 
 [node name="CapaUI" type="CanvasLayer" parent="."]
 layer = 50
@@ -76,8 +97,8 @@ script = ExtResource("3_cola")
 
 [node name="TooltipFlotante" type="PanelContainer" parent="CapaUI"]
 visible = false
-offset_right = 240.0
-offset_bottom = 110.0
+offset_right = 386.0
+offset_bottom = 186.0
 mouse_filter = 0
 theme_override_styles/panel = SubResource("StyleBox_TooltipBocadillo")
 
@@ -85,39 +106,100 @@ theme_override_styles/panel = SubResource("StyleBox_TooltipBocadillo")
 layout_mode = 2
 mouse_filter = 2
 
-[node name="VBox" type="VBoxContainer" parent="CapaUI/TooltipFlotante/Margin"]
+[node name="HBox" type="HBoxContainer" parent="CapaUI/TooltipFlotante/Margin"]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 3
+theme_override_constants/separation = 14
 
-[node name="LabelTitulo" type="Label" parent="CapaUI/TooltipFlotante/Margin/VBox"]
+[node name="PanelPreview3D" type="Panel" parent="CapaUI/TooltipFlotante/Margin/HBox"]
+clip_children = 2
+custom_minimum_size = Vector2(132, 160)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBox_MarcoPreview3D")
+
+[node name="SubViewportContainer" type="SubViewportContainer" parent="CapaUI/TooltipFlotante/Margin/HBox/PanelPreview3D"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+stretch = true
+
+[node name="SubViewportHeroe" type="SubViewport" parent="CapaUI/TooltipFlotante/Margin/HBox/PanelPreview3D/SubViewportContainer"]
+own_world_3d = true
+transparent_bg = false
+handle_input_locally = false
+size = Vector2i(132, 160)
+render_target_update_mode = 4
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="CapaUI/TooltipFlotante/Margin/HBox/PanelPreview3D/SubViewportContainer/SubViewportHeroe"]
+environment = SubResource("Environment_PreviewHeroe")
+
+[node name="CamaraPreview" type="Camera3D" parent="CapaUI/TooltipFlotante/Margin/HBox/PanelPreview3D/SubViewportContainer/SubViewportHeroe"]
+transform = Transform3D(1, 0, 0, 0, 0.990268, 0.139173, 0, -0.139173, 0.990268, 0, 0.88, 2.25)
+current = true
+fov = 38.0
+
+[node name="LuzFrontal" type="DirectionalLight3D" parent="CapaUI/TooltipFlotante/Margin/HBox/PanelPreview3D/SubViewportContainer/SubViewportHeroe"]
+transform = Transform3D(0.866025, -0.25, 0.433013, 0, 0.866025, 0.5, -0.5, -0.433013, 0.75, 0.6, 1.8, 1.4)
+light_color = Color(1, 0.96, 0.9, 1)
+light_energy = 2.4
+
+[node name="LuzClase" type="OmniLight3D" parent="CapaUI/TooltipFlotante/Margin/HBox/PanelPreview3D/SubViewportContainer/SubViewportHeroe"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.8, 1.2, -0.6)
+light_color = Color(0.35, 0.65, 1, 1)
+light_energy = 2.8
+omni_range = 4.5
+
+[node name="PivoteModelo" type="Node3D" parent="CapaUI/TooltipFlotante/Margin/HBox/PanelPreview3D/SubViewportContainer/SubViewportHeroe"]
+
+[node name="VBox" type="VBoxContainer" parent="CapaUI/TooltipFlotante/Margin/HBox"]
+custom_minimum_size = Vector2(212, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 1
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="LabelRol" type="Label" parent="CapaUI/TooltipFlotante/Margin/HBox/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.9, 1, 0.9)
+theme_override_font_sizes/font_size = 10
+text = "✨ ARCANISTA / ORBES TELEDIRIGIDOS"
+horizontal_alignment = 1
+
+[node name="LabelTitulo" type="Label" parent="CapaUI/TooltipFlotante/Margin/HBox/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.98, 0.82, 0.35, 1)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.95)
 theme_override_constants/shadow_offset_x = 1
-theme_override_constants/shadow_offset_y = 1
-theme_override_font_sizes/font_size = 16
-text = "MAGO"
+theme_override_constants/shadow_offset_y = 2
+theme_override_font_sizes/font_size = 18
+text = "🔮 MAGO"
 horizontal_alignment = 1
 
-[node name="RichTextoStats" type="RichTextLabel" parent="CapaUI/TooltipFlotante/Margin/VBox"]
+[node name="RichTextoStats" type="RichTextLabel" parent="CapaUI/TooltipFlotante/Margin/HBox/VBox"]
 layout_mode = 2
 mouse_filter = 2
-theme_override_colors/default_color = Color(1, 1, 1, 1)
+theme_override_colors/default_color = Color(0.95, 0.96, 0.99, 1)
 theme_override_font_sizes/normal_font_size = 12
 bbcode_enabled = true
-text = "• Arcanista / Alto Impacto
-• [color=#56E39F]+133% Daño Mágico[/color]"
+text = "• [color=#FFD166]Arma:[/color] Bastón y Orbe Astral
+• [color=#56E39F]+133% Daño Mágico en Área[/color]
+• [color=#56E39F]Proyectiles Teledirigidos AOE[/color]"
 fit_content = true
 scroll_active = false
 autowrap_mode = 0
 
-[node name="LabelAccion" type="Label" parent="CapaUI/TooltipFlotante/Margin/VBox"]
+[node name="LabelAccion" type="Label" parent="CapaUI/TooltipFlotante/Margin/HBox/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.85, 0.82, 0.75, 1)
+theme_override_colors/font_color = Color(1, 0.9, 0.45, 1)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.9)
 theme_override_constants/shadow_offset_x = 1
 theme_override_constants/shadow_offset_y = 1
-theme_override_font_sizes/font_size = 11
-text = "[Clic para evolucionar]"
+theme_override_font_sizes/font_size = 12
+text = "⚡ [ CLIC PARA EVOLUCIONAR ] ⚡"
 horizontal_alignment = 1

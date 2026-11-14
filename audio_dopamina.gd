@@ -92,9 +92,11 @@ func play_gold_pickup():
 	var freq1 = 1046.50
 	var freq2 = 1318.51
 	_sintetizar_tono(freq1, 0.09, 28.0, 0.16, "chime")
-	get_tree().create_timer(0.045, false).timeout.connect(func():
-		_sintetizar_tono(freq2, 0.12, 22.0, 0.20, "chime")
-	)
+	if is_inside_tree():
+		get_tree().create_timer(0.045, false).timeout.connect(func():
+			if is_instance_valid(self) and is_inside_tree():
+				_sintetizar_tono(freq2, 0.12, 22.0, 0.20, "chime")
+		)
 
 func play_click(es_perfecto: bool = false, nivel_fiebre: int = 0):
 	var base_freq = 320.0 + (nivel_fiebre * 65.0)
@@ -106,13 +108,18 @@ func play_click(es_perfecto: bool = false, nivel_fiebre: int = 0):
 
 func play_level_up():
 	var notas = [523.25, 659.25, 783.99, 1046.50]
-	for i in range(notas.size()):
-		get_tree().create_timer(i * 0.07, false).timeout.connect(func():
-			_sintetizar_tono(notas[i], 0.22, 12.0, 0.25, "chime")
-		)
+	if is_inside_tree():
+		for i in range(notas.size()):
+			var nota: float = notas[i]
+			get_tree().create_timer(i * 0.07, false).timeout.connect(func():
+				if is_instance_valid(self) and is_inside_tree():
+					_sintetizar_tono(nota, 0.22, 12.0, 0.25, "chime")
+			)
 
 func play_boss_stagger():
 	_sintetizar_tono(85.0, 0.25, 10.0, 0.35, "sine")
-	get_tree().create_timer(0.03, false).timeout.connect(func():
-		_sintetizar_tono(440.0, 0.30, 8.0, 0.22, "chime")
-	)
+	if is_inside_tree():
+		get_tree().create_timer(0.03, false).timeout.connect(func():
+			if is_instance_valid(self) and is_inside_tree():
+				_sintetizar_tono(440.0, 0.30, 8.0, 0.22, "chime")
+		)

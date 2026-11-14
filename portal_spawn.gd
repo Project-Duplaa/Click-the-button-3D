@@ -28,7 +28,7 @@ var _factor_escala: float = 1.0
 @onready var haz_vertical: MeshInstance3D = $HazVertical
 @onready var onda_expansion: MeshInstance3D = $OndaExpansion
 @onready var nodos_orbitales: Node3D = $NodosOrbitales
-@onready var luz: OmniLight3D = $LuzPortal
+@onready var luz: OmniLight3D = get_node_or_null("LuzPortal")
 
 func preparar_spawn(escena: PackedScene, vida_adicional: float = 0.0, jefe: bool = false):
 	escena_enemigo = escena
@@ -131,17 +131,25 @@ func _ejecutar_spawn_enemigo():
 		t_cierre.tween_property(luz, "light_energy", 0.0, 0.25)
 	t_cierre.chain().tween_callback(queue_free)
 
+static var _cache_mat_emision: Dictionary = {}
+static var _cache_mat_haz: Dictionary = {}
+
+
 func _aplicar_color():
 	if luz != null:
 		luz.light_color = color_portal
 		
-	var mat_emision = StandardMaterial3D.new()
-	mat_emision.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat_emision.albedo_color = color_portal
-	mat_emision.emission_enabled = true
-	mat_emision.emission = color_portal
-	mat_emision.emission_energy_multiplier = 2.4
-	mat_emision.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	var clave_col: int = color_portal.to_rgba32()
+	var mat_emision := _cache_mat_emision.get(clave_col, null) as StandardMaterial3D
+	if mat_emision == null:
+		mat_emision = StandardMaterial3D.new()
+		mat_emision.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat_emision.albedo_color = color_portal
+		mat_emision.emission_enabled = true
+		mat_emision.emission = color_portal
+		mat_emision.emission_energy_multiplier = 2.4
+		mat_emision.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_cache_mat_emision[clave_col] = mat_emision
 	
 	if anillo_exterior != null:
 		anillo_exterior.material_override = mat_emision
@@ -154,12 +162,15 @@ func _aplicar_color():
 		onda_expansion.material_override = mat_onda
 		
 	if haz_vertical != null:
-		var mat_haz = StandardMaterial3D.new()
-		mat_haz.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		mat_haz.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		mat_haz.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-		mat_haz.cull_mode = BaseMaterial3D.CULL_DISABLED
-		mat_haz.albedo_color = Color(color_portal.r, color_portal.g, color_portal.b, 0.32)
+		var mat_haz := _cache_mat_haz.get(clave_col, null) as StandardMaterial3D
+		if mat_haz == null:
+			mat_haz = StandardMaterial3D.new()
+			mat_haz.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			mat_haz.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			mat_haz.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+			mat_haz.cull_mode = BaseMaterial3D.CULL_DISABLED
+			mat_haz.albedo_color = Color(color_portal.r, color_portal.g, color_portal.b, 0.32)
+			_cache_mat_haz[clave_col] = mat_haz
 		haz_vertical.material_override = mat_haz
 		
 	if nodos_orbitales != null:

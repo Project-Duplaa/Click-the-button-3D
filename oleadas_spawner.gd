@@ -47,7 +47,17 @@ func _ready():
 	var boton = get_parent().get_node_or_null("BotonMovil")
 	if boton != null:
 		boton.click_presionado.connect(_on_click_boton_presionado)
+	_precalentar_mallas_enemigos()
 	print("⏳ [OleadasSpawner] Arena en calma. Esperando el primer clic al botón para iniciar la partida.")
+
+func _precalentar_mallas_enemigos() -> void:
+	for esc in [espectro_escena, guardia_escena, berserker_escena, mini_jefe_escena]:
+		if esc != null:
+			var inst: Node = esc.instantiate()
+			var mod: Node3D = inst.get_node_or_null("Modelo") as Node3D
+			if mod != null:
+				AnimadorEntidad.optimizar_modelo_esqueletico(mod)
+			inst.free()
 
 func _on_click_boton_presionado(total_clicks: int):
 	clicks_totales = total_clicks

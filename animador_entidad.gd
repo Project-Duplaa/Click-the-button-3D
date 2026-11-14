@@ -31,6 +31,8 @@ var _prioridad_bloqueo: int = 0
 var _tiempo_bloqueo: float = 0.0
 var _en_bucle: bool = false
 
+static var _cache_mallas_fusionadas: Dictionary = {}
+
 
 func _init(modelo_raiz: Node3D = null) -> void:
 	if modelo_raiz != null:
@@ -38,6 +40,7 @@ func _init(modelo_raiz: Node3D = null) -> void:
 
 
 func vincular_modelo(modelo_raiz: Node3D) -> void:
+	optimizar_modelo_esqueletico(modelo_raiz)
 	_ap = buscar_animation_player(modelo_raiz)
 	_clips_disponibles.clear()
 	_clip_actual = ""
@@ -509,3 +512,198 @@ static func _crear_baston_mago(incluir_particulas: bool = true) -> Dictionary:
 		root.add_child(part)
 
 	return {"nodo": root, "luz": luz}
+
+
+## Fusiona sub-mallas esqueléticas redundantes por material en un solo ArrayMesh cacheado por archivo .glb.
+static func optimizar_modelo_esqueletico(modelo_raiz: Node3D) -> void:
+	if modelo_raiz == null or modelo_raiz.has_meta(&"malla_optimizada"):
+		return
+	var skel: Skeleton3D = buscar_skeleton3d(modelo_raiz)
+	if skel == null:
+		return
+	var mallas: Array[MeshInstance3D] = []
+	var skins_unicos: Dictionary = {}
+	var skin_compartido: Skin = null
+	for hijo in skel.get_children():
+		if hijo is MeshInstance3D:
+			var mi: MeshInstance3D = hijo as MeshInstance3D
+			if mi.mesh == null or not mi.visible:
+				continue
+			if mi.get_blend_shape_count() > 0 or not mi.transform.is_equal_approx(Transform3D.IDENTITY):
+				return
+			if mi.skin == null:
+				return
+			mallas.append(mi)
+			skin_compartido = mi.skin
+			skins_unicos[mi.skin.get_rid().get_id()] = true
+	if mallas.size() <= 6 or skins_unicos.size() != 1 or skin_compartido == null:
+		return
+
+	var clave_cache: String = modelo_raiz.scene_file_path
+	if clave_cache == "":
+		clave_cache = "sk_%d_%d" % [mallas[0].mesh.get_rid().get_id(), mallas.size()]
+
+	var malla_cache: ArrayMesh = _cache_mallas_fusionadas.get(clave_cache, null) as ArrayMesh
+	if malla_cache == null:
+		malla_cache = _construir_malla_fusionada(mallas)
+		if malla_cache == null:
+			return
+		_cache_mallas_fusionadas[clave_cache] = malla_cache
+
+	var mi_merged := MeshInstance3D.new()
+	mi_merged.name = "MallaUnificada"
+	mi_merged.mesh = malla_cache
+	mi_merged.skin = skin_compartido
+	mi_merged.skeleton = NodePath("..")
+	mi_merged.cast_shadow = mallas[0].cast_shadow
+	mi_merged.layers = mallas[0].layers
+	skel.add_child(mi_merged)
+
+	for mi in mallas:
+		skel.remove_child(mi)
+		mi.queue_free()
+
+	modelo_raiz.set_meta(&"malla_optimizada", true)
+
+
+static func _construir_malla_fusionada(mallas: Array[MeshInstance3D]) -> ArrayMesh:
+	const ATTR_SLOTS: Array[int] = [
+		Mesh.ARRAY_VERTEX,
+		Mesh.ARRAY_NORMAL,
+		Mesh.ARRAY_TANGENT,
+		Mesh.ARRAY_COLOR,
+		Mesh.ARRAY_TEX_UV,
+		Mesh.ARRAY_TEX_UV2,
+		Mesh.ARRAY_CUSTOM0,
+		Mesh.ARRAY_CUSTOM1,
+		Mesh.ARRAY_CUSTOM2,
+		Mesh.ARRAY_CUSTOM3,
+		Mesh.ARRAY_BONES,
+		Mesh.ARRAY_WEIGHTS,
+	]
+	var buckets: Dictionary = {}
+	var bucket_orden: Array[String] = []
+	for mi in mallas:
+		var m: Mesh = mi.mesh
+		for s_idx in m.get_surface_count():
+			if m.surface_get_primitive_type(s_idx) != Mesh.PRIMITIVE_TRIANGLES:
+				return null
+			var mat: Material = mi.get_active_material(s_idx)
+			var fmt: int = m.surface_get_format(s_idx)
+			var mat_id: int = mat.get_rid().get_id() if mat != null else 0
+			var base_key: String = "%d_%d" % [mat_id, fmt]
+			var arrs: Array = m.surface_get_arrays(s_idx)
+			if arrs.size() < Mesh.ARRAY_MAX or arrs[Mesh.ARRAY_VERTEX] == null:
+				return null
+			var verts: PackedVector3Array = arrs[Mesh.ARRAY_VERTEX]
+			var v_count: int = verts.size()
+			var parte: int = 0
+			var bucket_key: String = "%s_%d" % [base_key, parte]
+			while buckets.has(bucket_key):
+				var existing: Dictionary = buckets[bucket_key]
+				if int(existing["v_offset"]) + v_count <= 65000:
+					break
+				parte += 1
+				bucket_key = "%s_%d" % [base_key, parte]
+			if not buckets.has(bucket_key):
+				var init_arrs: Array = []
+				init_arrs.resize(Mesh.ARRAY_MAX)
+				buckets[bucket_key] = {
+					"mat": mat,
+					"fmt": fmt,
+					"v_offset": 0,
+					"arrs": init_arrs,
+				}
+				bucket_orden.append(bucket_key)
+			var b: Dictionary = buckets[bucket_key]
+			var out_arrs: Array = b["arrs"]
+			var v_offset: int = int(b["v_offset"])
+			for slot in ATTR_SLOTS:
+				if arrs[slot] != null:
+					if out_arrs[slot] == null:
+						out_arrs[slot] = _duplicar_array_empaquetado(arrs[slot])
+					else:
+						out_arrs[slot] = _adjuntar_array_empaquetado(out_arrs[slot], arrs[slot])
+			if arrs[Mesh.ARRAY_INDEX] != null:
+				var src_idx: PackedInt32Array = arrs[Mesh.ARRAY_INDEX]
+				var dst_idx: PackedInt32Array = PackedInt32Array()
+				if out_arrs[Mesh.ARRAY_INDEX] != null:
+					dst_idx = out_arrs[Mesh.ARRAY_INDEX] as PackedInt32Array
+				var old_len: int = dst_idx.size()
+				var add_len: int = src_idx.size()
+				dst_idx.resize(old_len + add_len)
+				for i in add_len:
+					dst_idx[old_len + i] = src_idx[i] + v_offset
+				out_arrs[Mesh.ARRAY_INDEX] = dst_idx
+			b["v_offset"] = v_offset + v_count
+
+	if bucket_orden.is_empty():
+		return null
+
+	var merged := ArrayMesh.new()
+	var surf_out_idx: int = 0
+	for k in bucket_orden:
+		var b: Dictionary = buckets[k]
+		var fmt: int = int(b["fmt"])
+		var surf_flags: int = fmt & (
+			Mesh.ARRAY_FLAG_USE_2D_VERTICES
+			| Mesh.ARRAY_FLAG_USE_DYNAMIC_UPDATE
+			| Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS
+		)
+		var out_arrs: Array = b["arrs"]
+		merged.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, out_arrs, [], {}, surf_flags)
+		var mat: Material = b["mat"] as Material
+		if mat != null:
+			merged.surface_set_material(surf_out_idx, mat)
+		surf_out_idx += 1
+	return merged
+
+
+static func _duplicar_array_empaquetado(src: Variant) -> Variant:
+	if src is PackedVector3Array:
+		return (src as PackedVector3Array).duplicate()
+	if src is PackedVector2Array:
+		return (src as PackedVector2Array).duplicate()
+	if src is PackedFloat32Array:
+		return (src as PackedFloat32Array).duplicate()
+	if src is PackedInt32Array:
+		return (src as PackedInt32Array).duplicate()
+	if src is PackedColorArray:
+		return (src as PackedColorArray).duplicate()
+	if src is PackedByteArray:
+		return (src as PackedByteArray).duplicate()
+	if src is PackedFloat64Array:
+		return (src as PackedFloat64Array).duplicate()
+	return src
+
+
+static func _adjuntar_array_empaquetado(dst: Variant, src: Variant) -> Variant:
+	if dst is PackedVector3Array:
+		var a := dst as PackedVector3Array
+		a.append_array(src as PackedVector3Array)
+		return a
+	if dst is PackedVector2Array:
+		var a := dst as PackedVector2Array
+		a.append_array(src as PackedVector2Array)
+		return a
+	if dst is PackedFloat32Array:
+		var a := dst as PackedFloat32Array
+		a.append_array(src as PackedFloat32Array)
+		return a
+	if dst is PackedInt32Array:
+		var a := dst as PackedInt32Array
+		a.append_array(src as PackedInt32Array)
+		return a
+	if dst is PackedColorArray:
+		var a := dst as PackedColorArray
+		a.append_array(src as PackedColorArray)
+		return a
+	if dst is PackedByteArray:
+		var a := dst as PackedByteArray
+		a.append_array(src as PackedByteArray)
+		return a
+	if dst is PackedFloat64Array:
+		var a := dst as PackedFloat64Array
+		a.append_array(src as PackedFloat64Array)
+		return a
+	return dst

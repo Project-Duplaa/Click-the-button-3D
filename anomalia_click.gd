@@ -97,6 +97,9 @@ func activar_recoleccion():
 	if _recolectada:
 		return
 	_recolectada = true
+	input_ray_pickable = false
+	set_deferred("monitoring", false)
+	set_deferred("monitorable", false)
 	
 	AudioManager.play("click", 1.25)
 	AudioManager.play("puzzle_completo", 1.2, -2.0)
@@ -105,10 +108,10 @@ func activar_recoleccion():
 	if pj == null:
 		pj = get_tree().get_first_node_in_group("jugador")
 	if pj != null:
-		if pj.has_method("registrar_clic_boton"):
-			pj.registrar_clic_boton(true)
-		elif pj.has_method("registrar_click_jugador"):
-			pj.registrar_click_jugador()
+		if pj.has_method("registrar_click_jugador"):
+			pj.registrar_click_jugador(true)
+		elif pj.has_method("registrar_clic_boton"):
+			pj.registrar_clic_boton(global_position, dano_onda, true)
 		if pj.has_method("recoger_drop"):
 			pj.recoger_drop(0, oro_recompensa)
 		if pj.has_method("ganar_xp"):
@@ -134,13 +137,18 @@ func activar_recoleccion():
 	tw.tween_property(self, "scale", Vector3(1.6, 1.6, 1.6), 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	if luz_nucleo != null:
 		tw.tween_property(luz_nucleo, "light_energy", 4.0, 0.08)
-	tw.chain().tween_property(self, "scale", Vector3.ZERO, 0.15).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.chain().tween_property(self, "scale", Vector3(0.02, 0.02, 0.02), 0.15).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tw.chain().tween_callback(queue_free)
 
 func _expirar():
+	if _recolectada:
+		return
 	_recolectada = true
+	input_ray_pickable = false
+	set_deferred("monitoring", false)
+	set_deferred("monitorable", false)
 	var tw = create_tween()
-	tw.tween_property(self, "scale", Vector3.ZERO, 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(self, "scale", Vector3(0.02, 0.02, 0.02), 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tw.chain().tween_callback(queue_free)
 
 func _detonar_onda_defensiva():

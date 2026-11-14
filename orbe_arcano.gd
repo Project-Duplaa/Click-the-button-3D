@@ -18,7 +18,7 @@ var _tiempo: float = 0.0
 var _ha_detonado: bool = false
 
 @onready var mesh_orbe: MeshInstance3D = $MeshInstance3D
-@onready var luz_magica: OmniLight3D = $OmniLight3D
+@onready var luz_magica: OmniLight3D = get_node_or_null("OmniLight3D")
 
 func _ready():
 	add_to_group("proyectiles_jugador")

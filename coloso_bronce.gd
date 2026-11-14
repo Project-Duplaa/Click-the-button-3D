@@ -150,11 +150,11 @@ func _iniciar_pisada_telegrafiada():
 	get_tree().create_timer(tiempo_telegraph).timeout.connect(_ejecutar_pisada_telegrafiada)
 
 func _ejecutar_pisada_telegrafiada():
-	if not _esta_telegrafando:
-		return
-
 	if telegraph_mesh != null:
 		telegraph_mesh.visible = false
+	if muerto or not _esta_telegrafando:
+		_esta_telegrafando = false
+		return
 	_esta_telegrafando = false
 	_reloj_ataque = 1.6
 	_anim_ctrl.reproducir_accion("attack-melee-right", 2, 0.08, 0.85)
@@ -231,9 +231,14 @@ func desactivar_escudo_runico(_duracion: float = 7.0):
 	if _coraza_activa:
 		_romper_coraza()
 
-func recibir_dano(cantidad: float, es_critico: bool = false):
+func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 	if muerto:
 		return
+	var fuente_str := "normal"
+	if typeof(fuente) == TYPE_BOOL:
+		es_critico = fuente
+	else:
+		fuente_str = str(fuente)
 	if _coraza_activa:
 		AudioManager.play("escudo_bloqueo", 0.9)
 		_crear_texto_flotante("🛡️ ¡CORAZA! (%d Clics al Núcleo)" % (_clics_necesarios_coraza - _clics_coraza), false)
@@ -253,7 +258,7 @@ func recibir_dano(cantidad: float, es_critico: bool = false):
 	var pool = get_tree().get_first_node_in_group("damage_numbers")
 	var pos_num = global_position + Vector3(randf_range(-0.5, 0.5), 3.4, randf_range(-0.5, 0.5))
 	if pool != null and pool.has_method("mostrar_dano"):
-		pool.mostrar_dano(pos_num, dano_final, es_critico or _aturdido, false)
+		pool.mostrar_dano(pos_num, int(round(dano_final)), es_critico or _aturdido, fuente_str)
 	else:
 		var escena_num = load("res://damage_number_3d.tscn")
 		if escena_num != null and is_inside_tree() and get_parent() != null:

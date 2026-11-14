@@ -29,10 +29,5 @@ transform = Transform3D(1.05, 0, 0, 0, 1.05, 0, 0, 0, 1.05, 0, 0, 0)
 [node name="LineaCarga" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, -4.25)
 visible = false
+cast_shadow = 0
 mesh = SubResource("MeshLinea")
-
-[node name="LuzFuria" type="OmniLight3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 0)
-light_color = Color(1, 0.25, 0.1, 1)
-light_energy = 1.4
-omni_range = 4.5

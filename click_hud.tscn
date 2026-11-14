@@ -1,4 +1,4 @@
-[gd_scene load_steps=22 format=3 uid="uid://bclickhud3d"]
+[gd_scene load_steps=43 format=3 uid="uid://bclickhud3d"]
 
 [ext_resource type="Script" path="res://click_hud.gd" id="1_hud"]
 [ext_resource type="PackedScene" path="res://personaje/character-male-a.glb" id="2_avatar_mesh"]
@@ -7,158 +7,287 @@
 [ext_resource type="Texture2D" path="res://ui_assets/hud_gem_heart.png" id="5_heart"]
 [ext_resource type="Texture2D" path="res://ui_assets/hud_gold_coin.png" id="6_coin"]
 [ext_resource type="Texture2D" path="res://ui_assets/hud_skull.png" id="7_skull"]
+[ext_resource type="Shader" path="res://shaders/portrait_medallion_mask.gdshader" id="8_sh_portrait"]
+[ext_resource type="Shader" path="res://shaders/bar_delayed_damage.gdshader" id="9_sh_bar"]
+[ext_resource type="Texture2D" path="res://ui_assets/icon_class_hades.svg" id="10_ico_class"]
+[ext_resource type="Texture2D" path="res://ui_assets/icon_shield_hades.svg" id="11_ico_shield"]
+[ext_resource type="Texture2D" path="res://ui_assets/icon_kills_hades.svg" id="12_ico_kills"]
+[ext_resource type="Texture2D" path="res://ui_assets/icon_time_hades.svg" id="13_ico_time"]
+[ext_resource type="Texture2D" path="res://ui_assets/icon_clicks_hades.svg" id="14_ico_clicks"]
+[ext_resource type="Texture2D" path="res://ui_assets/icon_fever_hades.svg" id="15_ico_fever"]
+[ext_resource type="Texture2D" path="res://ui_assets/icon_denario_hades.svg" id="16_ico_denario"]
+[ext_resource type="Texture2D" path="res://ui_assets/icon_luck_hades.svg" id="17_ico_luck"]
+[ext_resource type="Texture2D" path="res://ui_assets/icon_vault_hades.svg" id="18_ico_vault"]
+[ext_resource type="Texture2D" path="res://ui_assets/icon_victory_hades.svg" id="19_ico_victory"]
+[ext_resource type="Texture2D" path="res://ui_assets/icon_skull_hades.svg" id="20_ico_skull"]
+[ext_resource type="Texture2D" path="res://ui_assets/icon_pacto_hades.svg" id="21_ico_pacto"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_BarraSuperior"]
-bg_color = Color(0.07, 0.08, 0.12, 0.96)
-border_width_left = 1
+bg_color = Color(0.043, 0.051, 0.082, 0.96)
+border_width_left = 2
 border_width_top = 2
+border_width_right = 2
+border_width_bottom = 3
+border_color = Color(0.70, 0.54, 0.28, 0.95)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0, 0, 0.85)
+shadow_size = 14
+shadow_offset = Vector2(0, 4)
+
+[sub_resource type="StyleBoxEmpty" id="StyleBox_Transparent"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_AvatarGlow"]
+bg_color = Color(0.04, 0.045, 0.07, 0.95)
+corner_radius_top_left = 44
+corner_radius_top_right = 44
+corner_radius_bottom_right = 44
+corner_radius_bottom_left = 44
+shadow_color = Color(0.79, 0.64, 0.35, 0.35)
+shadow_size = 10
+
+[sub_resource type="ShaderMaterial" id="ShaderMat_Medallion"]
+shader = ExtResource("8_sh_portrait")
+shader_parameter/backdrop_core = Color(0.11, 0.13, 0.21, 1)
+shader_parameter/backdrop_edge = Color(0.03, 0.04, 0.07, 1)
+shader_parameter/class_aura = Color(0.88, 0.74, 0.38, 1)
+shader_parameter/bronze_dark = Color(0.32, 0.22, 0.09, 1)
+shader_parameter/bronze_mid = Color(0.79, 0.64, 0.35, 1)
+shader_parameter/bronze_spec = Color(1, 0.9, 0.64, 1)
+shader_parameter/border_width = 0.085
+shader_parameter/overdrive_pulse = 0.0
+
+[sub_resource type="Environment" id="Environment_Avatar"]
+background_mode = 0
+ambient_light_source = 2
+ambient_light_color = Color(0.28, 0.26, 0.34, 1)
+ambient_light_energy = 0.55
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_BadgeNivel"]
+content_margin_left = 6.0
+content_margin_top = 1.0
+content_margin_right = 6.0
+content_margin_bottom = 1.0
+bg_color = Color(0.07, 0.05, 0.04, 0.98)
+border_width_left = 1
+border_width_top = 1
 border_width_right = 1
-border_width_bottom = 2
-border_color = Color(0.72, 0.54, 0.28, 0.95)
+border_width_bottom = 1
+border_color = Color(0.85, 0.68, 0.35, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+shadow_color = Color(0, 0, 0, 0.9)
+shadow_size = 4
+
+[sub_resource type="ShaderMaterial" id="ShaderMat_BarVida"]
+shader = ExtResource("9_sh_bar")
+shader_parameter/hp_ratio = 1.0
+shader_parameter/trail_ratio = 1.0
+shader_parameter/shield_ratio = 0.0
+shader_parameter/segment_notches = 0
+shader_parameter/color_bg = Color(0.07, 0.02, 0.04, 0.96)
+shader_parameter/color_hp_top = Color(0.98, 0.32, 0.42, 1)
+shader_parameter/color_hp_bot = Color(0.58, 0.05, 0.14, 1)
+shader_parameter/color_trail = Color(0.99, 0.92, 0.54, 0.96)
+shader_parameter/color_shield_top = Color(0.49, 0.83, 0.99, 0.96)
+shader_parameter/color_shield_bot = Color(0.05, 0.48, 0.78, 0.92)
+shader_parameter/border_color = Color(0.76, 0.6, 0.32, 0.95)
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_BarXP_Bg"]
+bg_color = Color(0.04, 0.03, 0.08, 0.96)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.28, 0.22, 0.45, 0.9)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
-shadow_color = Color(0, 0, 0, 0.75)
-shadow_size = 8
-shadow_offset = Vector2(0, 2)
-
-[sub_resource type="StyleBoxFlat" id="StyleBox_AvatarBorde"]
-bg_color = Color(0.10, 0.12, 0.18, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.88, 0.74, 0.38, 1)
-corner_radius_top_left = 28
-corner_radius_top_right = 28
-corner_radius_bottom_right = 28
-corner_radius_bottom_left = 28
-shadow_color = Color(0, 0, 0, 0.75)
-shadow_size = 5
-
-[sub_resource type="Environment" id="Environment_Avatar"]
-background_mode = 1
-background_color = Color(0.09, 0.11, 0.17, 1)
-ambient_light_source = 2
-ambient_light_color = Color(0.9, 0.92, 1, 1)
-ambient_light_energy = 1.4
-
-[sub_resource type="StyleBoxFlat" id="StyleBox_BarHP_Bg"]
-bg_color = Color(0.14, 0.03, 0.05, 0.96)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.48, 0.14, 0.18, 0.9)
-corner_radius_top_left = 5
-corner_radius_top_right = 5
-corner_radius_bottom_right = 5
-corner_radius_bottom_left = 5
-
-[sub_resource type="StyleBoxFlat" id="StyleBox_BarHP_Fill"]
-bg_color = Color(0.86, 0.12, 0.22, 1)
-border_width_top = 2
-border_color = Color(1, 0.65, 0.72, 0.95)
-corner_radius_top_left = 5
-corner_radius_top_right = 5
-corner_radius_bottom_right = 5
-corner_radius_bottom_left = 5
-shadow_color = Color(0.88, 0.12, 0.22, 0.45)
-shadow_size = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBox_BarXP_Bg"]
-bg_color = Color(0.06, 0.05, 0.11, 0.94)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.30, 0.24, 0.48, 0.85)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_BarXP_Fill"]
-bg_color = Color(0.48, 0.34, 0.94, 1)
+bg_color = Color(0.55, 0.35, 0.96, 1)
 border_width_top = 1
-border_color = Color(0.82, 0.72, 1, 0.95)
+border_color = Color(0.88, 0.78, 1, 0.95)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+shadow_color = Color(0.54, 0.36, 0.96, 0.55)
+shadow_size = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_BarFiebre_Bg"]
+bg_color = Color(0.05, 0.06, 0.10, 0.96)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.32, 0.28, 0.20, 0.92)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_BarFiebre_Fill"]
+bg_color = Color(0.14, 0.80, 0.92, 1)
+border_width_top = 1
+border_color = Color(0.75, 0.96, 1, 0.95)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_BadgeFiebre"]
+content_margin_left = 6.0
+content_margin_top = 1.0
+content_margin_right = 6.0
+content_margin_bottom = 1.0
+bg_color = Color(0.06, 0.10, 0.16, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.22, 0.74, 0.90, 0.9)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_ChipDark"]
+content_margin_left = 10.0
+content_margin_top = 4.0
+content_margin_right = 10.0
+content_margin_bottom = 4.0
+bg_color = Color(0.055, 0.068, 0.105, 0.92)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.45, 0.36, 0.20, 0.9)
 corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
-shadow_color = Color(0.50, 0.35, 1, 0.5)
-shadow_size = 5
+shadow_color = Color(0, 0, 0, 0.65)
+shadow_size = 6
+shadow_offset = Vector2(0, 2)
 
-[sub_resource type="StyleBoxFlat" id="StyleBox_PanelJefe"]
-bg_color = Color(0.20, 0.05, 0.08, 0.95)
+[sub_resource type="StyleBoxFlat" id="StyleBox_ChipPacto"]
+content_margin_left = 10.0
+content_margin_top = 3.0
+content_margin_right = 10.0
+content_margin_bottom = 3.0
+bg_color = Color(0.13, 0.03, 0.05, 0.95)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.95, 0.22, 0.30, 0.95)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
-shadow_color = Color(0.7, 0.05, 0.12, 0.5)
+border_color = Color(0.90, 0.16, 0.26, 0.95)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_color = Color(0.88, 0.12, 0.22, 0.35)
+shadow_size = 10
+shadow_offset = Vector2(0, 2)
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_BtnArbol"]
+bg_color = Color(0.08, 0.065, 0.045, 0.94)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 2
+border_color = Color(0.76, 0.60, 0.29, 0.95)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_color = Color(0, 0, 0, 0.7)
+shadow_size = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_BtnArbolHover"]
+bg_color = Color(0.18, 0.13, 0.06, 0.98)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 2
+border_color = Color(1, 0.88, 0.56, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_color = Color(0.95, 0.76, 0.28, 0.35)
 shadow_size = 10
 
+[sub_resource type="StyleBoxFlat" id="StyleBox_PanelJefe"]
+bg_color = Color(0.08, 0.03, 0.05, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.82, 0.24, 0.30, 0.95)
+corner_radius_top_left = 9
+corner_radius_top_right = 9
+corner_radius_bottom_right = 9
+corner_radius_bottom_left = 9
+shadow_color = Color(0.65, 0.05, 0.12, 0.55)
+shadow_size = 14
+shadow_offset = Vector2(0, 3)
+
+[sub_resource type="ShaderMaterial" id="ShaderMat_BarJefe"]
+shader = ExtResource("9_sh_bar")
+shader_parameter/hp_ratio = 1.0
+shader_parameter/trail_ratio = 1.0
+shader_parameter/shield_ratio = 0.0
+shader_parameter/segment_notches = 4
+shader_parameter/color_bg = Color(0.10, 0.02, 0.04, 0.98)
+shader_parameter/color_hp_top = Color(0.96, 0.26, 0.36, 1)
+shader_parameter/color_hp_bot = Color(0.55, 0.04, 0.12, 1)
+shader_parameter/color_trail = Color(0.99, 0.86, 0.45, 0.96)
+shader_parameter/color_shield_top = Color(0.49, 0.83, 0.99, 0.96)
+shader_parameter/color_shield_bot = Color(0.05, 0.48, 0.78, 0.92)
+shader_parameter/border_color = Color(0.82, 0.65, 0.35, 0.95)
+
 [sub_resource type="StyleBoxFlat" id="StyleBox_ModalMejora"]
-bg_color = Color(0.08, 0.10, 0.16, 0.98)
+bg_color = Color(0.035, 0.043, 0.075, 0.98)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.88, 0.72, 0.32, 1)
-corner_radius_top_left = 16
-corner_radius_top_right = 16
-corner_radius_bottom_right = 16
-corner_radius_bottom_left = 16
-shadow_color = Color(0, 0, 0, 0.8)
-shadow_size = 20
+border_width_bottom = 3
+border_color = Color(0.79, 0.64, 0.35, 0.98)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+shadow_color = Color(0, 0, 0, 0.92)
+shadow_size = 24
 
-[sub_resource type="StyleBoxFlat" id="StyleBox_CartaDano"]
-bg_color = Color(0.18, 0.08, 0.10, 0.95)
+[sub_resource type="StyleBoxFlat" id="StyleBox_CartaDefault"]
+content_margin_left = 14.0
+content_margin_top = 14.0
+content_margin_right = 14.0
+content_margin_bottom = 14.0
+bg_color = Color(0.08, 0.10, 0.16, 0.96)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.85, 0.25, 0.30, 0.9)
+border_color = Color(0.45, 0.55, 0.75, 0.9)
 corner_radius_top_left = 12
 corner_radius_top_right = 12
 corner_radius_bottom_right = 12
 corner_radius_bottom_left = 12
-shadow_color = Color(0.7, 0.1, 0.15, 0.3)
-shadow_size = 6
 
-[sub_resource type="StyleBoxFlat" id="StyleBox_CartaVelocidad"]
-bg_color = Color(0.08, 0.16, 0.15, 0.95)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.25, 0.80, 0.65, 0.9)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
-shadow_color = Color(0.15, 0.6, 0.45, 0.3)
-shadow_size = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBox_CartaVida"]
-bg_color = Color(0.08, 0.12, 0.22, 0.95)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.35, 0.60, 0.95, 0.9)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
-shadow_color = Color(0.2, 0.45, 0.8, 0.3)
-shadow_size = 6
+[sub_resource type="StyleBoxFlat" id="StyleBox_BarPacto_Fill"]
+bg_color = Color(0.96, 0.24, 0.34, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
 
 [node name="ClickHUD" type="CanvasLayer"]
 layer = 5
@@ -173,38 +302,77 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
+[node name="OverlayColapso" type="ColorRect" parent="Control"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.85, 0.05, 0.1, 0)
+
 [node name="BarraSuperior" type="Panel" parent="Control"]
 layout_mode = 1
-anchors_preset = 5
-anchor_left = 0.0
+anchors_preset = 10
 anchor_right = 1.0
-offset_left = 26.0
-offset_top = 10.0
-offset_right = -26.0
-offset_bottom = 84.0
+offset_left = 18.0
+offset_top = 8.0
+offset_right = -18.0
+offset_bottom = 90.0
 grow_horizontal = 2
+mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBox_BarraSuperior")
 
-[node name="EsquinaTL" type="TextureRect" parent="Control/BarraSuperior"]
+[node name="HairlineTop" type="ColorRect" parent="Control/BarraSuperior"]
 layout_mode = 1
-offset_left = -4.0
-offset_top = -4.0
-offset_right = 40.0
-offset_bottom = 40.0
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 18.0
+offset_top = 4.0
+offset_right = -18.0
+offset_bottom = 5.0
+grow_horizontal = 2
+mouse_filter = 2
+color = Color(1, 0.89, 0.60, 0.22)
+
+[node name="HairlineBottom" type="ColorRect" parent="Control/BarraSuperior"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 18.0
+offset_top = -6.0
+offset_right = -18.0
+offset_bottom = -5.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+color = Color(0.79, 0.64, 0.35, 0.20)
+
+[node name="EsquinaTL" type="TextureRect" parent="Control/BarraSuperior"]
+modulate = Color(0.96, 0.82, 0.50, 0.92)
+layout_mode = 1
+offset_left = -3.0
+offset_top = -3.0
+offset_right = 23.0
+offset_bottom = 23.0
 mouse_filter = 2
 texture = ExtResource("3_corner")
 expand_mode = 1
 stretch_mode = 5
 
 [node name="EsquinaTR" type="TextureRect" parent="Control/BarraSuperior"]
+modulate = Color(0.96, 0.82, 0.50, 0.92)
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -40.0
-offset_top = -4.0
-offset_right = 4.0
-offset_bottom = 40.0
+offset_left = -23.0
+offset_top = -3.0
+offset_right = 3.0
+offset_bottom = 23.0
 grow_horizontal = 0
 mouse_filter = 2
 texture = ExtResource("3_corner")
@@ -213,14 +381,15 @@ stretch_mode = 5
 flip_h = true
 
 [node name="EsquinaBL" type="TextureRect" parent="Control/BarraSuperior"]
+modulate = Color(0.96, 0.82, 0.50, 0.92)
 layout_mode = 1
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_left = -4.0
-offset_top = -40.0
-offset_right = 40.0
-offset_bottom = 4.0
+offset_left = -3.0
+offset_top = -23.0
+offset_right = 23.0
+offset_bottom = 3.0
 grow_vertical = 0
 mouse_filter = 2
 texture = ExtResource("3_corner")
@@ -229,16 +398,17 @@ stretch_mode = 5
 flip_v = true
 
 [node name="EsquinaBR" type="TextureRect" parent="Control/BarraSuperior"]
+modulate = Color(0.96, 0.82, 0.50, 0.92)
 layout_mode = 1
 anchors_preset = 3
 anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -40.0
-offset_top = -40.0
-offset_right = 4.0
-offset_bottom = 4.0
+offset_left = -23.0
+offset_top = -23.0
+offset_right = 3.0
+offset_bottom = 3.0
 grow_horizontal = 0
 grow_vertical = 0
 mouse_filter = 2
@@ -248,71 +418,55 @@ stretch_mode = 5
 flip_h = true
 flip_v = true
 
-[node name="ContenedorHeroe" type="Control" parent="Control/BarraSuperior"]
-layout_mode = 1
-anchors_preset = 4
-anchor_top = 0.5
-anchor_bottom = 0.5
-offset_left = 40.0
-offset_top = -32.0
-offset_right = 246.0
-offset_bottom = 32.0
-grow_vertical = 2
-
-[node name="LabelClase" type="Label" parent="Control/BarraSuperior/ContenedorHeroe"]
-layout_mode = 1
-offset_left = 0.0
-offset_top = 2.0
-offset_right = 200.0
-offset_bottom = 24.0
-theme_override_colors/font_color = Color(0.96, 0.85, 0.45, 1)
-theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.95)
-theme_override_constants/shadow_offset_x = 1
-theme_override_constants/shadow_offset_y = 1
-theme_override_font_sizes/font_size = 14
-text = "Clase: Novato (Nv. 1)"
-
-[node name="BarVida" type="ProgressBar" parent="Control/BarraSuperior/ContenedorHeroe"]
-layout_mode = 1
-offset_left = 0.0
-offset_top = 28.0
-offset_right = 196.0
-offset_bottom = 52.0
-theme_override_styles/background = SubResource("StyleBox_BarHP_Bg")
-theme_override_styles/fill = SubResource("StyleBox_BarHP_Fill")
-value = 100.0
-show_percentage = false
-
-[node name="LabelVida" type="Label" parent="Control/BarraSuperior/ContenedorHeroe/BarVida"]
+[node name="MarginSuperior" type="MarginContainer" parent="Control/BarraSuperior"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.95)
-theme_override_constants/shadow_offset_x = 1
-theme_override_constants/shadow_offset_y = 1
-theme_override_font_sizes/font_size = 11
-text = "100 / 100 HP"
-horizontal_alignment = 1
-vertical_alignment = 1
+mouse_filter = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 6
 
-[node name="AvatarFrame" type="Panel" parent="Control/BarraSuperior"]
-clip_children = 2
+[node name="HBoxSuperior" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 10
+
+[node name="ClusterHeroe" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior"]
+layout_mode = 2
+size_flags_horizontal = 2
+mouse_filter = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="AvatarSocket" type="Control" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe"]
+custom_minimum_size = Vector2(80, 70)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="AvatarFrame" type="Panel" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/AvatarSocket"]
 layout_mode = 1
-anchors_preset = 4
+anchors_preset = 8
+anchor_left = 0.5
 anchor_top = 0.5
+anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = 248.0
-offset_top = -28.0
-offset_right = 304.0
-offset_bottom = 28.0
+offset_left = -42.0
+offset_top = -42.0
+offset_right = 42.0
+offset_bottom = 42.0
+grow_horizontal = 2
 grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBox_AvatarBorde")
+pivot_offset = Vector2(42, 42)
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBox_AvatarGlow")
 
-[node name="SubViewportContainer" type="SubViewportContainer" parent="Control/BarraSuperior/AvatarFrame"]
+[node name="SubViewportContainer" type="SubViewportContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/AvatarSocket/AvatarFrame"]
+material = SubResource("ShaderMat_Medallion")
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -322,103 +476,266 @@ grow_vertical = 2
 mouse_filter = 2
 stretch = true
 
-[node name="SubViewport" type="SubViewport" parent="Control/BarraSuperior/AvatarFrame/SubViewportContainer"]
+[node name="SubViewport" type="SubViewport" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/AvatarSocket/AvatarFrame/SubViewportContainer"]
 own_world_3d = true
-transparent_bg = false
+transparent_bg = true
 handle_input_locally = false
-size = Vector2i(56, 56)
-render_target_update_mode = 4
+msaa_3d = 0
+size = Vector2i(192, 192)
+render_target_update_mode = 1
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="Control/BarraSuperior/AvatarFrame/SubViewportContainer/SubViewport"]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/AvatarSocket/AvatarFrame/SubViewportContainer/SubViewport"]
 environment = SubResource("Environment_Avatar")
 
-[node name="CamaraAvatar" type="Camera3D" parent="Control/BarraSuperior/AvatarFrame/SubViewportContainer/SubViewport"]
-transform = Transform3D(1, 0, 0, 0, 0.999048, 0.0436194, 0, -0.0436194, 0.999048, 0, 0.44, 0.56)
+[node name="CamaraAvatar" type="Camera3D" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/AvatarSocket/AvatarFrame/SubViewportContainer/SubViewport"]
+transform = Transform3D(1, 0, 0, 0, 0.999391, 0.0348995, 0, -0.0348995, 0.999391, 0.04, 0.52, 1.1)
 current = true
-fov = 40.0
+fov = 30.0
 
-[node name="LuzFrontal" type="DirectionalLight3D" parent="Control/BarraSuperior/AvatarFrame/SubViewportContainer/SubViewport"]
+[node name="LuzFrontal" type="DirectionalLight3D" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/AvatarSocket/AvatarFrame/SubViewportContainer/SubViewport"]
 transform = Transform3D(0.866025, -0.25, 0.433013, 0, 0.866025, 0.5, -0.5, -0.433013, 0.75, 0.5, 1.5, 1)
-light_color = Color(1, 0.96, 0.9, 1)
-light_energy = 2.6
+light_color = Color(1, 0.94, 0.85, 1)
+light_energy = 1.95
 
-[node name="LuzContorno" type="DirectionalLight3D" parent="Control/BarraSuperior/AvatarFrame/SubViewportContainer/SubViewport"]
-transform = Transform3D(-0.707107, 0, -0.707107, 0, 1, 0, 0.707107, 0, -0.707107, -1, 1, -1)
-light_color = Color(0.4, 0.7, 1, 1)
-light_energy = 1.8
+[node name="LuzRelleno" type="DirectionalLight3D" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/AvatarSocket/AvatarFrame/SubViewportContainer/SubViewport"]
+transform = Transform3D(0.866025, 0.17101, -0.469846, 0, 0.939693, 0.34202, 0.5, -0.296198, 0.813798, -0.8, 0.8, 0.8)
+light_color = Color(0.55, 0.68, 0.88, 1)
+light_energy = 0.55
 
-[node name="ModeloAvatar" parent="Control/BarraSuperior/AvatarFrame/SubViewportContainer/SubViewport" instance=ExtResource("2_avatar_mesh")]
-transform = Transform3D(-0.965926, 0, 0.258819, 0, 1, 0, -0.258819, 0, -0.965926, 0, 0, 0)
+[node name="LuzContorno" type="DirectionalLight3D" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/AvatarSocket/AvatarFrame/SubViewportContainer/SubViewport"]
+transform = Transform3D(-0.866025, -0.17101, -0.469846, 0, 0.939693, -0.34202, 0.5, -0.296198, -0.813798, -0.6, 1.1, -1)
+light_color = Color(0.88, 0.74, 0.38, 1)
+light_energy = 2.4
 
-[node name="ContenedorVidas" type="VBoxContainer" parent="Control/BarraSuperior"]
+[node name="ModeloAvatar" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/AvatarSocket/AvatarFrame/SubViewportContainer/SubViewport" instance=ExtResource("2_avatar_mesh")]
+transform = Transform3D(0.939693, 0, 0.34202, 0, 1, 0, -0.34202, 0, 0.939693, 0, 0, 0)
+
+[node name="BadgeNivel" type="PanelContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/AvatarSocket"]
+z_index = 2
 layout_mode = 1
-anchors_preset = 4
-anchor_top = 0.5
-anchor_bottom = 0.5
-offset_left = 314.0
-offset_top = -24.0
-offset_right = 402.0
-offset_bottom = 24.0
-grow_vertical = 2
-theme_override_constants/separation = 4
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -25.0
+offset_top = -10.0
+offset_right = 25.0
+offset_bottom = 8.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBox_BadgeNivel")
 
-[node name="LabelVidas" type="Label" parent="Control/BarraSuperior/ContenedorVidas"]
+[node name="LabelNivel" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/AvatarSocket/BadgeNivel"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.94, 0.96, 0.98, 1)
+theme_override_colors/font_color = Color(1, 0.89, 0.60, 1)
+theme_override_colors/font_outline_color = Color(0.08, 0.04, 0.02, 1)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 10
+text = "NV. 1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ContenedorHeroe" type="VBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe"]
+custom_minimum_size = Vector2(218, 0)
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 3
+alignment = 1
+
+[node name="HeaderHeroe" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 5
+alignment = 1
+
+[node name="IconoClase" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HeaderHeroe"]
+custom_minimum_size = Vector2(14, 14)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("10_ico_class")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LabelClase" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HeaderHeroe"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.96, 0.91, 0.78, 1)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.95)
+theme_override_colors/font_outline_color = Color(0.10, 0.07, 0.02, 1)
 theme_override_constants/shadow_offset_x = 1
 theme_override_constants/shadow_offset_y = 1
+theme_override_constants/outline_size = 2
 theme_override_font_sizes/font_size = 13
-text = "Vidas: 1/1"
+text = "Novato"
+clip_text = true
+text_overrun_behavior = 3
 
-[node name="HBoxCorazones" type="HBoxContainer" parent="Control/BarraSuperior/ContenedorVidas"]
+[node name="ContenedorVidas" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HeaderHeroe"]
 layout_mode = 2
-theme_override_constants/separation = 4
+size_flags_horizontal = 8
+mouse_filter = 2
+theme_override_constants/separation = 3
+alignment = 2
 
-[node name="Corazon1" type="TextureRect" parent="Control/BarraSuperior/ContenedorVidas/HBoxCorazones"]
-custom_minimum_size = Vector2(20, 20)
+[node name="LabelVidas" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HeaderHeroe/ContenedorVidas"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.80, 0.85, 0.92, 1)
+theme_override_colors/font_outline_color = Color(0.05, 0.06, 0.09, 1)
+theme_override_constants/outline_size = 1
+theme_override_font_sizes/font_size = 10
+text = "1/1"
+
+[node name="HBoxCorazones" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HeaderHeroe/ContenedorVidas"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 2
+
+[node name="Corazon1" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HeaderHeroe/ContenedorVidas/HBoxCorazones"]
+custom_minimum_size = Vector2(15, 15)
 layout_mode = 2
 mouse_filter = 2
 texture = ExtResource("5_heart")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="Corazon2" type="TextureRect" parent="Control/BarraSuperior/ContenedorVidas/HBoxCorazones"]
+[node name="Corazon2" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HeaderHeroe/ContenedorVidas/HBoxCorazones"]
 visible = false
-custom_minimum_size = Vector2(20, 20)
+custom_minimum_size = Vector2(15, 15)
 layout_mode = 2
 mouse_filter = 2
 texture = ExtResource("5_heart")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="Corazon3" type="TextureRect" parent="Control/BarraSuperior/ContenedorVidas/HBoxCorazones"]
+[node name="Corazon3" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HeaderHeroe/ContenedorVidas/HBoxCorazones"]
 visible = false
-custom_minimum_size = Vector2(20, 20)
+custom_minimum_size = Vector2(15, 15)
 layout_mode = 2
 mouse_filter = 2
 texture = ExtResource("5_heart")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="ContenedorCentro" type="HBoxContainer" parent="Control/BarraSuperior"]
+[node name="BarVida" type="ProgressBar" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe"]
+custom_minimum_size = Vector2(218, 22)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/background = SubResource("StyleBox_Transparent")
+theme_override_styles/fill = SubResource("StyleBox_Transparent")
+value = 100.0
+show_percentage = false
+
+[node name="BarVidaShader" type="ColorRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/BarVida"]
+material = SubResource("ShaderMat_BarVida")
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -170.0
-offset_top = -32.0
-offset_right = 170.0
-offset_bottom = 32.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-alignment = 1
-theme_override_constants/separation = 12
+mouse_filter = 2
 
-[node name="DagaIzq" type="TextureRect" parent="Control/BarraSuperior/ContenedorCentro"]
-custom_minimum_size = Vector2(70, 20)
+[node name="HBoxVidaTexto" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/BarVida"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 5
+alignment = 1
+
+[node name="LabelVida" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/BarVida/HBoxVidaTexto"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
+theme_override_colors/font_outline_color = Color(0.18, 0.02, 0.05, 1)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 11
+text = "100 / 100"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="IconoEscudoHP" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/BarVida/HBoxVidaTexto"]
+visible = false
+custom_minimum_size = Vector2(13, 13)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("11_ico_shield")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LabelEscudoHP" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/BarVida/HBoxVidaTexto"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.49, 0.83, 0.99, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.18, 0.30, 1)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 11
+text = "+0"
+vertical_alignment = 1
+
+[node name="HBoxXPHeroe" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="BarXP" type="ProgressBar" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HBoxXPHeroe"]
+custom_minimum_size = Vector2(126, 9)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+mouse_filter = 2
+theme_override_styles/background = SubResource("StyleBox_BarXP_Bg")
+theme_override_styles/fill = SubResource("StyleBox_BarXP_Fill")
+value = 0.0
+show_percentage = false
+
+[node name="LabelXP" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HBoxXPHeroe"]
+layout_mode = 2
+size_flags_horizontal = 8
+theme_override_colors/font_color = Color(0.86, 0.78, 1, 1)
+theme_override_colors/font_outline_color = Color(0.10, 0.05, 0.18, 1)
+theme_override_constants/outline_size = 1
+theme_override_font_sizes/font_size = 10
+text = "0 / 25 XP"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="SpacerIzq" type="Control" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior"]
+custom_minimum_size = Vector2(8, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="ContenedorCentro" type="VBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior"]
+custom_minimum_size = Vector2(360, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_filter = 2
+theme_override_constants/separation = 3
+alignment = 1
+
+[node name="HBoxWaveHeader" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 7
+alignment = 1
+
+[node name="DagaIzq" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxWaveHeader"]
+modulate = Color(1, 0.88, 0.58, 0.98)
+custom_minimum_size = Vector2(68, 16)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
@@ -427,43 +744,57 @@ expand_mode = 1
 stretch_mode = 5
 flip_h = true
 
-[node name="VBoxCentro" type="VBoxContainer" parent="Control/BarraSuperior/ContenedorCentro"]
+[node name="IconoOleada" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxWaveHeader"]
+modulate = Color(1, 0.89, 0.60, 1)
+custom_minimum_size = Vector2(14, 14)
 layout_mode = 2
-alignment = 1
-theme_override_constants/separation = 1
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("12_ico_kills")
+expand_mode = 1
+stretch_mode = 5
 
-[node name="LabelOleada" type="Label" parent="Control/BarraSuperior/ContenedorCentro/VBoxCentro"]
+[node name="LabelOleada" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxWaveHeader"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.96, 0.82, 0.42, 1)
+theme_override_colors/font_color = Color(1, 0.89, 0.60, 1)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.95)
+theme_override_colors/font_outline_color = Color(0.12, 0.08, 0.02, 1)
 theme_override_constants/shadow_offset_x = 1
-theme_override_constants/shadow_offset_y = 1
-theme_override_font_sizes/font_size = 17
-text = "⚔️ OLEADA 1"
-horizontal_alignment = 1
+theme_override_constants/shadow_offset_y = 2
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 14
+text = "EN ESPERA"
+vertical_alignment = 1
 
-[node name="LabelTiempo" type="Label" parent="Control/BarraSuperior/ContenedorCentro/VBoxCentro"]
+[node name="SepWave" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxWaveHeader"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.92, 0.94, 0.98, 1)
-theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.95)
-theme_override_constants/shadow_offset_x = 1
-theme_override_constants/shadow_offset_y = 1
+theme_override_colors/font_color = Color(0.60, 0.48, 0.24, 0.85)
+theme_override_font_sizes/font_size = 12
+text = "|"
+vertical_alignment = 1
+
+[node name="IconoTiempo" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxWaveHeader"]
+custom_minimum_size = Vector2(14, 14)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("13_ico_time")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LabelTiempo" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxWaveHeader"]
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.89, 0.91, 0.96, 1)
+theme_override_colors/font_outline_color = Color(0.03, 0.04, 0.06, 1)
+theme_override_constants/outline_size = 2
 theme_override_font_sizes/font_size = 13
-text = "⏱ 00:02"
-horizontal_alignment = 1
+text = "00:00"
+vertical_alignment = 1
 
-[node name="LabelNucleo" type="Label" parent="Control/BarraSuperior/ContenedorCentro/VBoxCentro"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.85, 0.72, 0.45, 1)
-theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.95)
-theme_override_constants/shadow_offset_x = 1
-theme_override_constants/shadow_offset_y = 1
-theme_override_font_sizes/font_size = 11
-text = "⚡ 0 Clics (Vel: 2.8 m/s)"
-horizontal_alignment = 1
-
-[node name="DagaDer" type="TextureRect" parent="Control/BarraSuperior/ContenedorCentro"]
-custom_minimum_size = Vector2(70, 20)
+[node name="DagaDer" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxWaveHeader"]
+modulate = Color(1, 0.88, 0.58, 0.98)
+custom_minimum_size = Vector2(68, 16)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
@@ -471,96 +802,389 @@ texture = ExtResource("4_needle")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="ContenedorEconomia" type="VBoxContainer" parent="Control/BarraSuperior"]
-layout_mode = 1
-anchors_preset = 6
-anchor_left = 1.0
-anchor_top = 0.5
-anchor_right = 1.0
-anchor_bottom = 0.5
-offset_left = -160.0
-offset_top = -26.0
-offset_right = -42.0
-offset_bottom = 26.0
-grow_horizontal = 0
-grow_vertical = 2
-theme_override_constants/separation = 4
-
-[node name="HBoxOro" type="HBoxContainer" parent="Control/BarraSuperior/ContenedorEconomia"]
+[node name="HBoxNucleoLine" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro"]
 layout_mode = 2
-alignment = 2
+mouse_filter = 2
+theme_override_constants/separation = 5
+alignment = 1
+
+[node name="IconoNucleo" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxNucleoLine"]
+custom_minimum_size = Vector2(14, 14)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("14_ico_clicks")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LabelNucleo" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxNucleoLine"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.32, 0.90, 0.98, 1)
+theme_override_colors/font_outline_color = Color(0.03, 0.05, 0.08, 1)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 12
+text = "Pulsa el Núcleo para iniciar"
+horizontal_alignment = 1
+vertical_alignment = 1
+max_lines_visible = 1
+
+[node name="HBoxFiebreBar" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro"]
+layout_mode = 2
+mouse_filter = 2
 theme_override_constants/separation = 6
+alignment = 1
 
-[node name="IconoOro" type="TextureRect" parent="Control/BarraSuperior/ContenedorEconomia/HBoxOro"]
-custom_minimum_size = Vector2(24, 24)
+[node name="IconoFiebre" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxFiebreBar"]
+custom_minimum_size = Vector2(14, 14)
 layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("15_ico_fever")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="BarFiebre" type="ProgressBar" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxFiebreBar"]
+custom_minimum_size = Vector2(214, 8)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+theme_override_styles/background = SubResource("StyleBox_BarFiebre_Bg")
+theme_override_styles/fill = SubResource("StyleBox_BarFiebre_Fill")
+value = 0.0
+show_percentage = false
+
+[node name="Tick25" type="ColorRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxFiebreBar/BarFiebre"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.25
+anchor_right = 0.25
+anchor_bottom = 1.0
+offset_right = 1.0
+mouse_filter = 2
+color = Color(0.95, 0.85, 0.55, 0.45)
+
+[node name="Tick55" type="ColorRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxFiebreBar/BarFiebre"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.55
+anchor_right = 0.55
+anchor_bottom = 1.0
+offset_right = 1.0
+mouse_filter = 2
+color = Color(0.98, 0.72, 0.30, 0.55)
+
+[node name="Tick85" type="ColorRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxFiebreBar/BarFiebre"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.85
+anchor_right = 0.85
+anchor_bottom = 1.0
+offset_right = 1.5
+mouse_filter = 2
+color = Color(1, 0.35, 0.85, 0.75)
+
+[node name="BadgeFiebre" type="PanelContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxFiebreBar"]
+custom_minimum_size = Vector2(62, 16)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBox_BadgeFiebre")
+
+[node name="LabelFiebre" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxFiebreBar/BadgeFiebre"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.49, 0.83, 0.99, 1)
+theme_override_font_sizes/font_size = 10
+text = "FIEBRE x1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="SpacerDer" type="Control" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior"]
+custom_minimum_size = Vector2(8, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="ContenedorEconomia" type="VBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior"]
+custom_minimum_size = Vector2(196, 0)
+layout_mode = 2
+size_flags_horizontal = 8
+mouse_filter = 2
+theme_override_constants/separation = 5
+alignment = 1
+
+[node name="HBoxEconomiaTop" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 12
+alignment = 2
+
+[node name="HBoxOro" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxEconomiaTop"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 5
+alignment = 2
+
+[node name="IconoOro" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxEconomiaTop/HBoxOro"]
+custom_minimum_size = Vector2(19, 19)
+layout_mode = 2
+size_flags_vertical = 4
 mouse_filter = 2
 texture = ExtResource("6_coin")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="LabelOro" type="Label" parent="Control/BarraSuperior/ContenedorEconomia/HBoxOro"]
+[node name="LabelOro" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxEconomiaTop/HBoxOro"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.85, 0.28, 1)
+theme_override_colors/font_color = Color(0.98, 0.80, 0.14, 1)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.95)
+theme_override_colors/font_outline_color = Color(0.24, 0.12, 0.02, 1)
 theme_override_constants/shadow_offset_x = 1
 theme_override_constants/shadow_offset_y = 1
-theme_override_font_sizes/font_size = 17
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 16
 text = "0"
+horizontal_alignment = 2
+vertical_alignment = 1
 
-[node name="HBoxBajas" type="HBoxContainer" parent="Control/BarraSuperior/ContenedorEconomia"]
+[node name="HBoxDenarios" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxEconomiaTop"]
 layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 4
 alignment = 2
-theme_override_constants/separation = 6
 
-[node name="IconoBajas" type="TextureRect" parent="Control/BarraSuperior/ContenedorEconomia/HBoxBajas"]
-custom_minimum_size = Vector2(20, 20)
+[node name="IconoDenarios" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxEconomiaTop/HBoxDenarios"]
+custom_minimum_size = Vector2(17, 17)
 layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("16_ico_denario")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LabelDenarios" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxEconomiaTop/HBoxDenarios"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.58, 0.77, 0.99, 1)
+theme_override_colors/font_outline_color = Color(0.06, 0.11, 0.22, 1)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 13
+text = "0"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="HBoxEconomiaBot" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 12
+alignment = 2
+
+[node name="HBoxBajas" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxEconomiaBot"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 5
+alignment = 2
+
+[node name="IconoBajas" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxEconomiaBot/HBoxBajas"]
+custom_minimum_size = Vector2(15, 15)
+layout_mode = 2
+size_flags_vertical = 4
 mouse_filter = 2
 texture = ExtResource("7_skull")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="LabelBajas" type="Label" parent="Control/BarraSuperior/ContenedorEconomia/HBoxBajas"]
+[node name="LabelBajas" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxEconomiaBot/HBoxBajas"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.85, 0.88, 0.92, 1)
-theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.95)
-theme_override_constants/shadow_offset_x = 1
-theme_override_constants/shadow_offset_y = 1
-theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.89, 0.91, 0.94, 1)
+theme_override_colors/font_outline_color = Color(0.08, 0.10, 0.14, 1)
+theme_override_constants/outline_size = 1
+theme_override_font_sizes/font_size = 12
 text = "0 Bajas"
+horizontal_alignment = 2
+vertical_alignment = 1
 
-[node name="BarXP" type="ProgressBar" parent="Control"]
+[node name="HBoxSuerte" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxEconomiaBot"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 4
+alignment = 2
+
+[node name="IconoSuerte" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxEconomiaBot/HBoxSuerte"]
+custom_minimum_size = Vector2(14, 14)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("17_ico_luck")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LabelSuerte" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxEconomiaBot/HBoxSuerte"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.20, 0.83, 0.60, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.18, 0.12, 1)
+theme_override_constants/outline_size = 1
+theme_override_font_sizes/font_size = 12
+text = "+0%"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="StatusRail" type="Control" parent="Control"]
 layout_mode = 1
-anchors_preset = 12
-anchor_top = 1.0
+anchors_preset = 10
 anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 26.0
-offset_top = -22.0
-offset_right = -26.0
-offset_bottom = -8.0
+offset_left = 20.0
+offset_top = 97.0
+offset_right = -20.0
+offset_bottom = 127.0
 grow_horizontal = 2
-grow_vertical = 0
-theme_override_styles/background = SubResource("StyleBox_BarXP_Bg")
-theme_override_styles/fill = SubResource("StyleBox_BarXP_Fill")
-value = 0.0
-show_percentage = false
+mouse_filter = 2
 
-[node name="LabelXP" type="Label" parent="Control/BarXP"]
+[node name="HBoxStatusRail" type="HBoxContainer" parent="Control/StatusRail"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_colors/font_color = Color(0.95, 0.9, 1, 1)
-theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.95)
-theme_override_constants/shadow_offset_x = 1
-theme_override_constants/shadow_offset_y = 1
-theme_override_font_sizes/font_size = 10
-text = "XP: 0 / 60"
-horizontal_alignment = 1
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="ChipPresagio" type="PanelContainer" parent="Control/StatusRail/HBoxStatusRail"]
+layout_mode = 2
+mouse_filter = 1
+theme_override_styles/panel = SubResource("StyleBox_ChipDark")
+
+[node name="HBox" type="HBoxContainer" parent="Control/StatusRail/HBoxStatusRail/ChipPresagio"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 5
+alignment = 1
+
+[node name="IconoPresagio" type="TextureRect" parent="Control/StatusRail/HBoxStatusRail/ChipPresagio/HBox"]
+custom_minimum_size = Vector2(14, 14)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("17_ico_luck")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LabelPresagio" type="Label" parent="Control/StatusRail/HBoxStatusRail/ChipPresagio/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.90, 0.96, 1)
+theme_override_font_sizes/font_size = 11
+text = "Presagio: Cielo Despejado"
+vertical_alignment = 1
+
+[node name="ChipReliquias" type="PanelContainer" parent="Control/StatusRail/HBoxStatusRail"]
+visible = false
+layout_mode = 2
+mouse_filter = 1
+theme_override_styles/panel = SubResource("StyleBox_ChipDark")
+
+[node name="HBox" type="HBoxContainer" parent="Control/StatusRail/HBoxStatusRail/ChipReliquias"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 5
+alignment = 1
+
+[node name="IconoReliquias" type="TextureRect" parent="Control/StatusRail/HBoxStatusRail/ChipReliquias/HBox"]
+custom_minimum_size = Vector2(14, 14)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("19_ico_victory")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LabelReliquias" type="Label" parent="Control/StatusRail/HBoxStatusRail/ChipReliquias/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.85, 0.45, 1)
+theme_override_font_sizes/font_size = 11
+text = "0 Reliquias"
+vertical_alignment = 1
+
+[node name="ChipPactoMarte" type="PanelContainer" parent="Control/StatusRail/HBoxStatusRail"]
+visible = false
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBox_ChipPacto")
+
+[node name="VBox" type="VBoxContainer" parent="Control/StatusRail/HBoxStatusRail/ChipPactoMarte"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 2
+alignment = 1
+
+[node name="HBox" type="HBoxContainer" parent="Control/StatusRail/HBoxStatusRail/ChipPactoMarte/VBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 5
+alignment = 1
+
+[node name="IconoPacto" type="TextureRect" parent="Control/StatusRail/HBoxStatusRail/ChipPactoMarte/VBox/HBox"]
+custom_minimum_size = Vector2(14, 14)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("21_ico_pacto")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LabelPacto" type="Label" parent="Control/StatusRail/HBoxStatusRail/ChipPactoMarte/VBox/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.87, 1)
+theme_override_font_sizes/font_size = 11
+text = "PACTO DE MARTE  60s"
+vertical_alignment = 1
+
+[node name="BarPacto" type="ProgressBar" parent="Control/StatusRail/HBoxStatusRail/ChipPactoMarte/VBox"]
+custom_minimum_size = Vector2(0, 3)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/background = SubResource("StyleBox_BarFiebre_Bg")
+theme_override_styles/fill = SubResource("StyleBox_BarPacto_Fill")
+max_value = 60.0
+value = 60.0
+show_percentage = false
+
+[node name="SpacerRail" type="Control" parent="Control/StatusRail/HBoxStatusRail"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="BtnArbolPoE" type="Button" parent="Control/StatusRail/HBoxStatusRail"]
+custom_minimum_size = Vector2(142, 26)
+layout_mode = 2
+focus_mode = 0
+theme_override_styles/normal = SubResource("StyleBox_BtnArbol")
+theme_override_styles/hover = SubResource("StyleBox_BtnArbolHover")
+theme_override_styles/pressed = SubResource("StyleBox_BtnArbolHover")
+
+[node name="HBoxArbol" type="HBoxContainer" parent="Control/StatusRail/HBoxStatusRail/BtnArbolPoE"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="IconoArbol" type="TextureRect" parent="Control/StatusRail/HBoxStatusRail/BtnArbolPoE/HBoxArbol"]
+custom_minimum_size = Vector2(14, 14)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("18_ico_vault")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LabelArbol" type="Label" parent="Control/StatusRail/HBoxStatusRail/BtnArbolPoE/HBoxArbol"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.99, 0.89, 0.56, 1)
+theme_override_font_sizes/font_size = 11
+text = "[U] Ascensión"
 vertical_alignment = 1
 
 [node name="PanelJefe" type="Panel" parent="Control"]
@@ -569,58 +1193,119 @@ layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
-offset_left = -220.0
-offset_top = 92.0
-offset_right = 220.0
-offset_bottom = 142.0
+offset_left = -260.0
+offset_top = 133.0
+offset_right = 260.0
+offset_bottom = 190.0
 grow_horizontal = 2
+pivot_offset = Vector2(260, 0)
+mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBox_PanelJefe")
 
-[node name="LabelNombreJefe" type="Label" parent="Control/PanelJefe"]
+[node name="VBoxJefe" type="VBoxContainer" parent="Control/PanelJefe"]
 layout_mode = 1
-anchors_preset = 5
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -150.0
-offset_top = 4.0
-offset_right = 150.0
-offset_bottom = 24.0
-grow_horizontal = 2
-theme_override_colors/font_color = Color(1, 0.8, 0.8, 1)
-theme_override_font_sizes/font_size = 13
-text = "💀 JEFE DE LA ARENA"
-horizontal_alignment = 1
-
-[node name="BarVidaJefe" type="ProgressBar" parent="Control/PanelJefe"]
-layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
+anchors_preset = 15
+anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -200.0
-offset_top = -22.0
-offset_right = 200.0
+offset_left = 14.0
+offset_top = 5.0
+offset_right = -14.0
 offset_bottom = -6.0
 grow_horizontal = 2
-grow_vertical = 0
-theme_override_styles/background = SubResource("StyleBox_BarHP_Bg")
-theme_override_styles/fill = SubResource("StyleBox_BarHP_Fill")
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="HBoxHeaderJefe" type="HBoxContainer" parent="Control/PanelJefe/VBoxJefe"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="DagaJefeIzq" type="TextureRect" parent="Control/PanelJefe/VBoxJefe/HBoxHeaderJefe"]
+modulate = Color(1, 0.65, 0.54, 0.98)
+custom_minimum_size = Vector2(68, 15)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("4_needle")
+expand_mode = 1
+stretch_mode = 5
+flip_h = true
+
+[node name="IconoJefe" type="TextureRect" parent="Control/PanelJefe/VBoxJefe/HBoxHeaderJefe"]
+custom_minimum_size = Vector2(15, 15)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("20_ico_skull")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LabelNombreJefe" type="Label" parent="Control/PanelJefe/VBoxJefe/HBoxHeaderJefe"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.99, 0.72, 0.72, 1)
+theme_override_colors/font_outline_color = Color(0.20, 0.02, 0.04, 1)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 13
+text = "JEFE DE LA ARENA"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="DagaJefeDer" type="TextureRect" parent="Control/PanelJefe/VBoxJefe/HBoxHeaderJefe"]
+modulate = Color(1, 0.65, 0.54, 0.98)
+custom_minimum_size = Vector2(68, 15)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("4_needle")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="BarVidaJefe" type="ProgressBar" parent="Control/PanelJefe/VBoxJefe"]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/background = SubResource("StyleBox_Transparent")
+theme_override_styles/fill = SubResource("StyleBox_Transparent")
 value = 100.0
 show_percentage = false
 
-[node name="LabelVidaJefe" type="Label" parent="Control/PanelJefe/BarVidaJefe"]
+[node name="BarJefeShader" type="ColorRect" parent="Control/PanelJefe/VBoxJefe/BarVidaJefe"]
+material = SubResource("ShaderMat_BarJefe")
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
+
+[node name="LabelVidaJefe" type="Label" parent="Control/PanelJefe/VBoxJefe/BarVidaJefe"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.18, 0.02, 0.04, 1)
+theme_override_constants/outline_size = 2
 theme_override_font_sizes/font_size = 10
 text = "500 / 500 HP"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="ModalDimmer" type="ColorRect" parent="Control"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.02, 0.025, 0.045, 0.68)
 
 [node name="ModalMejora" type="Panel" parent="Control"]
 visible = false
@@ -630,62 +1315,172 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -270.0
-offset_top = -110.0
-offset_right = 270.0
-offset_bottom = 110.0
+offset_left = -440.0
+offset_top = -196.0
+offset_right = 440.0
+offset_bottom = 196.0
 grow_horizontal = 2
 grow_vertical = 2
+pivot_offset = Vector2(440, 196)
 theme_override_styles/panel = SubResource("StyleBox_ModalMejora")
+
+[node name="ModalEsquinaTL" type="TextureRect" parent="Control/ModalMejora"]
+modulate = Color(0.96, 0.82, 0.50, 0.92)
+layout_mode = 1
+offset_left = -4.0
+offset_top = -4.0
+offset_right = 28.0
+offset_bottom = 28.0
+mouse_filter = 2
+texture = ExtResource("3_corner")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="ModalEsquinaTR" type="TextureRect" parent="Control/ModalMejora"]
+modulate = Color(0.96, 0.82, 0.50, 0.92)
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -28.0
+offset_top = -4.0
+offset_right = 4.0
+offset_bottom = 28.0
+grow_horizontal = 0
+mouse_filter = 2
+texture = ExtResource("3_corner")
+expand_mode = 1
+stretch_mode = 5
+flip_h = true
+
+[node name="ModalEsquinaBL" type="TextureRect" parent="Control/ModalMejora"]
+modulate = Color(0.96, 0.82, 0.50, 0.92)
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = -4.0
+offset_top = -28.0
+offset_right = 28.0
+offset_bottom = 4.0
+grow_vertical = 0
+mouse_filter = 2
+texture = ExtResource("3_corner")
+expand_mode = 1
+stretch_mode = 5
+flip_v = true
+
+[node name="ModalEsquinaBR" type="TextureRect" parent="Control/ModalMejora"]
+modulate = Color(0.96, 0.82, 0.50, 0.92)
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -28.0
+offset_top = -28.0
+offset_right = 4.0
+offset_bottom = 4.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+texture = ExtResource("3_corner")
+expand_mode = 1
+stretch_mode = 5
+flip_h = true
+flip_v = true
 
 [node name="VBox" type="VBoxContainer" parent="Control/ModalMejora"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 16.0
-offset_top = 16.0
-offset_right = -16.0
-offset_bottom = -16.0
+offset_left = 24.0
+offset_top = 18.0
+offset_right = -24.0
+offset_bottom = -20.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 16
+theme_override_constants/separation = 14
 
-[node name="LabelTitulo" type="Label" parent="Control/ModalMejora/VBox"]
+[node name="HeaderModal" type="HBoxContainer" parent="Control/ModalMejora/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.98, 0.88, 0.45, 1)
-theme_override_font_sizes/font_size = 16
-text = "⭐ ¡NIVEL ALCANZADO! Elige tu bendición del Coliseo:"
+mouse_filter = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="DagaModalIzq" type="TextureRect" parent="Control/ModalMejora/VBox/HeaderModal"]
+modulate = Color(0.96, 0.82, 0.50, 0.9)
+custom_minimum_size = Vector2(68, 14)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("4_needle")
+expand_mode = 1
+stretch_mode = 5
+flip_h = true
+
+[node name="IconoModal" type="TextureRect" parent="Control/ModalMejora/VBox/HeaderModal"]
+custom_minimum_size = Vector2(22, 22)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("19_ico_victory")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LabelTitulo" type="Label" parent="Control/ModalMejora/VBox/HeaderModal"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.89, 0.60, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.95)
+theme_override_colors/font_outline_color = Color(0.15, 0.10, 0.03, 1)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 2
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 18
+text = "NIVEL ALCANZADO — ELIGE TU BENDICIÓN"
 horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="DagaModalDer" type="TextureRect" parent="Control/ModalMejora/VBox/HeaderModal"]
+modulate = Color(0.96, 0.82, 0.50, 0.9)
+custom_minimum_size = Vector2(68, 14)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("4_needle")
+expand_mode = 1
+stretch_mode = 5
 
 [node name="HBox" type="HBoxContainer" parent="Control/ModalMejora/VBox"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/separation = 12
+theme_override_constants/separation = 16
 
 [node name="BtnOpc1" type="Button" parent="Control/ModalMejora/VBox/HBox"]
+custom_minimum_size = Vector2(256, 260)
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 3
 focus_mode = 0
 theme_override_font_sizes/font_size = 13
-theme_override_styles/normal = SubResource("StyleBox_CartaDano")
-text = "⚔️ Filo Mortal
-+25% Daño"
+theme_override_styles/normal = SubResource("StyleBox_CartaDefault")
 
 [node name="BtnOpc2" type="Button" parent="Control/ModalMejora/VBox/HBox"]
+custom_minimum_size = Vector2(256, 260)
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 3
 focus_mode = 0
 theme_override_font_sizes/font_size = 13
-theme_override_styles/normal = SubResource("StyleBox_CartaVelocidad")
-text = "👟 Velocidad
-+20% Movimiento"
+theme_override_styles/normal = SubResource("StyleBox_CartaDefault")
 
 [node name="BtnOpc3" type="Button" parent="Control/ModalMejora/VBox/HBox"]
+custom_minimum_size = Vector2(256, 260)
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 3
 focus_mode = 0
 theme_override_font_sizes/font_size = 13
-theme_override_styles/normal = SubResource("StyleBox_CartaVida")
-text = "🛡️ Vitalidad
-+30 Vida Máx"
+theme_override_styles/normal = SubResource("StyleBox_CartaDefault")

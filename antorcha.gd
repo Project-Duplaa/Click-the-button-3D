@@ -15,7 +15,7 @@ func _ready():
 	if luz != null:
 		luz.light_color = color_fuego
 		luz.omni_range = rango_luz
-		luz.shadow_enabled = true
+		luz.shadow_enabled = false
 		luz.omni_attenuation = 1.4
 
 func _process(delta):

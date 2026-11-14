@@ -21,9 +21,5 @@ script = ExtResource("1_orbe")
 shape = SubResource("EsferaColision")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+cast_shadow = 0
 mesh = SubResource("MeshOrbe")
-
-[node name="OmniLight3D" type="OmniLight3D" parent="."]
-light_color = Color(0.8, 0.4, 1, 1)
-light_energy = 2.5
-omni_range = 4.5

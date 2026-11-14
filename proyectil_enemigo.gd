@@ -11,7 +11,7 @@ var _tiempo: float = 0.0
 var _impactado: bool = false
 
 @onready var mesh_flecha: MeshInstance3D = $MeshInstance3D
-@onready var luz: OmniLight3D = $OmniLight3D
+@onready var luz: OmniLight3D = get_node_or_null("OmniLight3D")
 
 func _ready():
 	add_to_group("proyectiles_enemigos")

@@ -236,16 +236,18 @@ func _mostrar_banner_presagio(presagio: Dictionary) -> void:
 	marco.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	marco.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	marco.offset_left = 290
-	marco.offset_top = 104
+	marco.offset_top = 136
 	marco.offset_right = -290
-	marco.offset_bottom = 186
+	marco.offset_bottom = 216
 
 	var color_borde: Color = presagio.get("color", Color(0.92, 0.78, 0.35))
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.06, 0.05, 0.08, 0.90)
+	sb.bg_color = Color(0.043, 0.051, 0.082, 0.94)
 	sb.border_color = color_borde
 	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(10)
+	sb.set_corner_radius_all(8)
+	sb.shadow_color = Color(0, 0, 0, 0.75)
+	sb.shadow_size = 12
 	marco.add_theme_stylebox_override("panel", sb)
 	marco.modulate = Color(1.0, 1.0, 1.0, 0.0)
 	capa.add_child(marco)
@@ -266,7 +268,7 @@ func _mostrar_banner_presagio(presagio: Dictionary) -> void:
 	var lbl_tit := Label.new()
 	lbl_tit.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	lbl_tit.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl_tit.text = "%s PRESAGIO: %s" % [String(presagio.get("icono", "☀️")), String(presagio.get("nombre", "Cielo Despejado")).to_upper()]
+	lbl_tit.text = "PRESAGIO DEL COLISEO: %s" % String(presagio.get("nombre", "Cielo Despejado")).to_upper()
 	lbl_tit.add_theme_font_size_override("font_size", 19)
 	lbl_tit.add_theme_color_override("font_color", color_borde)
 	vbox.add_child(lbl_tit)

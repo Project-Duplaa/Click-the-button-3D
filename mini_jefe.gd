@@ -161,6 +161,9 @@ func _iniciar_ataque_telegrafiado():
 func _ejecutar_golpe_telegrafiado():
 	if telegraph_mesh != null:
 		telegraph_mesh.visible = false
+	if muerto or not _esta_telegrafando:
+		_esta_telegrafando = false
+		return
 	_esta_telegrafando = false
 	_reloj_ataque = 1.4
 	_anim_ctrl.reproducir_accion("attack-melee-right", 2, 0.08, 1.0)
@@ -226,9 +229,14 @@ func desactivar_escudo_runico(_duracion: float = 7.0):
 	if _muralla_activa:
 		_romper_muralla()
 
-func recibir_dano(cantidad: float, es_critico: bool = false):
+func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 	if muerto:
 		return
+	var fuente_str := "normal"
+	if typeof(fuente) == TYPE_BOOL:
+		es_critico = fuente
+	else:
+		fuente_str = str(fuente)
 	var dano_final = cantidad
 	if _muralla_activa:
 		dano_final *= 0.15
@@ -248,7 +256,7 @@ func recibir_dano(cantidad: float, es_critico: bool = false):
 	var pool = get_tree().get_first_node_in_group("damage_numbers")
 	var pos_num = global_position + Vector3(randf_range(-0.4, 0.4), 2.8, randf_range(-0.4, 0.4))
 	if pool != null and pool.has_method("mostrar_dano"):
-		pool.mostrar_dano(pos_num, dano_final, es_critico or _aturdido, false)
+		pool.mostrar_dano(pos_num, int(round(dano_final)), es_critico or _aturdido, fuente_str)
 	else:
 		var escena_num = load("res://damage_number_3d.tscn")
 		if escena_num != null and is_inside_tree() and get_parent() != null:

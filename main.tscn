@@ -1,22 +1,22 @@
 [gd_scene format=3 uid="uid://dup5lx06t5omu"]
 
-[ext_resource type="Script" uid="uid://cjjtwgnd7lmbq" path="res://personaje.gd" id="1_pj"]
+[ext_resource type="Script" uid="uid://0yl8m7lgad8l" path="res://personaje.gd" id="1_pj"]
 [ext_resource type="PackedScene" uid="uid://bwg8drg401bik" path="res://personaje/character-male-a.glb" id="2_modelo"]
-[ext_resource type="Script" uid="uid://7gict7fxehyq" path="res://camara_sigue.gd" id="3_cam"]
+[ext_resource type="Script" uid="uid://r4fll72fc14f" path="res://camara_sigue.gd" id="3_cam"]
 [ext_resource type="PackedScene" uid="uid://bguardia1n2" path="res://guardia.tscn" id="4_guardia"]
 [ext_resource type="PackedScene" uid="uid://bclickhud3d" path="res://click_hud.tscn" id="5_hud"]
-[ext_resource type="Script" uid="uid://e8ek10rmbe23" path="res://oleadas_spawner.gd" id="6_spawner"]
-[ext_resource type="Script" uid="uid://d1f57mqtwall5" path="res://partida.gd" id="7_partida"]
-[ext_resource type="Script" uid="uid://cj1o0rlnugrbk" path="res://salud.gd" id="8_salud"]
+[ext_resource type="Script" uid="uid://dk2m4a7bx4g22" path="res://oleadas_spawner.gd" id="6_spawner"]
+[ext_resource type="Script" uid="uid://6haw70qcirgb" path="res://partida.gd" id="7_partida"]
+[ext_resource type="Script" uid="uid://cf4gkyncxvwo0" path="res://salud.gd" id="8_salud"]
 [ext_resource type="PackedScene" uid="uid://bcofre3d" path="res://cofre.tscn" id="9_cofre"]
 [ext_resource type="PackedScene" uid="uid://bsalida3d" path="res://salida.tscn" id="10_salida"]
 [ext_resource type="PackedScene" path="res://arena_coliseo.tscn" id="11_arena"]
 [ext_resource type="PackedScene" path="res://boton_movil.tscn" id="12_boton"]
 [ext_resource type="PackedScene" path="res://audio_manager.tscn" id="13_audio"]
 [ext_resource type="PackedScene" path="res://altar_runico.tscn" id="14_altar"]
-[ext_resource type="Script" uid="uid://d2ibijw0274xw" path="res://gestor_altares.gd" id="15_gestor_altares"]
+[ext_resource type="Script" uid="uid://rpnc1hoynu2m" path="res://gestor_altares.gd" id="15_gestor_altares"]
 [ext_resource type="PackedScene" path="res://pantalla_fin_partida.tscn" id="16_pantalla_fin"]
-[ext_resource type="Script" uid="uid://dd2xue23d6jqp" path="res://gestor_anomalias.gd" id="17_gestor_anomalias"]
+[ext_resource type="Script" uid="uid://p51turcwd3em" path="res://gestor_anomalias.gd" id="17_gestor_anomalias"]
 [ext_resource type="PackedScene" uid="uid://1oppde2m8y0t" path="res://assets/modelos/prop_military_crate.glb" id="18_crate"]
 [ext_resource type="PackedScene" uid="uid://ckpo62bchjdj0" path="res://assets/modelos/prop_hazard_barrier.glb" id="19_barrier"]
 [ext_resource type="PackedScene" uid="uid://dnf3w20coytgj" path="res://assets/modelos/prop_pressure_tank.glb" id="20_tank"]
@@ -62,7 +62,7 @@ shadow_enabled = true
 transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 14, 0)
 light_color = Color(0.85, 0.92, 1, 1)
 light_energy = 0.8
-shadow_enabled = true
+shadow_enabled = false
 spot_range = 28.0
 spot_attenuation = 1.2
 spot_angle = 50.0

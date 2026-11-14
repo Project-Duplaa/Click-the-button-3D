@@ -28,7 +28,7 @@ var _anim_ctrl: AnimadorEntidad = AnimadorEntidad.new()
 @onready var modelo: Node3D = $Modelo if has_node("Modelo") else null
 @onready var nucleo_fuego: MeshInstance3D = $NucleoFuego
 @onready var anillo_magma: MeshInstance3D = $AnilloMagma
-@onready var luz_fuego: OmniLight3D = $LuzFuego
+@onready var luz_fuego: OmniLight3D = get_node_or_null("LuzFuego")
 
 func _ready():
 	add_to_group("enemigos")
@@ -112,16 +112,21 @@ func _iniciar_mecha():
 	_tiempo_restante_mecha = tiempo_mecha
 	AudioManager.play("alerta_oleada", 2.2, -3.0)
 
-func recibir_dano(cantidad: float, es_critico: bool = false):
+func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 	if _detonado:
 		return
+	var fuente_str := "normal"
+	if typeof(fuente) == TYPE_BOOL:
+		es_critico = fuente
+	else:
+		fuente_str = str(fuente)
 	vida -= cantidad
 	_anim_ctrl.disparar_golpe()
 
 	var pool = get_tree().get_first_node_in_group("damage_numbers")
 	var pos_num = global_position + Vector3(randf_range(-0.2, 0.2), 1.5, randf_range(-0.2, 0.2))
 	if pool != null and pool.has_method("mostrar_dano"):
-		pool.mostrar_dano(pos_num, cantidad, es_critico, false)
+		pool.mostrar_dano(pos_num, int(round(cantidad)), es_critico, fuente_str)
 	else:
 		var escena_num = load("res://damage_number_3d.tscn")
 		if escena_num != null and get_parent() != null:
@@ -211,6 +216,8 @@ func _crear_onda_explosion():
 	if luz_fuego != null:
 		tw.tween_property(luz_fuego, "light_energy", 0.0, 0.22)
 	tw.chain().tween_callback(func():
-		onda.queue_free()
-		queue_free()
+		if is_instance_valid(onda):
+			onda.queue_free()
+		if is_instance_valid(self):
+			queue_free()
 	)

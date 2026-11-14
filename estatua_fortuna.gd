@@ -23,6 +23,8 @@ var _modal_abierto: bool = false
 var _disco_progreso: MeshInstance3D = null
 var _anillo_externo: MeshInstance3D = null
 var _cristal_superior: MeshInstance3D = null
+var _giro_anillo_a: MeshInstance3D = null
+var _giro_anillo_b: MeshInstance3D = null
 var _modal_layer: CanvasLayer = null
 
 func _configurar_santuario() -> void:
@@ -31,72 +33,151 @@ func _configurar_santuario() -> void:
 	radio_interaccion = RADIO_CARGA
 	un_solo_uso = true
 	activacion_por_clic = false
-	color_luz = Color(1.0, 0.86, 0.30)
-	altura_etiqueta = 3.6
+	color_luz = BunkerVisualKit.COL_VAULT_GOLD
+	altura_etiqueta = 3.65
 
 func _construir_visual() -> void:
-	# Base octogonal / escalonada de mármol
-	var zocalo := MeshInstance3D.new()
-	var m_zocalo := CylinderMesh.new()
-	m_zocalo.top_radius = 1.05
-	m_zocalo.bottom_radius = 1.25
-	m_zocalo.height = 0.35
-	m_zocalo.radial_segments = 8
-	m_zocalo.material = _crear_material(Color(0.86, 0.82, 0.74), Color(0.2, 0.16, 0.05), 0.15, 0.15, 0.65)
-	zocalo.mesh = m_zocalo
-	zocalo.position = Vector3(0.0, 0.175, 0.0)
-	visual_root.add_child(zocalo)
+	# Zócalo hexagonal de concreto búnker
+	BunkerVisualKit.make_cylinder(
+		visual_root,
+		"ZocaloHexagonal",
+		1.25,
+		1.45,
+		0.36,
+		BunkerVisualKit.get_concrete_base_mat(),
+		Vector3(0.0, 0.18, 0.0),
+		6
+	)
 
-	# Columna / Obelisco dorado central
-	var columna := MeshInstance3D.new()
-	var m_col := CylinderMesh.new()
-	m_col.top_radius = 0.42
-	m_col.bottom_radius = 0.62
-	m_col.height = 1.75
-	m_col.radial_segments = 8
-	m_col.material = _crear_material(Color(0.95, 0.78, 0.25), Color(1.0, 0.82, 0.22), 0.55, 0.75, 0.25)
-	columna.mesh = m_col
-	columna.position = Vector3(0.0, 1.2, 0.0)
-	visual_root.add_child(columna)
+	# Collarín hexagonal con franjas hazard doradas/acero
+	var mat_hazard_oro := BunkerVisualKit.create_hazard_stripes_material(
+		BunkerVisualKit.COL_VAULT_GOLD,
+		BunkerVisualKit.COL_CARBON_STEEL,
+		10.0
+	)
+	BunkerVisualKit.make_cylinder(
+		visual_root,
+		"CollarinHazard",
+		1.02,
+		1.14,
+		0.18,
+		mat_hazard_oro,
+		Vector3(0.0, 0.45, 0.0),
+		6
+	)
 
-	# Corona flotante dorada legible desde arriba
+	# Torre / mástil central de acero carbono
+	BunkerVisualKit.make_cylinder(
+		visual_root,
+		"MastilCentral",
+		0.34,
+		0.52,
+		1.78,
+		BunkerVisualKit.get_chassis_mat(),
+		Vector3(0.0, 1.38, 0.0),
+		8
+	)
+
+	# Cabezal colector superior de titanio
+	BunkerVisualKit.make_cylinder(
+		visual_root,
+		"CabezalColector",
+		0.56,
+		0.38,
+		0.24,
+		BunkerVisualKit.get_titanium_mat(),
+		Vector3(0.0, 2.18, 0.0),
+		6
+	)
+
+	# 4 columnas anguladas de telemetría convergiendo hacia el cabezal
+	for i in range(4):
+		var ang_rad: float = (TAU * 0.25) * float(i) + PI * 0.25
+		var dir := Vector3(cos(ang_rad), 0.0, sin(ang_rad))
+		var puntal := BunkerVisualKit.make_box(
+			visual_root,
+			"ColumnaTelemetria_%d" % i,
+			Vector3(0.11, 1.68, 0.14),
+			BunkerVisualKit.get_titanium_mat(),
+			dir * 0.64 + Vector3(0.0, 1.28, 0.0)
+		)
+		puntal.look_at_from_position(
+			dir * 0.64 + Vector3(0.0, 1.28, 0.0),
+			Vector3(0.0, 2.18, 0.0),
+			Vector3.UP
+		)
+
+	# 2 anillos giroscópicos orbitales dorados
+	var mat_giro := BunkerVisualKit.make_emissive_mat(
+		BunkerVisualKit.COL_VAULT_GOLD,
+		1.8,
+		BunkerVisualKit.COL_VAULT_GOLD,
+		0.9,
+		0.2
+	)
+	_giro_anillo_a = BunkerVisualKit.make_torus(
+		visual_root,
+		"GiroAnilloA",
+		0.52,
+		0.60,
+		mat_giro,
+		Vector3(0.0, 2.55, 0.0),
+		Vector3(28.0, 0.0, 15.0)
+	)
+	_giro_anillo_b = BunkerVisualKit.make_torus(
+		visual_root,
+		"GiroAnilloB",
+		0.64,
+		0.72,
+		mat_giro,
+		Vector3(0.0, 2.55, 0.0),
+		Vector3(-34.0, 45.0, -18.0)
+	)
+
+	# Núcleo de iones holográfico en Y = 2.55
 	_cristal_superior = MeshInstance3D.new()
-	var m_cris := PrismMesh.new()
-	m_cris.size = Vector3(0.75, 0.85, 0.75)
-	m_cris.material = _crear_material(Color(1.0, 0.92, 0.35), Color(1.0, 0.88, 0.25), 1.4, 0.85, 0.15)
+	_cristal_superior.name = "NucleoIonesSuperior"
+	var m_cris := SphereMesh.new()
+	m_cris.radius = 0.36
+	m_cris.height = 0.72
+	m_cris.radial_segments = 8
+	m_cris.rings = 4
 	_cristal_superior.mesh = m_cris
+	_cristal_superior.material_override = BunkerVisualKit.create_hologram_material(
+		BunkerVisualKit.COL_VAULT_GOLD,
+		Color(1.0, 0.96, 0.72),
+		2.5
+	)
 	_cristal_superior.position = Vector3(0.0, 2.55, 0.0)
 	visual_root.add_child(_cristal_superior)
 
-	# Anillo delimitador en el suelo (radio exacto de 3.0 m)
-	_anillo_externo = MeshInstance3D.new()
-	var torus := TorusMesh.new()
-	torus.inner_radius = RADIO_CARGA - 0.12
-	torus.outer_radius = RADIO_CARGA + 0.06
-	torus.rings = 40
-	torus.ring_segments = 12
-	var mat_anillo := _crear_material(Color(1.0, 0.84, 0.25, 0.85), Color(1.0, 0.82, 0.20), 1.2, 0.4, 0.3)
-	mat_anillo.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	torus.material = mat_anillo
-	_anillo_externo.mesh = torus
-	_anillo_externo.position = Vector3(0.0, 0.05, 0.0)
+	# Anillo delimitador táctico en el suelo (radio exacto de 3.0 m)
+	_anillo_externo = BunkerVisualKit.create_hazard_ground_ring(
+		RADIO_CARGA,
+		BunkerVisualKit.COL_VAULT_GOLD,
+		Color(1.0, 0.95, 0.55),
+		0.84,
+		0.96,
+		0.42,
+		0.22
+	)
+	_anillo_externo.position = Vector3(0.0, 0.028, 0.0)
 	visual_root.add_child(_anillo_externo)
 
-	# Disco de progreso interior que crece de 0 a 100 %
-	_disco_progreso = MeshInstance3D.new()
-	var disco := CylinderMesh.new()
-	disco.top_radius = RADIO_CARGA - 0.15
-	disco.bottom_radius = RADIO_CARGA - 0.15
-	disco.height = 0.03
-	disco.radial_segments = 36
-	var mat_disco := _crear_material(Color(1.0, 0.88, 0.28, 0.28), Color(1.0, 0.86, 0.22), 0.9, 0.2, 0.4)
-	mat_disco.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	disco.material = mat_disco
-	_disco_progreso.mesh = disco
-	_disco_progreso.position = Vector3(0.0, 0.03, 0.0)
+	# Disco de progreso interior complementario que crece de 0 a 100 %
+	_disco_progreso = BunkerVisualKit.make_cylinder(
+		visual_root,
+		"DiscoProgresoInterior",
+		RADIO_CARGA - 0.32,
+		RADIO_CARGA - 0.32,
+		0.018,
+		BunkerVisualKit.make_emissive_mat(BunkerVisualKit.COL_VAULT_GOLD, 1.1, BunkerVisualKit.COL_VAULT_GOLD, 0.3, 0.3, 0.16),
+		Vector3(0.0, 0.022, 0.0),
+		36
+	)
+	_disco_progreso.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_disco_progreso.scale = Vector3(0.01, 1.0, 0.01)
 	_disco_progreso.visible = false
-	visual_root.add_child(_disco_progreso)
 
 	_actualizar_etiqueta("Permanece 4s en el círculo")
 
@@ -106,32 +187,46 @@ func _process(delta: float) -> void:
 
 	if _cristal_superior != null:
 		_cristal_superior.rotate_y(delta * 1.4)
-		_cristal_superior.position.y = 2.55 + sin(Time.get_ticks_msec() * 0.004) * 0.12
+		_cristal_superior.position.y = 2.55 + sin(Time.get_ticks_msec() * 0.004) * 0.10
+	if _giro_anillo_a != null:
+		_giro_anillo_a.rotate_y(delta * 2.1)
+		_giro_anillo_a.rotate_z(delta * 0.9)
+	if _giro_anillo_b != null:
+		_giro_anillo_b.rotate_x(delta * 1.6)
+		_giro_anillo_b.rotate_y(-delta * 1.3)
 
 	var pj := _obtener_jugador()
 	if pj == null:
 		return
 
 	var dist := _distancia_a_jugador(pj)
+	var ring_mat := _anillo_externo.material_override as ShaderMaterial if _anillo_externo != null else null
 	if dist <= RADIO_CARGA:
 		_progreso = minf(_progreso + delta, TIEMPO_CARGA)
 		var frac := clampf(_progreso / TIEMPO_CARGA, 0.02, 1.0)
+		if ring_mat != null:
+			ring_mat.set_shader_parameter("progress", clampf(_progreso / TIEMPO_CARGA, 0.0, 1.0))
+			ring_mat.set_shader_parameter("active_state", 1.0)
 		if _disco_progreso != null:
 			_disco_progreso.visible = true
 			_disco_progreso.scale = Vector3(frac, 1.0, frac)
 		if luz != null:
 			luz.light_energy = 2.4 + frac * 2.8
-		_actualizar_etiqueta("⏳ Consagrando... %d%%" % int(round(frac * 100.0)))
+		_actualizar_etiqueta("⏳ Calibrando... %d%%" % int(round(frac * 100.0)))
 		if _progreso >= TIEMPO_CARGA and not _hay_otro_modal_pausa_abierto():
 			_abrir_modal_bendiciones(pj)
-	elif _progreso > 0.0:
-		_progreso = 0.0
-		if _disco_progreso != null:
-			_disco_progreso.visible = false
-			_disco_progreso.scale = Vector3(0.01, 1.0, 0.01)
-		if luz != null:
-			luz.light_energy = 2.4
-		_actualizar_etiqueta("Permanece 4s en el círculo")
+	else:
+		if ring_mat != null:
+			ring_mat.set_shader_parameter("progress", 0.0)
+			ring_mat.set_shader_parameter("active_state", 0.0)
+		if _progreso > 0.0:
+			_progreso = 0.0
+			if _disco_progreso != null:
+				_disco_progreso.visible = false
+				_disco_progreso.scale = Vector3(0.01, 1.0, 0.01)
+			if luz != null:
+				luz.light_energy = 2.4
+			_actualizar_etiqueta("Permanece 4s en el círculo")
 
 func _al_hacer_clic_pasivo(_pj: Node3D) -> void:
 	_spawn_texto_3d("Quédate 4s en el círculo", Color(1.0, 0.88, 0.32))

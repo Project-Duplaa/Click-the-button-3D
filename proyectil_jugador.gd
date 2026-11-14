@@ -23,26 +23,45 @@ func _ready():
 	area_entered.connect(_on_area_entered)
 	_crear_malla_si_no_existe()
 
+static var _mesh_flecha_norm: CylinderMesh = null
+static var _mesh_flecha_crit: CylinderMesh = null
+static var _shape_col_def: SphereShape3D = null
+
+
 func _crear_malla_si_no_existe():
 	if get_node_or_null("MeshInstance3D") != null:
 		return
+	if _mesh_flecha_norm == null:
+		var mat_n := StandardMaterial3D.new()
+		mat_n.shading_mode = StandardMaterial3D.SHADING_MODE_UNSHADED
+		mat_n.albedo_color = Color(0.25, 0.85, 1.0)
+		_mesh_flecha_norm = CylinderMesh.new()
+		_mesh_flecha_norm.top_radius = 0.03
+		_mesh_flecha_norm.bottom_radius = 0.08
+		_mesh_flecha_norm.height = 0.95
+		_mesh_flecha_norm.material = mat_n
+	if _mesh_flecha_crit == null:
+		var mat_c := StandardMaterial3D.new()
+		mat_c.shading_mode = StandardMaterial3D.SHADING_MODE_UNSHADED
+		mat_c.albedo_color = Color(1.0, 0.85, 0.2)
+		_mesh_flecha_crit = CylinderMesh.new()
+		_mesh_flecha_crit.top_radius = 0.03
+		_mesh_flecha_crit.bottom_radius = 0.08
+		_mesh_flecha_crit.height = 0.95
+		_mesh_flecha_crit.material = mat_c
+	if _shape_col_def == null:
+		_shape_col_def = SphereShape3D.new()
+		_shape_col_def.radius = 0.45
+
 	var mesh_inst = MeshInstance3D.new()
-	var cyl = CylinderMesh.new()
-	cyl.top_radius = 0.03
-	cyl.bottom_radius = 0.08
-	cyl.height = 0.95
-	var mat = StandardMaterial3D.new()
-	mat.shading_mode = StandardMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = Color(1.0, 0.85, 0.2) if es_critico else Color(0.25, 0.85, 1.0)
-	cyl.material = mat
-	mesh_inst.mesh = cyl
+	mesh_inst.name = "MeshInstance3D"
+	mesh_inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mesh_inst.mesh = _mesh_flecha_crit if es_critico else _mesh_flecha_norm
 	mesh_inst.rotation_degrees.x = 90.0
 	add_child(mesh_inst)
 	
 	var col = CollisionShape3D.new()
-	var shape = SphereShape3D.new()
-	shape.radius = 0.45
-	col.shape = shape
+	col.shape = _shape_col_def
 	add_child(col)
 
 func iniciar(origen: Vector3, dir: Vector3, dano_in: float, rapidez_in: float = 16.0, perforaciones_in: int = 0, es_crit: bool = false):

@@ -239,13 +239,16 @@ func _ejecutar_carga_sombria():
 	if _telegraph_carga != null:
 		_telegraph_carga.visible = false
 	_esta_telegrafando = false
+	if muerto or _en_agonia_final:
+		_esta_cargando = false
+		return
 
 	velocity = _dir_carga * (rapidez * 2.8)
 	AudioManager.play("corte_giratorio", 0.75, 2.0)
 	_sacudir_camara(0.25)
 
 	get_tree().create_timer(0.40).timeout.connect(func():
-		if not is_instance_valid(self):
+		if not is_instance_valid(self) or not is_inside_tree() or muerto or _en_agonia_final:
 			return
 		_esta_cargando = false
 		if is_instance_valid(jugador) and global_position.distance_to(jugador.global_position) <= (radio_golpe + 0.5):
@@ -273,6 +276,8 @@ func _ejecutar_corte_guadana():
 	if telegraph_marca != null:
 		telegraph_marca.visible = false
 	_esta_telegrafando = false
+	if muerto or _en_agonia_final:
+		return
 	_reloj_ataque = 1.15
 	_anim_ctrl.reproducir_accion("attack-melee-right", 2, 0.08, 1.15)
 
@@ -414,9 +419,14 @@ func desactivar_escudo_runico(duracion: float = 7.0):
 	if escudo_activo:
 		_romper_escudo()
 
-func recibir_dano(cantidad: float, es_critico: bool = false):
+func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 	if _en_agonia_final or muerto:
 		return
+	var fuente_str := "normal"
+	if typeof(fuente) == TYPE_BOOL:
+		es_critico = fuente
+	else:
+		fuente_str = str(fuente)
 
 	if escudo_activo:
 		AudioManager.play("escudo_bloqueo", 1.1)
@@ -438,7 +448,7 @@ func recibir_dano(cantidad: float, es_critico: bool = false):
 	var pool = get_tree().get_first_node_in_group("damage_numbers")
 	var pos_num = global_position + Vector3(randf_range(-0.5, 0.5), 3.2, randf_range(-0.5, 0.5))
 	if pool != null and pool.has_method("mostrar_dano"):
-		pool.mostrar_dano(pos_num, dano_final, es_critico, false)
+		pool.mostrar_dano(pos_num, int(round(dano_final)), es_critico, fuente_str)
 	else:
 		var escena_num = load("res://damage_number_3d.tscn")
 		if escena_num != null and is_inside_tree() and get_parent() != null:
@@ -467,6 +477,10 @@ func _iniciar_agonia_final():
 	_crear_texto_flotante("⚡ ¡PULSA EL NÚCLEO PARA PURIFICAR!", true)
 	_actualizar_hud_jefe()
 
+func _exit_tree():
+	if Engine.time_scale != 1.0:
+		Engine.time_scale = 1.0
+
 func _ejecutar_golpe_gracia_final():
 	vida = 0.0
 	_sacudir_camara(0.7)
@@ -474,6 +488,8 @@ func _ejecutar_golpe_gracia_final():
 	Engine.time_scale = 0.15
 	await get_tree().create_timer(0.15, true, false, true).timeout
 	Engine.time_scale = 1.0
+	if not is_instance_valid(self) or not is_inside_tree():
+		return
 
 	morir()
 

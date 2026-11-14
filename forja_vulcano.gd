@@ -7,6 +7,8 @@ class_name ForjaVulcano
 
 var _modal_layer: CanvasLayer = null
 var _nucleo_brasa: MeshInstance3D = null
+var _mordaza_superior: MeshInstance3D = null
+var _aro_magnetico: MeshInstance3D = null
 
 func _configurar_santuario() -> void:
 	nombre_santuario = "Forja de Vulcano"
@@ -14,67 +16,180 @@ func _configurar_santuario() -> void:
 	radio_interaccion = 5.5
 	un_solo_uso = true
 	activacion_por_clic = true
-	color_luz = Color(1.0, 0.45, 0.12)
-	altura_etiqueta = 3.1
+	color_luz = BunkerVisualKit.COL_PLASMA_ORANGE
+	altura_etiqueta = 3.15
 
 func _construir_visual() -> void:
-	# Plataforma de piedra volcánica
-	var base := MeshInstance3D.new()
-	var m_base := CylinderMesh.new()
-	m_base.top_radius = 1.1
-	m_base.bottom_radius = 1.3
-	m_base.height = 0.28
-	m_base.radial_segments = 8
-	m_base.material = _crear_material(Color(0.22, 0.19, 0.18), Color(0.55, 0.18, 0.05), 0.3, 0.2, 0.75)
-	base.mesh = m_base
-	base.position = Vector3(0.0, 0.14, 0.0)
-	visual_root.add_child(base)
+	# Anillo táctico de suelo
+	var ring := BunkerVisualKit.create_hazard_ground_ring(
+		1.45,
+		BunkerVisualKit.COL_PLASMA_ORANGE,
+		BunkerVisualKit.COL_HAZARD_YELLOW,
+		0.80,
+		0.95,
+		0.35
+	)
+	var ring_mat := ring.material_override as ShaderMaterial
+	if ring_mat != null:
+		ring_mat.set_shader_parameter("progress", 1.0)
+	visual_root.add_child(ring)
 
-	# Tronco / soporte del yunque
-	var soporte := MeshInstance3D.new()
-	var m_soporte := BoxMesh.new()
-	m_soporte.size = Vector3(0.75, 0.72, 0.65)
-	m_soporte.material = _crear_material(Color(0.18, 0.18, 0.22), Color.BLACK, 0.0, 0.75, 0.4)
-	soporte.mesh = m_soporte
-	soporte.position = Vector3(0.0, 0.64, 0.0)
-	visual_root.add_child(soporte)
+	# Bancada industrial pesada
+	BunkerVisualKit.make_box(
+		visual_root,
+		"BancadaIndustrial",
+		Vector3(1.65, 0.38, 1.35),
+		BunkerVisualKit.get_chassis_mat(),
+		Vector3(0.0, 0.19, 0.0)
+	)
 
-	# Cuerpo del yunque
-	var yunque := MeshInstance3D.new()
-	var m_yunque := BoxMesh.new()
-	m_yunque.size = Vector3(1.25, 0.38, 0.68)
-	m_yunque.material = _crear_material(Color(0.28, 0.29, 0.34), Color(0.95, 0.35, 0.08), 0.25, 0.85, 0.28)
-	yunque.mesh = m_yunque
-	yunque.position = Vector3(0.0, 1.15, 0.0)
-	visual_root.add_child(yunque)
+	# Faldón perimetral con franjas hazard naranja plasma / acero carbono
+	var mat_hazard := BunkerVisualKit.create_hazard_stripes_material(
+		BunkerVisualKit.COL_PLASMA_ORANGE,
+		BunkerVisualKit.COL_CARBON_STEEL,
+		10.0
+	)
+	BunkerVisualKit.make_box(
+		visual_root,
+		"FaldonHazard",
+		Vector3(1.72, 0.14, 1.42),
+		mat_hazard,
+		Vector3(0.0, 0.36, 0.0)
+	)
 
-	# Cuerno lateral del yunque
-	var cuerno := MeshInstance3D.new()
-	var m_cuerno := PrismMesh.new()
-	m_cuerno.size = Vector3(0.45, 0.62, 0.45)
-	m_cuerno.material = _crear_material(Color(0.32, 0.33, 0.38), Color(1.0, 0.42, 0.1), 0.35, 0.9, 0.25)
-	cuerno.mesh = m_cuerno
-	cuerno.rotation_degrees = Vector3(0.0, 0.0, -90.0)
-	cuerno.position = Vector3(0.82, 1.16, 0.0)
-	visual_root.add_child(cuerno)
+	# 2 columnas hidráulicas cromadas laterales
+	for sx in [-0.62, 0.62]:
+		BunkerVisualKit.make_cylinder(
+			visual_root,
+			"ColumnaHidraulica_%s" % ("L" if sx < 0.0 else "R"),
+			0.11,
+			0.13,
+			1.52,
+			BunkerVisualKit.get_chrome_mat(),
+			Vector3(sx, 1.12, 0.0),
+			14
+		)
+		BunkerVisualKit.make_cylinder(
+			visual_root,
+			"BujeColumna_%s" % ("L" if sx < 0.0 else "R"),
+			0.16,
+			0.16,
+			0.22,
+			BunkerVisualKit.get_armor_grey_mat(),
+			Vector3(sx, 0.52, 0.0),
+			12
+		)
 
-	# Brasa incandescente flotante encima del yunque
+	# Travesaño superior fijo
+	BunkerVisualKit.make_box(
+		visual_root,
+		"TravesanoSuperior",
+		Vector3(1.56, 0.24, 0.62),
+		BunkerVisualKit.get_armor_grey_mat(),
+		Vector3(0.0, 1.88, 0.0)
+	)
+
+	# Mordaza hidráulica superior móvil en Y = 1.42
+	_mordaza_superior = BunkerVisualKit.make_box(
+		visual_root,
+		"MordazaSuperior",
+		Vector3(0.96, 0.22, 0.64),
+		BunkerVisualKit.get_titanium_mat(),
+		Vector3(0.0, 1.42, 0.0)
+	)
+	BunkerVisualKit.make_cylinder(
+		_mordaza_superior,
+		"PistonCentral",
+		0.14,
+		0.14,
+		0.42,
+		BunkerVisualKit.get_chrome_mat(),
+		Vector3(0.0, 0.28, 0.0),
+		12
+	)
+
+	# Crisol inferior de tungsteno
+	BunkerVisualKit.make_cylinder(
+		visual_root,
+		"CrisolTungsteno",
+		0.48,
+		0.56,
+		0.32,
+		BunkerVisualKit.get_titanium_mat(),
+		Vector3(0.0, 0.54, 0.0),
+		12
+	)
+	BunkerVisualKit.make_cylinder(
+		visual_root,
+		"LechoIncandescente",
+		0.38,
+		0.38,
+		0.06,
+		BunkerVisualKit.make_emissive_mat(BunkerVisualKit.COL_PLASMA_ORANGE, 2.2),
+		Vector3(0.0, 0.71, 0.0),
+		12
+	)
+
+	# 3 bobinas toroidales de cobre rodeando la cámara de inducción
+	for i in range(3):
+		BunkerVisualKit.make_torus(
+			visual_root,
+			"BobinaInduccion_%d" % i,
+			0.42,
+			0.50,
+			BunkerVisualKit.get_copper_coil_mat(),
+			Vector3(0.0, 0.80 + float(i) * 0.20, 0.0)
+		)
+
+	# Núcleo de plasma en Y = 1.02 + aro magnético rotatorio
 	_nucleo_brasa = MeshInstance3D.new()
+	_nucleo_brasa.name = "NucleoPlasma"
 	var m_brasa := SphereMesh.new()
-	m_brasa.radius = 0.28
-	m_brasa.height = 0.56
-	m_brasa.material = _crear_material(Color(1.0, 0.55, 0.12), Color(1.0, 0.45, 0.08), 2.1, 0.2, 0.2)
+	m_brasa.radius = 0.26
+	m_brasa.height = 0.52
 	_nucleo_brasa.mesh = m_brasa
-	_nucleo_brasa.position = Vector3(0.0, 1.72, 0.0)
+	_nucleo_brasa.material_override = BunkerVisualKit.create_hologram_material(
+		BunkerVisualKit.COL_PLASMA_ORANGE,
+		Color(1.0, 0.85, 0.4),
+		2.8
+	)
+	_nucleo_brasa.position = Vector3(0.0, 1.02, 0.0)
 	visual_root.add_child(_nucleo_brasa)
+
+	_aro_magnetico = BunkerVisualKit.make_torus(
+		visual_root,
+		"AroMagnetico",
+		0.30,
+		0.35,
+		BunkerVisualKit.make_emissive_mat(BunkerVisualKit.COL_HAZARD_YELLOW, 2.0),
+		Vector3(0.0, 1.02, 0.0),
+		Vector3(35.0, 0.0, 20.0)
+	)
 
 	_actualizar_etiqueta("Duplica 1 Reliquia")
 
 func _process(delta: float) -> void:
 	if _consumido or _nucleo_brasa == null:
 		return
-	_nucleo_brasa.rotate_y(delta * 1.6)
-	_nucleo_brasa.position.y = 1.72 + sin(Time.get_ticks_msec() * 0.005) * 0.08
+	_nucleo_brasa.rotate_y(delta * 1.8)
+	_nucleo_brasa.position.y = 1.02 + sin(Time.get_ticks_msec() * 0.005) * 0.05
+	if _aro_magnetico != null:
+		_aro_magnetico.rotate_y(-delta * 2.4)
+		_aro_magnetico.rotate_x(delta * 1.5)
+
+func _animar_golpe_prensa() -> void:
+	if _mordaza_superior != null and is_instance_valid(_mordaza_superior):
+		var tw := create_tween()
+		tw.tween_property(_mordaza_superior, "position:y", 1.05, 0.07).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+		tw.tween_property(_mordaza_superior, "position:y", 1.42, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	BunkerVisualKit.spawn_shockwave_ring(
+		get_parent(),
+		global_position,
+		0.6,
+		2.8,
+		BunkerVisualKit.COL_PLASMA_ORANGE,
+		0.32
+	)
 
 func _activar(pj: Node3D) -> bool:
 	var reliquias: Dictionary = pj.reliquias if ("reliquias" in pj and pj.reliquias is Dictionary) else {}
@@ -89,6 +204,7 @@ func _activar(pj: Node3D) -> bool:
 		var id_unico: String = String(reliquias.keys()[0])
 		if pj.has_method("duplicar_reliquia"):
 			pj.duplicar_reliquia(id_unico)
+		_animar_golpe_prensa()
 		AudioManager.play("jackpot", 1.05)
 		_spawn_texto_3d("⚒️ %s x2" % ReliquiaDatos.obtener_nombre(id_unico), Color(1.0, 0.72, 0.25))
 		return true
@@ -195,6 +311,7 @@ func _confirmar_forja(pj: Node3D, id_reliquia: String) -> void:
 		return
 	if pj.has_method("duplicar_reliquia"):
 		pj.duplicar_reliquia(id_reliquia)
+	_animar_golpe_prensa()
 	AudioManager.play("jackpot", 1.05)
 	_spawn_texto_3d("⚒️ %s x2" % ReliquiaDatos.obtener_nombre(id_reliquia), Color(1.0, 0.72, 0.25))
 	_consumir()

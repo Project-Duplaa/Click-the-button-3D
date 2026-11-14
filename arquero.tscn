@@ -29,10 +29,5 @@ transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 0, 0, 0)
 [node name="LaserApuntado" type="MeshInstance3D" parent="."]
 transform = Transform3D(0.04, 0, 0, 0, 0.04, 0, 0, 0, 1, 0, 1.4, 0)
 visible = false
+cast_shadow = 0
 mesh = SubResource("MeshLaser")
-
-[node name="LuzArco" type="OmniLight3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
-light_color = Color(1, 0.45, 0.1, 1)
-light_energy = 1.2
-omni_range = 4.0

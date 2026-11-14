@@ -58,12 +58,8 @@ func _ready() -> void:
 
 	etiqueta = Label3D.new()
 	etiqueta.name = "EtiquetaSantuario"
-	etiqueta.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	etiqueta.position = Vector3(0.0, altura_etiqueta, 0.0)
-	etiqueta.font_size = 38
-	etiqueta.outline_size = 10
-	etiqueta.outline_modulate = Color(0.04, 0.03, 0.02, 0.95)
-	etiqueta.modulate = Color(1.0, 0.95, 0.82, 1.0)
+	BunkerVisualKit.apply_tactical_label_style(etiqueta, 36, color_luz.lerp(Color.WHITE, 0.55))
 	add_child(etiqueta)
 
 	_construir_visual()
@@ -84,15 +80,34 @@ func _configurar_santuario() -> void:
 
 ## Hook virtual para construir la geometría procedural 3D del santuario
 func _construir_visual() -> void:
-	var pedestal := MeshInstance3D.new()
-	var cil := CylinderMesh.new()
-	cil.top_radius = 0.75
-	cil.bottom_radius = 0.9
-	cil.height = 1.1
-	cil.material = _crear_material(Color(0.55, 0.52, 0.48), color_luz * 0.25, 0.4)
-	pedestal.mesh = cil
-	pedestal.position = Vector3(0.0, 0.55, 0.0)
-	visual_root.add_child(pedestal)
+	BunkerVisualKit.make_cylinder(
+		visual_root,
+		"ZocaloConcreto",
+		0.92,
+		1.05,
+		0.28,
+		BunkerVisualKit.get_concrete_base_mat(),
+		Vector3(0.0, 0.14, 0.0),
+		8
+	)
+	BunkerVisualKit.make_cylinder(
+		visual_root,
+		"PedestalAcero",
+		0.68,
+		0.78,
+		0.84,
+		BunkerVisualKit.get_chassis_mat(),
+		Vector3(0.0, 0.70, 0.0),
+		8
+	)
+	BunkerVisualKit.make_torus(
+		visual_root,
+		"AnilloEmisor",
+		0.58,
+		0.72,
+		BunkerVisualKit.make_emissive_mat(color_luz, 1.8),
+		Vector3(0.0, 1.12, 0.0)
+	)
 
 ## Hook virtual que ejecuta la lógica del santuario. Debe devolver true si debe consumirse.
 func _activar(_pj: Node3D) -> bool:
@@ -248,6 +263,7 @@ func _consumir() -> void:
 	set_deferred("input_ray_pickable", false)
 	if colision != null:
 		colision.set_deferred("disabled", true)
+	BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position, 0.9, 3.2, color_luz, 0.36)
 	activado.emit(self)
 
 	var tw := create_tween()

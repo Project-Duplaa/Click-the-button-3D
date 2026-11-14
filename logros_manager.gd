@@ -56,7 +56,7 @@ const DEFINICIONES_LOGROS: Dictionary = {
 	"combo_hilo": {
 		"id": "combo_hilo",
 		"titulo": "Conductor Supremo",
-		"desc": "Alcanza a 25 enemigos simultáneos con el Hilo de Resonancia.",
+		"desc": "Alcanza a 25 enemigos simultáneos con las ondas de descarga del Núcleo.",
 		"icono": "⚡"
 	}
 }

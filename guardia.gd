@@ -26,6 +26,8 @@ var _reloj_ataque: float = 0.0
 var _escala_base: Vector3 = Vector3.ONE
 var _muerto: bool = false
 var _anim_ctrl: AnimadorEntidad = AnimadorEntidad.new()
+var _reloj_vision: float = 0.0
+var _ultimo_lo_ve: bool = true
 
 var knockback_vel: Vector3 = Vector3.ZERO
 var resistencia_knockback: float = 0.35
@@ -141,12 +143,18 @@ func decidir(d, ve):
 func lo_ve():
 	if vision == null or jugador == null:
 		return true
+	var ahora: float = Time.get_ticks_msec() * 0.001
+	if ahora < _reloj_vision:
+		return _ultimo_lo_ve
+	_reloj_vision = ahora + 0.12
 	var pecho = jugador.global_position + Vector3(0, 0.9, 0)
 	vision.target_position = vision.to_local(pecho)
 	vision.force_raycast_update()
 	if vision.is_colliding():
-		return vision.get_collider() == jugador
-	return true
+		_ultimo_lo_ve = vision.get_collider() == jugador
+	else:
+		_ultimo_lo_ve = true
+	return _ultimo_lo_ve
 
 func patrullar():
 	if puntos.size() == 0:

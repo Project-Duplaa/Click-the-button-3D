@@ -15,7 +15,7 @@ func _configurar_santuario() -> void:
 	radio_interaccion = 8.0
 	un_solo_uso = true
 	activacion_por_clic = true
-	color_luz = Color(1.0, 0.55, 0.18) if _es_brasero else Color(0.92, 0.64, 0.35)
+	color_luz = BunkerVisualKit.COL_PLASMA_ORANGE if _es_brasero else BunkerVisualKit.COL_CRYO_BLUE
 	altura_etiqueta = 2.05
 
 func _ready() -> void:
@@ -28,11 +28,14 @@ func _ready() -> void:
 		forma.height = 1.7
 		colision.position = Vector3(0.0, 0.85, 0.0)
 	if luz != null:
-		luz.light_energy = 1.6 if _es_brasero else 0.9
+		luz.light_energy = 1.6 if _es_brasero else 1.15
 		luz.omni_range = 4.5
 	if etiqueta != null:
-		etiqueta.font_size = 24
-		etiqueta.modulate = Color(0.95, 0.84, 0.65, 0.88)
+		BunkerVisualKit.apply_tactical_label_style(
+			etiqueta,
+			24,
+			color_luz.lerp(Color.WHITE, 0.62)
+		)
 
 func _construir_visual() -> void:
 	if _es_brasero:
@@ -42,73 +45,163 @@ func _construir_visual() -> void:
 	_actualizar_etiqueta("Rompible")
 
 func _construir_anfora() -> void:
-	var mat_terracota := _crear_material(Color(0.76, 0.42, 0.24), Color(0.35, 0.16, 0.05), 0.15, 0.08, 0.68)
-	var mat_borde := _crear_material(Color(0.86, 0.68, 0.32), Color(0.5, 0.35, 0.1), 0.25, 0.45, 0.4)
+	# Célula Volátil de Plasma: tapa inferior y superior de acero carbono
+	BunkerVisualKit.make_cylinder(
+		visual_root,
+		"TapaInferiorAcero",
+		0.38,
+		0.42,
+		0.16,
+		BunkerVisualKit.get_chassis_mat(),
+		Vector3(0.0, 0.08, 0.0),
+		12
+	)
 
-	var cuerpo := MeshInstance3D.new()
-	var m_cuerpo := CylinderMesh.new()
-	m_cuerpo.top_radius = 0.32
-	m_cuerpo.bottom_radius = 0.24
-	m_cuerpo.height = 0.85
-	m_cuerpo.radial_segments = 12
-	m_cuerpo.material = mat_terracota
-	cuerpo.mesh = m_cuerpo
-	cuerpo.position = Vector3(0.0, 0.45, 0.0)
-	visual_root.add_child(cuerpo)
+	# Cuerpo cilíndrico inferior/superior con polímero hazard
+	var mat_hazard := BunkerVisualKit.create_hazard_stripes_material(
+		BunkerVisualKit.COL_HAZARD_YELLOW,
+		BunkerVisualKit.COL_CARBON_STEEL,
+		6.0
+	)
+	BunkerVisualKit.make_cylinder(
+		visual_root,
+		"FaldonHazardInferior",
+		0.36,
+		0.36,
+		0.26,
+		mat_hazard,
+		Vector3(0.0, 0.28, 0.0),
+		12
+	)
+	BunkerVisualKit.make_cylinder(
+		visual_root,
+		"FaldonHazardSuperior",
+		0.36,
+		0.36,
+		0.22,
+		mat_hazard,
+		Vector3(0.0, 0.90, 0.0),
+		12
+	)
 
-	var panza := MeshInstance3D.new()
-	var m_panza := SphereMesh.new()
-	m_panza.radius = 0.42
-	m_panza.height = 0.72
-	m_panza.material = mat_terracota
-	panza.mesh = m_panza
-	panza.position = Vector3(0.0, 0.56, 0.0)
-	visual_root.add_child(panza)
+	# Núcleo interno de plasma cian visible entre los anillos de contención
+	BunkerVisualKit.make_cylinder(
+		visual_root,
+		"NucleoPlasmaCian",
+		0.30,
+		0.30,
+		0.48,
+		BunkerVisualKit.make_emissive_mat(BunkerVisualKit.COL_CYAN_ELECTRIC, 2.4),
+		Vector3(0.0, 0.60, 0.0),
+		12
+	)
 
-	var cuello := MeshInstance3D.new()
-	var m_cuello := CylinderMesh.new()
-	m_cuello.top_radius = 0.28
-	m_cuello.bottom_radius = 0.18
-	m_cuello.height = 0.28
-	m_cuello.radial_segments = 12
-	m_cuello.material = mat_borde
-	cuello.mesh = m_cuello
-	cuello.position = Vector3(0.0, 1.05, 0.0)
-	visual_root.add_child(cuello)
+	# Anillos de contención de titanio
+	for y_anillo in [0.43, 0.77]:
+		BunkerVisualKit.make_torus(
+			visual_root,
+			"AnilloContencion_%s" % str(y_anillo),
+			0.29,
+			0.39,
+			BunkerVisualKit.get_titanium_mat(),
+			Vector3(0.0, y_anillo, 0.0)
+		)
+
+	# Tapa superior de acero + válvula de presión
+	BunkerVisualKit.make_cylinder(
+		visual_root,
+		"TapaSuperiorAcero",
+		0.34,
+		0.38,
+		0.14,
+		BunkerVisualKit.get_chassis_mat(),
+		Vector3(0.0, 1.08, 0.0),
+		12
+	)
+	BunkerVisualKit.make_cylinder(
+		visual_root,
+		"ValvulaSuperior",
+		0.16,
+		0.12,
+		0.16,
+		BunkerVisualKit.get_chrome_mat(),
+		Vector3(0.0, 1.22, 0.0),
+		10
+	)
 
 func _construir_brasero() -> void:
-	var mat_bronce := _crear_material(Color(0.36, 0.28, 0.20), Color(0.25, 0.1, 0.04), 0.2, 0.78, 0.35)
-	var mat_fuego := _crear_material(Color(1.0, 0.58, 0.14), Color(1.0, 0.45, 0.08), 1.9, 0.1, 0.2)
+	# Tambor Térmico Presurizado: acero oscuro / óxido térmico
+	var mat_oxido_termico := StandardMaterial3D.new()
+	mat_oxido_termico.albedo_color = Color(0.32, 0.14, 0.11)
+	mat_oxido_termico.metallic = 0.72
+	mat_oxido_termico.roughness = 0.44
 
-	var tripode := MeshInstance3D.new()
-	var m_tri := CylinderMesh.new()
-	m_tri.top_radius = 0.48
-	m_tri.bottom_radius = 0.34
-	m_tri.height = 0.78
-	m_tri.radial_segments = 8
-	m_tri.material = mat_bronce
-	tripode.mesh = m_tri
-	tripode.position = Vector3(0.0, 0.39, 0.0)
-	visual_root.add_child(tripode)
+	BunkerVisualKit.make_cylinder(
+		visual_root,
+		"TamborTermicoBase",
+		0.46,
+		0.48,
+		0.96,
+		mat_oxido_termico,
+		Vector3(0.0, 0.48, 0.0),
+		14
+	)
 
-	var cuenco := MeshInstance3D.new()
-	var m_cuenco := CylinderMesh.new()
-	m_cuenco.top_radius = 0.62
-	m_cuenco.bottom_radius = 0.38
-	m_cuenco.height = 0.28
-	m_cuenco.radial_segments = 10
-	m_cuenco.material = mat_bronce
-	cuenco.mesh = m_cuenco
-	cuenco.position = Vector3(0.0, 0.88, 0.0)
-	visual_root.add_child(cuenco)
+	# Cinchos metálicos de titanio
+	for y_cincho in [0.18, 0.50, 0.82]:
+		BunkerVisualKit.make_cylinder(
+			visual_root,
+			"CinchoMetalico_%s" % str(y_cincho),
+			0.49,
+			0.49,
+			0.07,
+			BunkerVisualKit.get_titanium_mat(),
+			Vector3(0.0, y_cincho, 0.0),
+			14
+		)
 
-	var llama := MeshInstance3D.new()
-	var m_llama := PrismMesh.new()
-	m_llama.size = Vector3(0.46, 0.55, 0.46)
-	m_llama.material = mat_fuego
-	llama.mesh = m_llama
-	llama.position = Vector3(0.0, 1.24, 0.0)
-	visual_root.add_child(llama)
+	# Collarín superior de acero carbono + rejilla incandescente
+	BunkerVisualKit.make_cylinder(
+		visual_root,
+		"CollarinQuemador",
+		0.52,
+		0.47,
+		0.14,
+		BunkerVisualKit.get_chassis_mat(),
+		Vector3(0.0, 1.00, 0.0),
+		12
+	)
+	for i in range(3):
+		BunkerVisualKit.make_box(
+			visual_root,
+			"RejillaTermica_%d" % i,
+			Vector3(0.86, 0.04, 0.07),
+			BunkerVisualKit.get_chassis_mat(),
+			Vector3(0.0, 1.08, 0.0),
+			Vector3(0.0, float(i) * 60.0, 0.0)
+		)
+
+	# Núcleo de combustión incandescente
+	var mat_combustion := BunkerVisualKit.make_emissive_mat(BunkerVisualKit.COL_PLASMA_ORANGE, 2.8)
+	BunkerVisualKit.make_cylinder(
+		visual_root,
+		"LechoCombustion",
+		0.40,
+		0.40,
+		0.08,
+		mat_combustion,
+		Vector3(0.0, 1.03, 0.0),
+		12
+	)
+	var nucleo := MeshInstance3D.new()
+	nucleo.name = "NucleoCombustion"
+	var m_nuc := SphereMesh.new()
+	m_nuc.radius = 0.24
+	m_nuc.height = 0.44
+	nucleo.mesh = m_nuc
+	nucleo.material_override = mat_combustion
+	nucleo.position = Vector3(0.0, 1.18, 0.0)
+	visual_root.add_child(nucleo)
 
 func recibir_dano(_cantidad: float, _es_critico: bool = false) -> void:
 	romper()
@@ -137,6 +230,7 @@ func _ejecutar_ruptura_diferida() -> void:
 		return
 
 	var pos_spawn := global_position
+	BunkerVisualKit.spawn_shockwave_ring(get_parent(), pos_spawn, 0.3, 1.8, color_luz, 0.28)
 	FortunaManager.soltar_drops(get_parent(), pos_spawn, "anfora")
 
 	# 2 % base (escalado por suerte) de revelar un Cofre del Gladiador oculto

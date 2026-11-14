@@ -6,7 +6,6 @@ const ArbolMejorasDatos = preload("res://arbol_mejoras_datos.gd")
 const MetaprogresoManager = preload("res://metaprogreso_manager.gd")
 const ArbolInterconectadoDatos = preload("res://arbol_interconectado_datos.gd")
 const CatalogoBendicionesScript = preload("res://catalogo_bendiciones.gd")
-const HiloResonanciaScript = preload("res://hilo_resonancia.gd")
 const DamageNumbersPoolScript = preload("res://damage_numbers_pool.gd")
 const AudioDopaminaScript = preload("res://audio_dopamina.gd")
 const CursorTacticoScript = preload("res://cursor_tactico.gd")
@@ -184,7 +183,6 @@ var _reloj_incremental_pasivo: float = 0.0
 var _clics_pasivos_frac: float = 0.0
 
 var evolucion_manager: EvolucionManager = null
-var _hilo_resonancia: Node3D = null
 
 var _reloj_ataque: float = 0.0
 var _reloj_anim_accion: float = 0.0
@@ -300,17 +298,6 @@ func _bootstrap_core_systems():
 		var logros = LogrosManagerScript.new()
 		logros.name = "LogrosManager"
 		parent_arena.add_child(logros)
-
-	if tree.get_first_node_in_group("hilo_resonancia") == null:
-		_hilo_resonancia = HiloResonanciaScript.new()
-		_hilo_resonancia.name = "HiloResonancia"
-		parent_arena.add_child(_hilo_resonancia)
-	else:
-		_hilo_resonancia = tree.get_first_node_in_group("hilo_resonancia") as Node3D
-
-	var boton = tree.get_first_node_in_group("boton_movil") as Node3D
-	if _hilo_resonancia != null and boton != null and _hilo_resonancia.has_method("configurar_extremos"):
-		_hilo_resonancia.configurar_extremos(self, boton)
 
 func _unhandled_input(event):
 	if event is InputEventMouseButton:
@@ -491,12 +478,19 @@ func _obtener_todos_los_enemigos() -> Array:
 	if tree == null:
 		return []
 	var lista: Array = []
+	var vistos: Dictionary = {}
 	for e in tree.get_nodes_in_group("enemigos"):
-		if is_instance_valid(e) and not lista.has(e):
-			lista.append(e)
+		if is_instance_valid(e):
+			var id_e: int = e.get_instance_id()
+			if not vistos.has(id_e):
+				vistos[id_e] = true
+				lista.append(e)
 	for e in tree.get_nodes_in_group("enemies"):
-		if is_instance_valid(e) and not lista.has(e):
-			lista.append(e)
+		if is_instance_valid(e):
+			var id_e: int = e.get_instance_id()
+			if not vistos.has(id_e):
+				vistos[id_e] = true
+				lista.append(e)
 	return lista
 
 func _procesar_autobattler(delta: float):
@@ -658,6 +652,9 @@ func _pulsar_orbe_mago() -> void:
 		tw_luz.tween_property(_luz_orbe_ref, "light_energy", 3.6, 0.08)
 		tw_luz.tween_property(_luz_orbe_ref, "light_energy", 1.6, 0.18)
 
+static var _mesh_tajo_torus: TorusMesh = null
+
+
 func _crear_tajo_espada(dir_ataque: Vector3, es_critico: bool = false):
 	if not is_inside_tree() or get_parent() == null:
 		return
@@ -669,18 +666,20 @@ func _crear_tajo_espada(dir_ataque: Vector3, es_critico: bool = false):
 	if dir_ataque.length_squared() > 0.001 and absf(dir_ataque.dot(Vector3.UP)) < 0.999:
 		tajo.look_at(tajo.global_position + dir_ataque, Vector3.UP)
 
-	var mesh_inst = MeshInstance3D.new()
-	var torus = TorusMesh.new()
-	torus.inner_radius = 0.9
-	torus.outer_radius = 1.45
+	if _mesh_tajo_torus == null:
+		_mesh_tajo_torus = TorusMesh.new()
+		_mesh_tajo_torus.inner_radius = 0.9
+		_mesh_tajo_torus.outer_radius = 1.45
 
+	var mesh_inst = MeshInstance3D.new()
+	mesh_inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var mat = StandardMaterial3D.new()
 	mat.shading_mode = StandardMaterial3D.SHADING_MODE_UNSHADED
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	var color_base = Color(1.0, 0.88, 0.25, 0.95) if es_critico else (Color(1.0, 0.55, 0.15, 0.95) if clase == "Guerrero" else Color(0.35, 0.85, 1.0, 0.95))
 	mat.albedo_color = color_base
-	torus.material = mat
-	mesh_inst.mesh = torus
+	mesh_inst.mesh = _mesh_tajo_torus
+	mesh_inst.material_override = mat
 
 	mesh_inst.scale = Vector3(1.4, 0.05, 0.8)
 	mesh_inst.position = Vector3(0, 0, -0.3)
@@ -880,14 +879,6 @@ func subir_nivel():
 	emit_signal("nivel_subido", nivel)
 	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
 	emit_signal("economia_actualizada", oro, clics_disponibles, clics_totales)
-
-	# Mostrar selector de 3 cartas Roguelike en ClickHUD si no está evolucionando en este preciso frame
-	if is_inside_tree() and get_tree() != null:
-		var hud = get_tree().get_first_node_in_group("click_hud")
-		if hud == null and get_parent() != null:
-			hud = get_parent().get_node_or_null("ClickHUD")
-		if hud != null and hud.has_method("mostrar_selector_bendiciones"):
-			hud.mostrar_selector_bendiciones(nivel)
 
 func aplicar_bendicion_roguelike(id_bendicion: String):
 	if id_bendicion == "":
@@ -1500,14 +1491,7 @@ func registrar_clic_boton(pos_boton: Vector3, dano_onda: float, es_perfecto: boo
 			if spawner != null and spawner.has_method("invocar_heraldo_clic"):
 				spawner.invocar_heraldo_clic()
 
-	# 2. Descargar arco eléctrico a través del Hilo de Resonancia 3D
-	if _hilo_resonancia == null and is_inside_tree() and get_tree() != null:
-		_hilo_resonancia = get_tree().get_first_node_in_group("hilo_resonancia") as Node3D
-	if _hilo_resonancia != null and _hilo_resonancia.has_method("disparar_descarga_clic"):
-		var dano_hilo = int(round(maxf(dano_onda, dano * 1.35) * (1.0 + bonus_dano_clic_pct)))
-		_hilo_resonancia.disparar_descarga_clic(dano_hilo, es_perfecto, nivel_fiebre)
-
-	# 3. Audio Dopamina Pentatónico y Cursor Táctico
+	# 2. Audio Dopamina Pentatónico y Cursor Táctico
 	if is_inside_tree() and get_tree() != null:
 		var dop = get_tree().get_first_node_in_group("audio_dopamina")
 		if dop != null and dop.has_method("reproducir_clic_combo"):
@@ -1760,9 +1744,9 @@ func _aplicar_mejora_interna(tipo_mejora: String, mult_rareza: float) -> void:
 func _spawn_texto_3d(texto: String, color: Color = Color.WHITE):
 	if not is_inside_tree() or get_parent() == null:
 		return
-	var pool = get_tree().get_first_node_in_group("damage_numbers_pool") if get_tree() != null else null
+	var pool = get_tree().get_first_node_in_group("damage_numbers") if get_tree() != null else null
 	if pool != null and pool.has_method("mostrar_texto"):
-		pool.mostrar_texto(global_position + Vector3(0, 2.3, 0), texto, color, false)
+		pool.mostrar_texto(global_position + Vector3(0, 2.3, 0), texto, color, 1.0)
 		return
 	var escena = load("res://damage_number_3d.tscn")
 	if escena != null:

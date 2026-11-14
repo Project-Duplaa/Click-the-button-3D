@@ -24,6 +24,7 @@ var _activos: Array[Label3D] = []
 
 func _ready():
 	add_to_group("damage_numbers")
+	add_to_group("damage_numbers_pool")
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_inicializar_pool()
 
@@ -48,7 +49,14 @@ func _obtener_instancia() -> Label3D:
 		inst = _disponibles.pop_back()
 	else:
 		inst = _activos.pop_front()
-	_activos.append(inst)
+	if is_instance_valid(inst):
+		for meta_key in ["_tw_move", "_tw_fade"]:
+			if inst.has_meta(meta_key):
+				var prev_tw = inst.get_meta(meta_key)
+				if prev_tw is Tween and prev_tw.is_valid():
+					prev_tw.kill()
+				inst.remove_meta(meta_key)
+		_activos.append(inst)
 	return inst
 
 func _liberar_instancia(lbl: Label3D):
@@ -97,12 +105,14 @@ func _ejecutar_animacion_flotante(lbl: Label3D, pos_inicial: Vector3, es_destaca
 	var pos_final = lbl.global_position + Vector3(offset_x, altura_salto, offset_z)
 	
 	var tw = create_tween().set_parallel(true)
+	lbl.set_meta("_tw_move", tw)
 	tw.tween_property(lbl, "global_position:y", pos_final.y, 0.65).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tw.tween_property(lbl, "global_position:x", pos_final.x, 0.65).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.tween_property(lbl, "global_position:z", pos_final.z, 0.65).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.tween_property(lbl, "scale", escala_final, 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	
 	var tw_fade = create_tween()
+	lbl.set_meta("_tw_fade", tw_fade)
 	tw_fade.tween_interval(0.38)
 	tw_fade.tween_property(lbl, "modulate:a", 0.0, 0.27).set_trans(Tween.TRANS_LINEAR)
 	tw_fade.finished.connect(func(): _liberar_instancia(lbl))

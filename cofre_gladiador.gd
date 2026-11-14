@@ -19,6 +19,7 @@ const STATS_COFRE := [
 
 var _tapa: MeshInstance3D = null
 var _emblema: MeshInstance3D = null
+var _leds_cierre: Array[MeshInstance3D] = []
 
 func _configurar_santuario() -> void:
 	nombre_santuario = "Cofre del Gladiador"
@@ -26,52 +27,127 @@ func _configurar_santuario() -> void:
 	radio_interaccion = 5.5
 	un_solo_uso = true
 	activacion_por_clic = true
-	color_luz = Color(1.0, 0.72, 0.18)
+	color_luz = BunkerVisualKit.COL_HAZARD_YELLOW
 	altura_etiqueta = 2.85
 
 func _construir_visual() -> void:
-	var mat_madera := _crear_material(Color(0.45, 0.16, 0.12), Color(0.25, 0.04, 0.02), 0.15, 0.15, 0.6)
-	var mat_oro := _crear_material(Color(0.98, 0.78, 0.22), Color(1.0, 0.75, 0.18), 0.9, 0.85, 0.22)
+	_leds_cierre.clear()
 
-	# Base inferior del cofre
-	var cuerpo := MeshInstance3D.new()
-	var m_cuerpo := BoxMesh.new()
-	m_cuerpo.size = Vector3(1.5, 0.78, 1.05)
-	m_cuerpo.material = mat_madera
-	cuerpo.mesh = m_cuerpo
-	cuerpo.position = Vector3(0.0, 0.42, 0.0)
-	visual_root.add_child(cuerpo)
+	# Anillo de suelo hazard amarillo / dorado
+	var ring := BunkerVisualKit.create_hazard_ground_ring(
+		1.25,
+		BunkerVisualKit.COL_HAZARD_YELLOW,
+		BunkerVisualKit.COL_VAULT_GOLD,
+		0.80,
+		0.95,
+		0.35
+	)
+	var ring_mat := ring.material_override as ShaderMaterial
+	if ring_mat != null:
+		ring_mat.set_shader_parameter("progress", 1.0)
+	visual_root.add_child(ring)
 
-	# Banda dorada de refuerzo
-	var banda := MeshInstance3D.new()
-	var m_banda := BoxMesh.new()
-	m_banda.size = Vector3(1.56, 0.16, 1.11)
-	m_banda.material = mat_oro
-	banda.mesh = m_banda
-	banda.position = Vector3(0.0, 0.78, 0.0)
-	visual_root.add_child(banda)
+	# Patines inferiores de acero carbono
+	for sx in [-0.54, 0.54]:
+		BunkerVisualKit.make_box(
+			visual_root,
+			"PatinAcero_%s" % ("L" if sx < 0.0 else "R"),
+			Vector3(0.24, 0.12, 1.16),
+			BunkerVisualKit.get_chassis_mat(),
+			Vector3(sx, 0.06, 0.0)
+		)
 
-	# Tapa abombada / prismática
-	_tapa = MeshInstance3D.new()
-	var m_tapa := CylinderMesh.new()
-	m_tapa.top_radius = 0.50
-	m_tapa.bottom_radius = 0.52
-	m_tapa.height = 1.48
-	m_tapa.radial_segments = 10
-	m_tapa.material = mat_madera
-	_tapa.mesh = m_tapa
-	_tapa.rotation_degrees = Vector3(0.0, 0.0, 90.0)
-	_tapa.position = Vector3(0.0, 0.86, 0.0)
-	visual_root.add_child(_tapa)
+	# Chasis Pelican militar
+	BunkerVisualKit.make_box(
+		visual_root,
+		"ChasisPelican",
+		Vector3(1.55, 0.68, 1.05),
+		BunkerVisualKit.get_armor_grey_mat(),
+		Vector3(0.0, 0.44, 0.0)
+	)
 
-	# Cerradura / emblema brillante flotante para lectura top-down
-	_emblema = MeshInstance3D.new()
-	var m_emblema := BoxMesh.new()
-	m_emblema.size = Vector3(0.32, 0.42, 0.32)
-	m_emblema.material = _crear_material(Color(1.0, 0.88, 0.28), Color(1.0, 0.82, 0.22), 1.8, 0.9, 0.15)
-	_emblema.mesh = m_emblema
-	_emblema.position = Vector3(0.0, 1.55, 0.0)
-	visual_root.add_child(_emblema)
+	# 4 esquineros verticales reforzados de polímero/caucho
+	for sx in [-0.77, 0.77]:
+		for sz in [-0.52, 0.52]:
+			BunkerVisualKit.make_box(
+				visual_root,
+				"EsquineroReforzado_%s_%s" % [str(sx), str(sz)],
+				Vector3(0.14, 0.72, 0.14),
+				BunkerVisualKit.get_rubber_conduit_mat(),
+				Vector3(sx, 0.45, sz)
+			)
+
+	# Banda central perimetral con franjas hazard amarillo/acero
+	var mat_hazard := BunkerVisualKit.create_hazard_stripes_material(
+		BunkerVisualKit.COL_HAZARD_YELLOW,
+		BunkerVisualKit.COL_CARBON_STEEL,
+		10.0
+	)
+	BunkerVisualKit.make_box(
+		visual_root,
+		"BandaPerimetralHazard",
+		Vector3(1.60, 0.15, 1.10),
+		mat_hazard,
+		Vector3(0.0, 0.72, 0.0)
+	)
+
+	# 2 cierres neumáticos frontales con LEDs de estado en ámbar/dorado brillante
+	var mat_led := BunkerVisualKit.make_emissive_mat(BunkerVisualKit.COL_HAZARD_YELLOW, 2.5)
+	for sx in [-0.42, 0.42]:
+		BunkerVisualKit.make_box(
+			visual_root,
+			"CierreNeumatico_%s" % ("L" if sx < 0.0 else "R"),
+			Vector3(0.16, 0.34, 0.08),
+			BunkerVisualKit.get_titanium_mat(),
+			Vector3(sx, 0.62, 0.56)
+		)
+		var led := BunkerVisualKit.make_box(
+			visual_root,
+			"LedCierre_%s" % ("L" if sx < 0.0 else "R"),
+			Vector3(0.10, 0.08, 0.04),
+			mat_led,
+			Vector3(sx, 0.72, 0.60)
+		)
+		_leds_cierre.append(led)
+
+	# Tapa blindada superior biselada con rieles tácticos
+	_tapa = BunkerVisualKit.make_box(
+		visual_root,
+		"TapaBlindada",
+		Vector3(1.52, 0.22, 1.02),
+		BunkerVisualKit.get_titanium_mat(),
+		Vector3(0.0, 0.88, 0.0)
+	)
+	for sx in [-0.48, 0.48]:
+		BunkerVisualKit.make_box(
+			_tapa,
+			"RielTactico_%s" % ("L" if sx < 0.0 else "R"),
+			Vector3(0.12, 0.07, 0.92),
+			BunkerVisualKit.get_chassis_mat(),
+			Vector3(sx, 0.13, 0.0)
+		)
+
+	# Holoproyector táctico flotante sobre la tapa (Y = 1.48) + anillo toroidal
+	_emblema = BunkerVisualKit.make_box(
+		visual_root,
+		"HoloproyectorTactico",
+		Vector3(0.32, 0.38, 0.32),
+		BunkerVisualKit.create_hologram_material(
+			BunkerVisualKit.COL_HAZARD_YELLOW,
+			Color(1.0, 0.95, 0.65),
+			2.4
+		),
+		Vector3(0.0, 1.48, 0.0),
+		Vector3(35.0, 45.0, 0.0)
+	)
+	BunkerVisualKit.make_torus(
+		_emblema,
+		"AnilloHoloproyector",
+		0.26,
+		0.32,
+		BunkerVisualKit.make_emissive_mat(BunkerVisualKit.COL_VAULT_GOLD, 2.0),
+		Vector3.ZERO
+	)
 
 	_actualizar_etiqueta("1 / 3 / 5 Recompensas")
 
@@ -83,8 +159,8 @@ func _process(delta: float) -> void:
 		costo_denarios = costo_actual
 		_actualizar_etiqueta("1 / 3 / 5 Recompensas")
 	if _emblema != null:
-		_emblema.rotate_y(delta * 1.5)
-		_emblema.position.y = 1.55 + sin(Time.get_ticks_msec() * 0.0045) * 0.08
+		_emblema.rotate_y(delta * 1.6)
+		_emblema.position.y = 1.48 + sin(Time.get_ticks_msec() * 0.0045) * 0.07
 
 func _calcular_costo_actual() -> int:
 	var c: float = 4.0
@@ -104,6 +180,15 @@ func _activar(pj: Node3D) -> bool:
 		return false
 
 	FortunaManager.cofres_gladiador_abiertos += 1
+
+	# Animación de apertura hidráulica instantánea de la tapa y salto del emblema
+	if _tapa != null and is_instance_valid(_tapa):
+		var tw_tapa := create_tween().set_parallel(true)
+		tw_tapa.tween_property(_tapa, "rotation_degrees:x", -70.0, 0.08).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw_tapa.tween_property(_tapa, "position", Vector3(0.0, 1.12, -0.34), 0.08)
+	if _emblema != null and is_instance_valid(_emblema):
+		var tw_emb := create_tween()
+		tw_emb.tween_property(_emblema, "position:y", 2.05, 0.09).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 	var cantidad: int = 1
 	var etiqueta_banner := "🎁 ¡Botín del Gladiador!"

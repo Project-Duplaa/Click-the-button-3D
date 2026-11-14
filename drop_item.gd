@@ -38,27 +38,35 @@ func forzar_atraccion(objetivo: Node3D):
 	radio_atraccion = 9999.0
 	velocidad_iman = maxf(velocidad_iman * 2.2, 22.0)
 
+static var _mats_aspecto: Dictionary = {}
+
+
 func _actualizar_aspecto():
 	var mesh_inst = get_node_or_null("MeshInstance3D") as MeshInstance3D
 	if mesh_inst == null:
 		return
-	var mat = StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	match tipo:
-		TipoDrop.EXP:
-			mat.albedo_color = Color(0.2, 0.85, 1.0, 1.0)
-		TipoDrop.CORAZON:
-			mat.albedo_color = Color(1.0, 0.22, 0.35, 1.0)
-		TipoDrop.TREBOL:
-			mat.albedo_color = Color(0.2, 0.98, 0.38, 1.0)
-		TipoDrop.IMAN:
-			mat.albedo_color = Color(0.15, 0.92, 1.0, 1.0)
-		TipoDrop.BOMBA:
-			mat.albedo_color = Color(1.0, 0.35, 0.08, 1.0)
-		TipoDrop.DENARIO:
-			mat.albedo_color = Color(0.88, 0.95, 1.0, 1.0)
-		_:
-			mat.albedo_color = Color(1.0, 0.86, 0.15, 1.0)
+	mesh_inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var clave := int(tipo)
+	var mat := _mats_aspecto.get(clave, null) as StandardMaterial3D
+	if mat == null:
+		mat = StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		match tipo:
+			TipoDrop.EXP:
+				mat.albedo_color = Color(0.2, 0.85, 1.0, 1.0)
+			TipoDrop.CORAZON:
+				mat.albedo_color = Color(1.0, 0.22, 0.35, 1.0)
+			TipoDrop.TREBOL:
+				mat.albedo_color = Color(0.2, 0.98, 0.38, 1.0)
+			TipoDrop.IMAN:
+				mat.albedo_color = Color(0.15, 0.92, 1.0, 1.0)
+			TipoDrop.BOMBA:
+				mat.albedo_color = Color(1.0, 0.35, 0.08, 1.0)
+			TipoDrop.DENARIO:
+				mat.albedo_color = Color(0.88, 0.95, 1.0, 1.0)
+			_:
+				mat.albedo_color = Color(1.0, 0.86, 0.15, 1.0)
+		_mats_aspecto[clave] = mat
 	mesh_inst.set_surface_override_material(0, mat)
 
 func _process(delta):

@@ -215,7 +215,7 @@ func _iniciar_sentencia_de_muerte():
 	get_tree().create_timer(2.2).timeout.connect(_ejecutar_sentencia_de_muerte)
 
 func _ejecutar_sentencia_de_muerte():
-	if not _canalizando_sentencia:
+	if muerto or not _canalizando_sentencia:
 		return
 
 	_canalizando_sentencia = false
@@ -311,6 +311,9 @@ func _iniciar_ataque_telegrafiado():
 func _ejecutar_golpe_telegrafiado():
 	if telegraph_mesh != null:
 		telegraph_mesh.visible = false
+	if muerto or not _esta_telegrafando:
+		_esta_telegrafando = false
+		return
 	_esta_telegrafando = false
 	_reloj_ataque = 1.3
 	_anim_ctrl.reproducir_accion("attack-melee-right", 2, 0.08, 1.0)
@@ -326,9 +329,14 @@ func _ejecutar_golpe_telegrafiado():
 				jugador.get_node("Salud").recibir_golpe(int(dano_golpe))
 			_sacudir_camara(0.3)
 
-func recibir_dano(cantidad: float, es_critico: bool = false):
+func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 	if muerto:
 		return
+	var fuente_str := "normal"
+	if typeof(fuente) == TYPE_BOOL:
+		es_critico = fuente
+	else:
+		fuente_str = str(fuente)
 	var mult = 2.0 if _aturdido else (0.25 if not _cristales_activos.is_empty() else 1.0)
 	var dano_final = cantidad * mult
 	vida = maxf(vida - dano_final, 0.0)
@@ -340,7 +348,7 @@ func recibir_dano(cantidad: float, es_critico: bool = false):
 	var pool = get_tree().get_first_node_in_group("damage_numbers")
 	var pos_num = global_position + Vector3(randf_range(-0.4, 0.4), 2.8, randf_range(-0.4, 0.4))
 	if pool != null and pool.has_method("mostrar_dano"):
-		pool.mostrar_dano(pos_num, dano_final, es_critico or _aturdido, false)
+		pool.mostrar_dano(pos_num, int(round(dano_final)), es_critico or _aturdido, fuente_str)
 	else:
 		var escena_num = load("res://damage_number_3d.tscn")
 		if escena_num != null and is_inside_tree() and get_parent() != null:

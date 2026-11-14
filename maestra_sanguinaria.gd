@@ -251,7 +251,10 @@ func _iniciar_lluvia_flechas():
 	get_tree().create_timer(1.6).timeout.connect(_ejecutar_lluvia_flechas)
 
 func _ejecutar_lluvia_flechas():
-	if not _esta_canalizando:
+	if _telegraph_lluvia != null:
+		_telegraph_lluvia.visible = false
+	if muerto or not _esta_canalizando:
+		_esta_canalizando = false
 		return
 
 	_esta_canalizando = false
@@ -328,9 +331,14 @@ func _disipar_tormenta():
 			_actualizar_hud()
 	)
 
-func recibir_dano(cantidad: float, es_critico: bool = false):
+func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 	if muerto:
 		return
+	var fuente_str := "normal"
+	if typeof(fuente) == TYPE_BOOL:
+		es_critico = fuente
+	else:
+		fuente_str = str(fuente)
 	var mult = 1.6 if _aturdida else (0.25 if not _cristales_activos.is_empty() else 1.0)
 	var dano_final = cantidad * mult
 	vida = maxf(vida - dano_final, 0.0)
@@ -342,7 +350,7 @@ func recibir_dano(cantidad: float, es_critico: bool = false):
 	var pool = get_tree().get_first_node_in_group("damage_numbers")
 	var pos_num = global_position + Vector3(randf_range(-0.4, 0.4), 2.8, randf_range(-0.4, 0.4))
 	if pool != null and pool.has_method("mostrar_dano"):
-		pool.mostrar_dano(pos_num, dano_final, es_critico or _aturdida, false)
+		pool.mostrar_dano(pos_num, int(round(dano_final)), es_critico or _aturdida, fuente_str)
 	else:
 		var escena_num = load("res://damage_number_3d.tscn")
 		if escena_num != null and is_inside_tree() and get_parent() != null:

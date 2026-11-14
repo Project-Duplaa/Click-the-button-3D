@@ -270,7 +270,7 @@ func pulsar_boton():
 	if total_clicks == 1:
 		indice_ruta = 1
 		rapidez_movimiento = rapidez_base
-		_spawn_floating_text("⚡ ¡NÚCLEO ACTIVADO! Hilo de Resonancia Enlazado...")
+		_spawn_floating_text("⚡ ¡NÚCLEO ACTIVADO!")
 		AudioManager.play("alerta_oleada", 1.25, 2.0)
 	else:
 		rapidez_movimiento = clampf(rapidez_base + (total_clicks * 0.12), rapidez_base, rapidez_maxima)
@@ -422,6 +422,8 @@ func _ejecutar_teletransporte_seguro():
 	var tw = create_tween()
 	tw.tween_property(self, "scale", Vector3(0.08, 0.08, 0.08), 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	await tw.finished
+	if not is_instance_valid(self) or not is_inside_tree():
+		return
 
 	indice_ruta = (indice_ruta + randi_range(2, 4)) % ruta.size()
 	if indice_ruta == 0:
