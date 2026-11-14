@@ -48,6 +48,8 @@ func _generar_biblioteca_sonidos():
 	_sonidos["impacto_flecha"] = _sintetizar_impacto_flecha()
 	_sonidos["disparo_arquero"] = _sintetizar_disparo_arquero()
 	_sonidos["golpe_impacto"] = _sintetizar_golpe_impacto()
+	_sonidos["portal_spawn"] = _sintetizar_portal_spawn()
+	_sonidos["portal_emergencia"] = _sintetizar_portal_emergencia()
 
 func reproducir(nombre_sonido: String, tono: float = 1.0, volumen_db: float = 0.0):
 	if not _sonidos.has(nombre_sonido) or not is_inside_tree():
@@ -298,4 +300,29 @@ func _sintetizar_escudo_bloqueo() -> AudioStreamWAV:
 		var b = sin(TAU * 1875.0 * t) * 0.35
 		var c = sin(TAU * 2500.0 * t) * 0.20
 		return (a + b + c) * env
+	)
+
+func _sintetizar_portal_spawn() -> AudioStreamWAV:
+	var sr = 22050
+	var dur = 0.42
+	var n = int(sr * dur)
+	return _crear_wav_8bit(n, sr, func(t: float, i: int, total: int):
+		var frac = float(i) / total
+		var env = sin(frac * PI)
+		var freq = 120.0 + 360.0 * (frac * frac)
+		var mod = sin(TAU * 22.0 * t) * 0.3
+		return (sin(TAU * (freq + mod * 50.0) * t) * 0.7 + sin(TAU * freq * 1.5 * t) * 0.3) * env
+	)
+
+func _sintetizar_portal_emergencia() -> AudioStreamWAV:
+	var sr = 22050
+	var dur = 0.28
+	var n = int(sr * dur)
+	return _crear_wav_8bit(n, sr, func(t: float, i: int, total: int):
+		var frac = float(i) / total
+		var env = exp(-frac * 7.0)
+		var f = 320.0 - frac * 160.0
+		var sub = sin(TAU * f * t) * 0.65
+		var snap = (randf() * 2.0 - 1.0) * 0.35
+		return (sub + snap) * env
 	)
