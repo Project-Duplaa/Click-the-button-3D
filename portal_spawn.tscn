@@ -1,0 +1,88 @@
+[gd_scene format=3 uid="uid://blynp0750i2kp"]
+
+[ext_resource type="Script" path="res://portal_spawn.gd" id="1_script"]
+
+[sub_resource type="StandardMaterial3D" id="MatVortice"]
+albedo_color = Color(0.04, 0.02, 0.06, 0.95)
+roughness = 0.25
+
+[sub_resource type="TorusMesh" id="Torus_Exterior"]
+inner_radius = 0.95
+outer_radius = 1.15
+rings = 24
+ring_segments = 12
+
+[sub_resource type="TorusMesh" id="Torus_Interior"]
+inner_radius = 0.65
+outer_radius = 0.75
+rings = 18
+ring_segments = 8
+
+[sub_resource type="CylinderMesh" id="Cylinder_Vortice"]
+material = SubResource("MatVortice")
+top_radius = 0.85
+bottom_radius = 0.85
+height = 0.015
+
+[sub_resource type="CylinderMesh" id="Cylinder_Haz"]
+top_radius = 0.65
+bottom_radius = 0.95
+height = 2.0
+
+[sub_resource type="TorusMesh" id="Torus_Onda"]
+inner_radius = 0.85
+outer_radius = 0.95
+rings = 16
+ring_segments = 6
+
+[sub_resource type="BoxMesh" id="Box_Nodo"]
+size = Vector3(0.12, 0.08, 0.12)
+
+[node name="PortalSpawn" type="Node3D"]
+script = ExtResource("1_script")
+
+[node name="AnilloExterior" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, 0)
+mesh = SubResource("Torus_Exterior")
+
+[node name="AnilloInterior" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.035, 0)
+mesh = SubResource("Torus_Interior")
+
+[node name="Vortice" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, 0)
+mesh = SubResource("Cylinder_Vortice")
+
+[node name="HazVertical" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0, 0)
+mesh = SubResource("Cylinder_Haz")
+
+[node name="OndaExpansion" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.025, 0)
+mesh = SubResource("Torus_Onda")
+
+[node name="NodosOrbitales" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+
+[node name="Nodo1" type="MeshInstance3D" parent="NodosOrbitales"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.0, 0, 0)
+mesh = SubResource("Box_Nodo")
+
+[node name="Nodo2" type="MeshInstance3D" parent="NodosOrbitales"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.0, 0, 0)
+mesh = SubResource("Box_Nodo")
+
+[node name="Nodo3" type="MeshInstance3D" parent="NodosOrbitales"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.0)
+mesh = SubResource("Box_Nodo")
+
+[node name="Nodo4" type="MeshInstance3D" parent="NodosOrbitales"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1.0)
+mesh = SubResource("Box_Nodo")
+
+[node name="LuzPortal" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+light_color = Color(1, 0.25, 0.35, 1)
+light_energy = 2.4
+omni_range = 6.5
+shadow_enabled = false

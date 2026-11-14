@@ -1,0 +1,39 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://centurion_corrupto.gd" id="1_centurion"]
+[ext_resource type="PackedScene" path="res://personaje/character-male-a.glb" id="2_modelo"]
+
+[sub_resource type="CapsuleShape3D" id="CapsulaCenturion"]
+radius = 0.65
+height = 3.2
+
+[sub_resource type="StandardMaterial3D" id="MatTelegraph"]
+transparency = 1
+shading_mode = 0
+albedo_color = Color(1, 0.45, 0.1, 0.5)
+
+[sub_resource type="CylinderMesh" id="MeshTelegraph"]
+material = SubResource("MatTelegraph")
+top_radius = 3.0
+bottom_radius = 3.0
+height = 0.05
+
+[node name="CenturionCorrupto" type="CharacterBody3D"]
+script = ExtResource("1_centurion")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 0)
+shape = SubResource("CapsulaCenturion")
+
+[node name="Modelo" parent="." instance=ExtResource("2_modelo")]
+transform = Transform3D(-4.2, 0, 0, 0, 4.2, 0, 0, 0, -4.2, 0, 0, 0)
+
+[node name="TelegraphSuelo" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+mesh = SubResource("MeshTelegraph")
+
+[node name="LuzCenturion" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, 0)
+light_color = Color(1, 0.55, 0.15, 1)
+light_energy = 2.2
+omni_range = 5.5
