@@ -8,7 +8,10 @@ const AudioManager = preload("res://audio_manager.gd")
 @export var berserker_escena: PackedScene = preload("res://berserker.tscn")
 @export var kamikaze_escena: PackedScene = preload("res://kamikaze.tscn")
 @export var bruto_escena: PackedScene = preload("res://bruto.tscn")
+@export var centurion_escena: PackedScene = preload("res://centurion_corrupto.tscn")
 @export var mini_jefe_escena: PackedScene = preload("res://mini_jefe.tscn")
+@export var maestra_escena: PackedScene = preload("res://maestra_sanguinaria.tscn")
+@export var coloso_escena: PackedScene = preload("res://coloso_bronce.tscn")
 @export var parca_roja_escena: PackedScene = preload("res://parca_roja.tscn")
 
 @export var intervalo_oleada: float = 16.0
@@ -20,10 +23,14 @@ var _tiempo_transcurrido: float = 0.0
 var oleada_actual: int = 1
 var hud: Node = null
 
+var _centurion_spawned: bool = false
 var _mini_jefe_spawned: bool = false
+var _maestra_spawned: bool = false
+var _coloso_spawned: bool = false
 var _parca_spawned: bool = false
 
 func _ready():
+	add_to_group("spawner")
 	hud = get_parent().get_node_or_null("ClickHUD")
 	# Generar una primera horda inicial de calentamiento
 	call_deferred("_generar_oleada", 1)
@@ -32,11 +39,15 @@ func _process(delta):
 	_tiempo_transcurrido += delta
 	_reloj_oleada -= delta
 	
-	# Spawn Mini-Jefe al minuto 5 (300 s)
-	if _tiempo_transcurrido >= 300.0 and not _mini_jefe_spawned:
+	# Progresión cronológica de Jefes (Cada 3 minutos / 180s)
+	if _tiempo_transcurrido >= 180.0 and not _centurion_spawned:
+		spawn_centurion()
+	if _tiempo_transcurrido >= 360.0 and not _mini_jefe_spawned:
 		spawn_mini_jefe()
-		
-	# Spawn Parca Roja al minuto 15 (900 s)
+	if _tiempo_transcurrido >= 540.0 and not _maestra_spawned:
+		spawn_maestra_sanguinaria()
+	if _tiempo_transcurrido >= 720.0 and not _coloso_spawned:
+		spawn_coloso_bronce()
 	if _tiempo_transcurrido >= 900.0 and not _parca_spawned:
 		spawn_parca_roja()
 		
@@ -47,18 +58,39 @@ func _process(delta):
 			hud.oleada = oleada_actual
 		_generar_oleada(oleada_actual)
 
+func spawn_centurion():
+	if _centurion_spawned:
+		return
+	_centurion_spawned = true
+	print(">>> [OleadasSpawner] ¡JEFE 1: CENTURIÓN CORRUPTO INVOCADO (W3)! <<<")
+	_spawn_enemigo(centurion_escena, 0.0)
+
 func spawn_mini_jefe():
 	if _mini_jefe_spawned:
 		return
 	_mini_jefe_spawned = true
-	print(">>> [OleadasSpawner] ¡MINI-JEFE GLADIADOR INVOCADO! <<<")
+	print(">>> [OleadasSpawner] ¡JEFE 2: GLADIADOR DE ÉLITE INVOCADO (W6)! <<<")
 	_spawn_enemigo(mini_jefe_escena, 0.0)
+
+func spawn_maestra_sanguinaria():
+	if _maestra_spawned:
+		return
+	_maestra_spawned = true
+	print(">>> [OleadasSpawner] ¡JEFE 3: MAESTRA SANGUINARIA INVOCADA (W9)! <<<")
+	_spawn_enemigo(maestra_escena, 0.0)
+
+func spawn_coloso_bronce():
+	if _coloso_spawned:
+		return
+	_coloso_spawned = true
+	print(">>> [OleadasSpawner] ¡JEFE 4: COLOSO DE BRONCE INVOCADO (W12)! <<<")
+	_spawn_enemigo(coloso_escena, 0.0)
 
 func spawn_parca_roja():
 	if _parca_spawned:
 		return
 	_parca_spawned = true
-	print(">>> [OleadasSpawner] ¡LA PARCA ROJA HA SIDO INVOCADA! <<<")
+	print(">>> [OleadasSpawner] ¡JEFE FINAL: LA PARCA ROJA HA SIDO INVOCADA (W15)! <<<")
 	_spawn_enemigo(parca_roja_escena, 0.0)
 
 func _generar_oleada(num: int):
@@ -71,8 +103,15 @@ func _generar_oleada(num: int):
 		if jugador != null and jugador.has_method("aplicar_interes_oleada"):
 			jugador.aplicar_interes_oleada()
 	
-	if num == 5 and not _mini_jefe_spawned:
+	# Generación de Jefes por número de oleada
+	if num == 3 and not _centurion_spawned:
+		spawn_centurion()
+	elif num == 6 and not _mini_jefe_spawned:
 		spawn_mini_jefe()
+	elif num == 9 and not _maestra_spawned:
+		spawn_maestra_sanguinaria()
+	elif num == 12 and not _coloso_spawned:
+		spawn_coloso_bronce()
 	elif num >= 15 and not _parca_spawned:
 		spawn_parca_roja()
 	

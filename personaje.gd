@@ -591,6 +591,59 @@ func aplicar_mejora(tipo_mejora: String):
 			base_cadencia_ataque = maxf(base_cadencia_ataque * 0.80, 0.18)
 	recalcular_stats_incrementales()
 
+func equipar_build_test_parca():
+	print(">>> [TEST] Equipando build de supervivencia para testear a La Parca Roja <<<")
+	# 1. Si aún es Novato, evolucionar a Guerrero por defecto para equipar espada y escudo
+	if clase == "Novato":
+		aplicar_clase("Guerrero")
+		
+	# 2. Asignar nivel 15 de partida avanzada
+	nivel = 15
+	
+	# 3. Stats base mejoradas para un combate de 15 minutos
+	base_vida_maxima = maxf(base_vida_maxima, 280.0)
+	base_dano = maxf(base_dano, 42.0)
+	base_cadencia_ataque = minf(base_cadencia_ataque, 0.35)
+	base_rango_ataque = maxf(base_rango_ataque, 4.0)
+	base_speed_caminar = maxf(base_speed_caminar, 4.2)
+	base_speed_correr = maxf(base_speed_correr, 6.8)
+	
+	# 4. Asegurar vidas y reapariciones completas
+	reapariciones = 3
+	_muerto_definitivo = false
+	
+	# 5. Cargar mejoras rúnicas avanzadas del árbol de habilidades
+	mejoras_arbol["mon_dano"] = 4
+	mejoras_arbol["mon_vida"] = 3
+	mejoras_arbol["mon_vel"] = 3
+	mejoras_arbol["mon_cadencia"] = 3
+	mejoras_arbol["clk_critico"] = 2
+	mejoras_arbol["hib_ascension"] = 1
+	
+	recalcular_stats_incrementales()
+	vida = vida_maxima
+	
+	# 6. Sincronizar nodo Salud secundario si existe
+	if has_node("Salud"):
+		var s = get_node("Salud")
+		s.vida = int(vida)
+		if "vida_inicial" in s:
+			s.vida_inicial = int(vida)
+		s.reapariciones = reapariciones
+		s.cambio.emit(s.vida)
+		
+	# 7. Sincronizar HUD y Feedback
+	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
+	AudioManager.play("altar_activado", 1.25, 2.0)
+	
+	var escena_txt = load("res://damage_number_3d.tscn")
+	if escena_txt != null and is_inside_tree() and get_parent() != null:
+		var txt = escena_txt.instantiate()
+		get_parent().add_child(txt)
+		txt.global_position = global_position + Vector3(0, 2.5, 0)
+		if txt.has_method("iniciar"):
+			txt.iniciar(0.0, true, false, "⚡ ¡BUILD DE SUPERVIVENCIA EQUIPADA!")
+
 # ==============================================================================
 # SISTEMA INCREMENTAL: CÁLCULOS DEL ÁRBOL DE ASCENSIÓN Y COMERCIO
 # ==============================================================================

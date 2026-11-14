@@ -84,6 +84,7 @@ func _ready():
 		btn_opc3.pressed.connect(func(): _elegir_mejora("vida"))
 	
 	call_deferred("_conectar_boton_movil")
+	_crear_boton_test_parca()
 
 func _calibrar_avatar():
 	if camara_avatar != null:
@@ -197,12 +198,135 @@ func mostrar_barra_jefe(nombre: String, max_hp: float, hp_actual: float):
 		if label_vida_jefe != null:
 			label_vida_jefe.text = "%d / %d HP" % [int(hp_actual), int(max_hp)]
 
-func actualizar_barra_jefe(hp_actual: float):
+func actualizar_barra_jefe(hp_actual: float, texto_nombre: String = ""):
 	if panel_jefe != null and bar_vida_jefe != null:
 		bar_vida_jefe.value = hp_actual
 		if label_vida_jefe != null:
 			label_vida_jefe.text = "%d / %d HP" % [int(hp_actual), int(bar_vida_jefe.max_value)]
+		if texto_nombre != "" and label_nombre_jefe != null:
+			label_nombre_jefe.text = texto_nombre
 
 func ocultar_barra_jefe():
 	if panel_jefe != null:
 		panel_jefe.visible = false
+
+var _panel_test_jefes: VBoxContainer = null
+
+func _crear_boton_test_parca():
+	# Contenedor anclado en la esquina inferior derecha
+	var cont = VBoxContainer.new()
+	cont.name = "ContenedorTestJefes"
+	cont.anchor_left = 1.0
+	cont.anchor_top = 1.0
+	cont.anchor_right = 1.0
+	cont.anchor_bottom = 1.0
+	cont.offset_left = -230.0
+	cont.offset_top = -240.0
+	cont.offset_right = -15.0
+	cont.offset_bottom = -15.0
+	cont.alignment = BoxContainer.ALIGNMENT_END
+	
+	# Sub-panel desplegable con la lista de todos los jefes
+	_panel_test_jefes = VBoxContainer.new()
+	_panel_test_jefes.name = "ListaJefesTest"
+	_panel_test_jefes.visible = false
+	
+	var jefes = [
+		{"id": "centurion", "label": "⚔️ W3: Centurión (420 HP)", "color": Color(0.8, 0.45, 0.15)},
+		{"id": "gladiador", "label": "🛡️ W6: Gladiador (950 HP)", "color": Color(0.9, 0.55, 0.2)},
+		{"id": "maestra", "label": "🏹 W9: Maestra (1800 HP)", "color": Color(0.85, 0.2, 0.6)},
+		{"id": "coloso", "label": "🌋 W12: Coloso (3200 HP)", "color": Color(0.95, 0.35, 0.1)}
+	]
+	
+	for j in jefes:
+		var b_jefe = Button.new()
+		b_jefe.text = j["label"]
+		_aplicar_estilo_boton(b_jefe, j["color"])
+		var j_id = j["id"]
+		b_jefe.pressed.connect(func(): _invocar_jefe_test(j_id))
+		_panel_test_jefes.add_child(b_jefe)
+		
+	cont.add_child(_panel_test_jefes)
+	
+	# Fila de botones principales
+	var hbox_botones = HBoxContainer.new()
+	hbox_botones.alignment = BoxContainer.ALIGNMENT_END
+	
+	var btn_toggle = Button.new()
+	btn_toggle.text = "👑 JEFES (▲)"
+	_aplicar_estilo_boton(btn_toggle, Color(0.7, 0.5, 0.2))
+	btn_toggle.pressed.connect(func():
+		_panel_test_jefes.visible = !_panel_test_jefes.visible
+		btn_toggle.text = "👑 JEFES (▼)" if _panel_test_jefes.visible else "👑 JEFES (▲)"
+	)
+	hbox_botones.add_child(btn_toggle)
+	
+	var btn_parca = Button.new()
+	btn_parca.name = "BtnTestParca"
+	btn_parca.text = "💀 PROBAR PARCA ROJA"
+	btn_parca.tooltip_text = "Invoca al Jefe Final (La Parca Roja) y otorga build de supervivencia"
+	_aplicar_estilo_boton(btn_parca, Color(0.95, 0.2, 0.2))
+	btn_parca.pressed.connect(func(): _invocar_jefe_test("parca"))
+	hbox_botones.add_child(btn_parca)
+	
+	cont.add_child(hbox_botones)
+	$Control.add_child(cont)
+
+func _aplicar_estilo_boton(btn: Button, color_acento: Color):
+	var s_normal = StyleBoxFlat.new()
+	s_normal.bg_color = Color(0.12, 0.05, 0.07, 0.92)
+	s_normal.border_color = color_acento
+	s_normal.border_width_left = 1
+	s_normal.border_width_top = 1
+	s_normal.border_width_right = 1
+	s_normal.border_width_bottom = 1
+	s_normal.corner_radius_top_left = 5
+	s_normal.corner_radius_top_right = 5
+	s_normal.corner_radius_bottom_right = 5
+	s_normal.corner_radius_bottom_left = 5
+	
+	var s_hover = s_normal.duplicate()
+	s_hover.bg_color = Color(0.25, 0.08, 0.12, 0.95)
+	s_hover.border_color = color_acento.lightened(0.25)
+	
+	btn.add_theme_stylebox_override("normal", s_normal)
+	btn.add_theme_stylebox_override("hover", s_hover)
+	btn.add_theme_stylebox_override("pressed", s_hover)
+	btn.add_theme_color_override("font_color", Color(1.0, 0.92, 0.92))
+	btn.add_theme_font_size_override("font_size", 11)
+
+func _invocar_jefe_test(tipo: String):
+	print(">>> [HUD] Invocando Jefe de Prueba: ", tipo, " <<<")
+	
+	if jugador == null or not is_instance_valid(jugador):
+		jugador = get_tree().get_first_node_in_group("jugador")
+		
+	# Equipar build adaptada al test
+	if jugador != null and jugador.has_method("equipar_build_test_parca"):
+		jugador.equipar_build_test_parca()
+		
+	# Despejar enemigos comunes previos
+	var enemigos = get_tree().get_nodes_in_group("enemigos")
+	for e in enemigos:
+		if is_instance_valid(e) and not e.is_in_group("jefes"):
+			e.queue_free()
+			
+	var escena_path = ""
+	match tipo:
+		"centurion":
+			escena_path = "res://centurion_corrupto.tscn"
+		"gladiador":
+			escena_path = "res://mini_jefe.tscn"
+		"maestra":
+			escena_path = "res://maestra_sanguinaria.tscn"
+		"coloso":
+			escena_path = "res://coloso_bronce.tscn"
+		"parca":
+			escena_path = "res://parca_roja.tscn"
+			
+	if escena_path != "":
+		var escena = load(escena_path)
+		if escena != null:
+			var j = escena.instantiate()
+			get_parent().add_child(j)
+			j.global_position = Vector3(0, 0, -14)
