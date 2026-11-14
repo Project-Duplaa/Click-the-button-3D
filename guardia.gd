@@ -25,7 +25,7 @@ var busca = 0.0
 var vida: float = 25.0
 var _reloj_ataque: float = 0.0
 
-@onready var anim = $Modelo/AnimationPlayer
+@onready var anim = $Modelo/AnimationPlayer if has_node("Modelo/AnimationPlayer") else null
 @onready var vision = $Vision
 
 var _escala_base: Vector3 = Vector3(-2.6, 2.6, -2.6)
@@ -74,7 +74,8 @@ func _physics_process(delta):
 			ir_a(jugador.global_position)
 		Estado.ATACAR:
 			frenar()
-			anim.play("attack-melee-right")
+			if anim != null and anim.has_animation("attack-melee-right"):
+				anim.play("attack-melee-right")
 			if _reloj_ataque <= 0.001 and d <= rango_ataque + 0.3:
 				_reloj_ataque = cadencia_ataque
 				if jugador != null:
@@ -134,12 +135,14 @@ func ir_a(destino):
 	velocity.x = dir.x * rapidez
 	velocity.z = dir.z * rapidez
 	basis = Basis.looking_at(dir)
-	anim.play("walk")
+	if anim != null and anim.has_animation("walk"):
+		anim.play("walk")
 
 func frenar():
 	velocity.x = 0.0
 	velocity.z = 0.0
-	anim.play("idle")
+	if anim != null and anim.has_animation("idle"):
+		anim.play("idle")
 
 func distancia_a(p):
 	var o = global_position
