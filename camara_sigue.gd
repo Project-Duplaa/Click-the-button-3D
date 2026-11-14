@@ -3,8 +3,8 @@ extends Camera3D
 @export var objetivo: Node3D
 @export var distancia = Vector3(0, 12.0, 9.5)
 @export var suavizado = 4.0
-@export var limite_min = Vector2(-27, -27)
-@export var limite_max = Vector2(27, 27)
+@export var limite_min = Vector2(-22.5, -22.5)
+@export var limite_max = Vector2(22.5, 22.5)
 
 var _shake_intensidad: float = 0.0
 
