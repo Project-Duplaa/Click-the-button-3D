@@ -1,7 +1,8 @@
 extends Node
 
-# Gestor de Anomalías del Núcleo Móvil - Spawner de Objetivos de Clic
-# Hace aparecer anomalías rúnicas temporales en la arena 60x60 para generar tensión y oportunidad de clics.
+## Gestor de Anomalías del Núcleo Móvil — Spawner de Objetivos de Clic
+## No inicia el conteo del temporizador de spawn hasta que la partida haya comenzado efectivamente.
+## Conecta la XP ganada directamente con pj.ganar_xp() para asegurar la subida de nivel.
 
 const AudioManager = preload("res://audio_manager.gd")
 const AnomaliaEscena = preload("res://anomalia_click.tscn")
@@ -13,9 +14,23 @@ const AnomaliaEscena = preload("res://anomalia_click.tscn")
 var _reloj_spawn: float = 8.0
 
 func _ready():
-	_reloj_spawn = 6.0 # La primera aparece a los 6 segundos de iniciada la partida
+	_reloj_spawn = 6.0
 
-func _process(delta):
+func _process(delta: float):
+	var spawner = get_parent().get_node_or_null("OleadasSpawner")
+	if spawner == null:
+		spawner = get_tree().get_first_node_in_group("spawner")
+		
+	var en_partida = false
+	if spawner != null:
+		if "partida_iniciada" in spawner:
+			en_partida = spawner.partida_iniciada
+		elif "en_partida" in spawner:
+			en_partida = spawner.en_partida
+			
+	if not en_partida:
+		return
+		
 	_reloj_spawn -= delta
 	if _reloj_spawn <= 0.0:
 		_reloj_spawn = randf_range(intervalo_min, intervalo_max)
@@ -34,5 +49,17 @@ func _intentar_spawn_anomalia():
 	get_parent().add_child(anomalia)
 	anomalia.global_position = pos
 	
-	# Audio sutil de aviso de aparición
 	AudioManager.play("altar_activado", 1.5, -4.0)
+
+func _al_completar_anomalia(xp_ganada: int, oro_ganado: int):
+	var pj = get_tree().get_first_node_in_group("player")
+	if pj == null:
+		pj = get_tree().get_first_node_in_group("jugador")
+	if pj != null:
+		if pj.has_method("ganar_xp"):
+			pj.ganar_xp(xp_ganada)
+		elif pj.has_method("recoger_drop"):
+			pj.recoger_drop(1, xp_ganada)
+			
+		if pj.has_method("recoger_drop"):
+			pj.recoger_drop(0, oro_ganado)

@@ -66,6 +66,8 @@ func _vincular_con_personaje():
 		personaje_padre = get_parent() as CharacterBody3D
 	elif get_tree() != null:
 		personaje_padre = get_tree().get_first_node_in_group("jugador") as CharacterBody3D
+		if personaje_padre == null:
+			personaje_padre = get_tree().get_first_node_in_group("player") as CharacterBody3D
 		
 	if get_viewport() != null:
 		camara_3d = get_viewport().get_camera_3d()
@@ -313,15 +315,10 @@ func confirmar_evolucion(nombre_clase: String):
 		var tw_flash = create_tween()
 		tw_flash.tween_property(luz_flash, "light_energy", 0.0, 0.35)
 	
-	# Desvanecer y escalar a 0
+	# Desvanecer y escalar a 0 (La señal evolucion_seleccionada ya notifica a EvolucionManager sin duplicar llamada)
 	var tw = create_tween()
 	tw.tween_property(self, "scale", Vector3.ZERO, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 	tw.tween_callback(func():
 		visible = false
 		scale = Vector3.ZERO
-		# Notificar al FSM de EvolucionManager para completar la metamorfosis
-		if personaje_padre != null and "evolucion_manager" in personaje_padre:
-			var em = personaje_padre.evolucion_manager
-			if em != null and em.has_method("evolucionar_a"):
-				em.evolucionar_a(nombre_clase)
 	)

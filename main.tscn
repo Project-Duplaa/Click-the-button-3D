@@ -21,6 +21,7 @@
 [ext_resource type="PackedScene" uid="uid://ckpo62bchjdj0" path="res://assets/modelos/prop_hazard_barrier.glb" id="19_barrier"]
 [ext_resource type="PackedScene" uid="uid://dnf3w20coytgj" path="res://assets/modelos/prop_pressure_tank.glb" id="20_tank"]
 [ext_resource type="PackedScene" uid="uid://bvv2jc1xnuif8" path="res://assets/modelos/prop_medical_stretcher.glb" id="21_stretcher"]
+[ext_resource type="Script" path="res://gestor_santuarios.gd" id="22_gestor_santuarios"]
 
 [sub_resource type="Environment" id="EntornoColiseo"]
 background_mode = 1
@@ -197,7 +198,7 @@ script = ExtResource("8_salud")
 [node name="Partida" type="Node" parent="." unique_id=122288285]
 script = ExtResource("7_partida")
 tiempo_limite = 900.0
-gana_con_tiempo = true
+gana_con_tiempo = false
 
 [node name="Cofre1" parent="." unique_id=71478391 instance=ExtResource("9_cofre")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0, 8)
@@ -239,3 +240,6 @@ nombre_altar = "Altar Rúnico del Suroeste"
 
 [node name="GestorAnomalias" type="Node" parent="." unique_id=543808239]
 script = ExtResource("17_gestor_anomalias")
+
+[node name="GestorSantuarios" type="Node" parent="." unique_id=762481931]
+script = ExtResource("22_gestor_santuarios")

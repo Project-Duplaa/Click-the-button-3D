@@ -263,6 +263,13 @@ static func generar_arbol() -> Dictionary:
 	)
 
 	registrar.call(
+		"trebol_coliseo", "Trébol del Coliseo",
+		"+0.05 de suerte por nivel (más rarezas altas y mejores drops)",
+		"dorada", Vector2(90, -300), 5, "ambas", 80, 50, 1.45, "suerte", 0.05,
+		["eco_xp_1"], false, "🍀"
+	)
+
+	registrar.call(
 		"eco_cadencia_1", "Cadencia Bélica",
 		"+10% cadencia de armas automáticas",
 		"dorada", Vector2(310, -80), 5, "oro", 55, 0, 1.46, "cadencia_armas_pct", 10.0,

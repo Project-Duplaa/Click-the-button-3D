@@ -54,6 +54,8 @@ func _ready():
 func _vincular_jugador():
 	if jugador == null:
 		jugador = get_tree().get_first_node_in_group("jugador") as CharacterBody3D
+		if jugador == null:
+			jugador = get_tree().get_first_node_in_group("player") as CharacterBody3D
 	if jugador != null:
 		if jugador.has_signal("economia_actualizada"):
 			if not jugador.economia_actualizada.is_connected(_on_economia_actualizada):

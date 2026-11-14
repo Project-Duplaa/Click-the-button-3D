@@ -1,10 +1,8 @@
 extends CanvasLayer
 
 # Pantalla de Fin de Partida y Metaprogresión Roguelike (Estilo Hades / Roguelite Neón)
-# Desarrollado por: Juan Camilo Angulo Camelo
-# Despliega el resumen analítico detallado de la run (Victoria o Derrota),
-# deposita las ganancias en el Banco Permanente y permite abrir el Árbol de Habilidades estilo PoE
-# para comprar mejoras permanentes que persisten en todas las futuras partidas.
+# Corrige el bug de duplicación de divisas al transferir recursos al Banco Permanente
+# y registra estadísticas en LogrosManager.
 
 class_name PantallaFinPartida
 
@@ -49,8 +47,7 @@ func mostrar(es_victoria: bool, motivo: String = ""):
 	visible = true
 	if is_inside_tree() and get_tree() != null:
 		get_tree().paused = true
-	
-	# Audio y Estilo Temático Hades (Victoria Oro vs Derrota Carmesí)
+
 	if es_victoria:
 		AudioManager.play("victoria", 1.0, 2.0)
 		if texture_crest != null:
@@ -77,8 +74,7 @@ func mostrar(es_victoria: bool, motivo: String = ""):
 			label_motivo.add_theme_color_override("font_color", Color(0.99, 0.64, 0.68, 1.0))
 		if btn_reintentar != null:
 			btn_reintentar.text = "⚔️ Comenzar Siguiente Run"
-		
-	# Recopilar métricas analíticas de la partida
+
 	var pj = get_tree().get_first_node_in_group("jugador")
 	if pj == null:
 		var root_nodo = get_tree().root if get_tree() != null else get_parent()
@@ -88,15 +84,15 @@ func mostrar(es_victoria: bool, motivo: String = ""):
 	if hud == null:
 		hud = get_parent().get_node_or_null("ClickHUD")
 	var partida = get_tree().get_first_node_in_group("partida")
-	
+
 	var tiempo_s: float = 0.0
 	var clicks_cnt: int = 0
 	var bajas_cnt: int = 0
 	var nivel_num: int = 1
-	var clase_str: String = "Guerrero"
+	var clase_str: String = "Novato"
 	var oro_cnt: int = 0
 	var num_intento: int = 1
-	
+
 	if hud != null:
 		tiempo_s = hud.tiempo_total
 		clicks_cnt = hud.clicks_boton
@@ -105,16 +101,16 @@ func mostrar(es_victoria: bool, motivo: String = ""):
 		nivel_num = pj.nivel
 		clase_str = pj.clase
 		oro_cnt = pj.oro
-		if "clics_disponibles" in pj and pj.clics_disponibles > clicks_cnt:
+		if "clics_disponibles" in pj:
 			clicks_cnt = pj.clics_disponibles
 	if partida != null and "intentos" in partida:
 		num_intento = partida.intentos
-		
-	var min = int(tiempo_s) / 60
-	var seg = int(tiempo_s) % 60
-	
+
+	var min_val = int(tiempo_s) / 60
+	var seg_val = int(tiempo_s) % 60
+
 	if label_tiempo != null:
-		label_tiempo.text = "%02d:%02d min" % [min, seg]
+		label_tiempo.text = "%02d:%02d min" % [min_val, seg_val]
 	if label_clicks != null:
 		label_clicks.text = "+%d clics" % clicks_cnt
 	if label_bajas != null:
@@ -125,15 +121,24 @@ func mostrar(es_victoria: bool, motivo: String = ""):
 		label_oro.text = "+%d monedas" % oro_cnt
 	if label_intento != null:
 		label_intento.text = "#%d" % num_intento
-	
-	# Metaprogresión Roguelike: depositar ganancias de la run en la cuenta permanente
+
+	# Metaprogresión Roguelike: depositar ganancias de la run en la cuenta permanente UNA sola vez
+	# y vaciar la cartera activa del jugador para impedir doble gasto en el árbol de habilidades.
 	if not _recursos_transferidos:
 		_recursos_transferidos = true
 		MetaprogresoManager.transferir_recursos_run(oro_cnt, clicks_cnt, bajas_cnt, es_victoria)
-		
+		if pj != null:
+			pj.oro = 0
+			pj.clics_disponibles = 0
+			if pj.has_signal("economia_actualizada"):
+				pj.emit_signal("economia_actualizada", 0, 0, pj.clics_totales)
+
+		var logros = get_tree().get_first_node_in_group("logros_manager")
+		if logros != null and logros.has_method("registrar_fin_partida"):
+			logros.registrar_fin_partida(es_victoria, bajas_cnt, clicks_cnt, nivel_num)
+
 	_actualizar_labels_banco()
-	
-	# Efecto de entrada con Tween fluido y pulso
+
 	if panel_fondo != null:
 		panel_fondo.scale = Vector2(0.85, 0.85)
 		panel_fondo.modulate = Color(1, 1, 1, 0)
@@ -152,7 +157,7 @@ func _on_btn_arbol_meta_pressed():
 	AudioManager.play("click", 1.2)
 	if arbol_instancia == null:
 		arbol_instancia = ArbolMejorasPoEEscena.instantiate()
-		arbol_instancia.layer = 25 # Capa superior para quedar visible sobre la pantalla de fin de partida
+		arbol_instancia.layer = 25
 		var root = get_tree().root if get_tree() != null else get_parent()
 		if root != null:
 			root.add_child(arbol_instancia)

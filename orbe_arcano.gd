@@ -69,7 +69,7 @@ func _on_body_entered(body):
 func _on_area_entered(area):
 	if _ha_detonado:
 		return
-	if area.is_in_group("enemigos"):
+	if area.is_in_group("enemigos") or area.is_in_group("rompibles"):
 		detonar_aoe()
 
 func detonar_aoe():
@@ -82,8 +82,10 @@ func detonar_aoe():
 	
 	# 2. Daño en área (AOE) a todos los enemigos en el radio
 	if is_inside_tree() and get_tree() != null:
-		var enemigos = get_tree().get_nodes_in_group("enemigos")
-		for e in enemigos:
+		var objetivos: Array = []
+		objetivos.append_array(get_tree().get_nodes_in_group("enemigos"))
+		objetivos.append_array(get_tree().get_nodes_in_group("rompibles"))
+		for e in objetivos:
 			if is_instance_valid(e) and e is Node3D:
 				var dist = global_position.distance_to(e.global_position)
 				if dist <= radio_aoe:
