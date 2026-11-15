@@ -22,15 +22,29 @@ signal denarios_actualizados(denarios_actuales)
 signal suerte_cambiada(nueva_suerte)
 signal fiebre_actualizada(valor_actual: float, multiplicador: int, en_overdrive: bool)
 signal bendicion_adquirida(id_bendicion: String, nivel_actual: int)
+signal corrupta_aplicada(id_corrupta: String)
 
 @export var camara: Camera3D
 @export var speed_caminar = 3.2
 @export var speed_correr = 5.8
 @export var tiempo_arranque = 0.20
-@onready var anim = $Modelo/AnimationPlayer
+@onready var anim = $Modelo/AnimationPlayer if has_node("Modelo/AnimationPlayer") else null
 
 # Estadísticas RPG / Autobattler (Balanceado estilo Vampire Survivors: ágil y escalable)
 var clase: String = "Novato"
+var clase_base: String = "Novato"
+var subclase_tier2: String = ""
+var bono_subclase_onda_radio_mult: float = 1.0
+var bendiciones_corruptas: Array = []
+var _cooldown_rotacion_caotica: float = 20.0
+var _bonus_caotico_actual: String = "ninguno"
+var _bonus_caotico_mult: float = 1.0
+var _temporizador_paso_coloso: float = 0.0
+var _telemetria_registros: Array = []
+var _dano_total_acumulado: float = 0.0
+var ultimo_atacante_tipo: String = "enemigo"
+var ultimo_atacante_nombre: String = "Gladiador Rival"
+var _estado_juicio_emperador: bool = false
 var vida_maxima: float = 100.0
 var vida: float = 100.0
 var dano: float = 12.0
@@ -50,6 +64,8 @@ var mejoras_arbol: Dictionary = {}
 # Sistema de Fortuna (suerte, moneda de run y reliquias). Se reinician con cada run (escena nueva).
 var suerte: float = 0.0 # Suerte de la run: cartas de nivel, tréboles, santuarios
 var suerte_arbol: float = 0.0 # Suerte permanente del nodo Trébol del Coliseo (se recalcula)
+var suerte_corrupta: float = 0.0
+var multiplicador_abismo_recompensas: float = 1.0
 var denarios: int = 0 # Moneda exclusiva de la run para santuarios. NO pasa al metaprogreso
 var reliquias: Dictionary = {} # id_reliquia -> stacks
 var duplicar_proxima_carta: bool = false # La próxima carta de nivel se aplica dos veces
@@ -77,6 +93,7 @@ var bono_run_perforacion_extra: int = 0
 var bono_run_rebotes_extra: int = 0
 var bono_run_onda_radio_mult: float = 1.0
 var bono_run_onda_dano_mult: float = 1.0
+var bono_clics_tormento_mult: float = 1.0
 
 # CAPA 4: Bendiciones Roguelike In-Run (24 Bendiciones + 6 Sinergias Duales)
 var bendiciones_run: Dictionary = {} # id_bendicion -> stacks
@@ -212,6 +229,7 @@ var _turno_ataque_novato: bool = false
 var _arma_der_ref: Node3D = null
 var _arma_izq_ref: Node3D = null
 var _luz_orbe_ref: OmniLight3D = null
+var _procesando_recibir_dano: bool = false
 
 func obtener_vidas_maximas() -> int:
 	return vidas_base + bonus_vidas_arbol
@@ -262,16 +280,16 @@ func _on_malla_cambiada(nuevo_modelo: Node3D) -> void:
 	equipar_armas_clase(clase)
 
 func equipar_armas_clase(nombre_clase: String) -> void:
-	var mod = get_node_or_null("Modelo") as Node3D
+	var mod: Node3D = get_node_or_null("Modelo") as Node3D
 	if mod == null:
 		return
-	var armas := AnimadorEntidad.equipar_armas_en_esqueleto(mod, nombre_clase, true)
+	var armas: Dictionary = AnimadorEntidad.equipar_armas_en_esqueleto(mod, nombre_clase, true)
 	_arma_der_ref = armas.get("derecha", null)
 	_arma_izq_ref = armas.get("izquierda", null)
 	_luz_orbe_ref = armas.get("luz_orbe", null)
-	_preview_baston = _arma_der_ref if nombre_clase == "Mago" else null
-	_preview_espada = _arma_der_ref if nombre_clase == "Guerrero" else null
-	_preview_arco = _arma_izq_ref if nombre_clase == "Cazador" else null
+	_preview_baston = _arma_der_ref if nombre_clase in ["Mago", "Archimago del Vacío", "Piromante Cataclísmico"] else null
+	_preview_espada = _arma_der_ref if nombre_clase in ["Guerrero", "Paladín Solar", "Berserker Sangriento"] else null
+	_preview_arco = _arma_izq_ref if nombre_clase in ["Cazador", "Francotirador Astral", "Maestro de Sombras"] else null
 
 func _bootstrap_core_systems():
 	var tree = _obtener_tree()
@@ -301,10 +319,10 @@ func _bootstrap_core_systems():
 
 func _unhandled_input(event):
 	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_RIGHT and clase == "Guerrero":
+		if event.button_index == MOUSE_BUTTON_RIGHT and es_arquetipo("Guerrero"):
 			_actualizar_estado_bloqueo(event.pressed)
 	elif event is InputEventKey:
-		if (event.keycode == KEY_F or event.keycode == KEY_Q) and clase == "Guerrero":
+		if (event.keycode == KEY_F or event.keycode == KEY_Q) and es_arquetipo("Guerrero"):
 			_actualizar_estado_bloqueo(event.pressed)
 		elif event.pressed and not event.echo and event.keycode == KEY_SPACE:
 			_intentar_dash_tactico()
@@ -312,11 +330,19 @@ func _unhandled_input(event):
 func _intentar_dash_tactico():
 	if _muerto_definitivo or _dash_cooldown > 0.0:
 		return
+	if bendiciones_corruptas.has("corrupta_coloso_inamovible"):
+		_spawn_texto_3d("🗿 ¡COLOSO INAMOVIBLE (SIN DASH)!", Color(0.85, 0.72, 0.45))
+		return
+	if subclase_tier2 == "Maestro de Sombras":
+		_crear_senuelo_sombra(global_position)
 	var cd_base = 2.0
 	if bendiciones_run.has("global_dash_frenetico"):
 		cd_base *= pow(0.75, float(bendiciones_run["global_dash_frenetico"]))
 	if mejoras_arbol.has("mov_dash"):
 		cd_base *= maxf(0.45, 1.0 - float(mejoras_arbol["mov_dash"]) * 0.12)
+	var lvl_vortice = int(mejoras_arbol.get("cosm_vortice_tiempo", 0))
+	if lvl_vortice > 0:
+		cd_base *= maxf(0.30, pow(0.70, float(lvl_vortice)))
 	_dash_cooldown = maxf(0.45, cd_base)
 	_dash_tiempo_activo = 0.22
 	_reloj_invulnerable = maxf(_reloj_invulnerable, 0.32)
@@ -336,7 +362,7 @@ func _intentar_dash_tactico():
 	if sinergias_activas.has("sinergia_juggernaut"):
 		_repeler_enemigos_alrededor(4.8, 14.0, (dano + armadura_plana * 1.5))
 
-func aplicar_knockback(impulso: Vector3):
+func aplicar_knockback(impulso: Vector3, _duracion_stun: float = 0.08):
 	if resistencia_estados_pct >= 0.95:
 		return
 	var factor = clampf(1.0 - resistencia_estados_pct, 0.0, 1.0)
@@ -376,8 +402,8 @@ func _physics_process(delta):
 	var giro_cam = camara.global_rotation.y if camara != null else 0.0
 	var direction = entrada.rotated(Vector3.UP, giro_cam).normalized()
 
-	# Actualizar estado de bloqueo continuo (solo disponible para Guerrero)
-	if clase == "Guerrero":
+	# Actualizar estado de bloqueo continuo (arquetipo Guerrero y subclases)
+	if es_arquetipo("Guerrero"):
 		var presiona_bloqueo = Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) \
 			or (InputMap.has_action("bloquear") and Input.is_action_pressed("bloquear")) \
 			or Input.is_key_pressed(KEY_F) or Input.is_key_pressed(KEY_Q)
@@ -451,6 +477,26 @@ func _procesar_fiebre_y_bendiciones(delta: float):
 			var stacks_estela = int(bendiciones_run["global_estela_fuego"])
 			_repeler_enemigos_alrededor(2.6, 2.0, dano * 0.45 * float(stacks_estela))
 
+	# Efectos continuos de Bendiciones Corruptas
+	if bendiciones_corruptas.has("corrupta_coloso_inamovible") and Vector2(velocity.x, velocity.z).length() > 0.8:
+		_temporizador_paso_coloso += delta
+		if _temporizador_paso_coloso >= 0.45:
+			_temporizador_paso_coloso = 0.0
+			_repeler_enemigos_alrededor(2.8, 5.5, dano * 0.55)
+
+	if bendiciones_corruptas.has("corrupta_avaricia_sangrienta") and vida > 1.0 and not _muerto_definitivo:
+		vida = maxf(1.0, vida - 1.0 * delta)
+
+	if bendiciones_corruptas.has("corrupta_destino_caotico"):
+		_cooldown_rotacion_caotica -= delta
+		if _cooldown_rotacion_caotica <= 0.0:
+			_cooldown_rotacion_caotica = 20.0
+			var stats_rot = ["dano", "cadencia", "critico"]
+			_bonus_caotico_actual = stats_rot[randi() % stats_rot.size()]
+			_bonus_caotico_mult = randf_range(0.50, 1.80)
+			recalcular_stats_incrementales()
+			_spawn_texto_3d("🎲 CAOS: +%d%% %s (20s)" % [int(round(_bonus_caotico_mult * 100.0)), _bonus_caotico_actual.to_upper()], Color(0.95, 0.35, 1.0))
+
 func _actualizar_escalon_fiebre():
 	var ant_mult = multiplicador_fiebre_actual
 	var ant_over = en_overdrive
@@ -512,6 +558,8 @@ func _obtener_enemigo_cercano() -> Node3D:
 	var menor_dist = 9999.0
 	for e in enemigos:
 		if is_instance_valid(e) and e is Node3D:
+			if "muerto" in e and e.muerto:
+				continue
 			var dist = global_position.distance_to(e.global_position)
 			if dist < menor_dist:
 				menor_dist = dist
@@ -530,6 +578,70 @@ func _ejecutar_ataque(enemigo: Node3D):
 	var mult_usura_oro = (1.0 + floor(float(oro) / 100.0) * 0.025) if keystone_usura else 1.0
 	var dano_ataque_actual = dano * (mult_critico if es_crit else 1.0) * mult_frenesi * mult_coloso_bajo * mult_usura_oro
 	var bonus_asc = mejoras_arbol.get("hib_ascension", 0) >= 1 or ascension_suprema
+
+	# Mecánicas exclusivas de las 7 Subclases Tier 2
+	match subclase_tier2:
+		"Paladín Solar":
+			accion = "attack-melee-right"
+			_reloj_anim_accion = 0.28
+			if _anim_ctrl != null:
+				_anim_ctrl.reproducir_accion("attack-melee-right", 2, 0.05, 1.2)
+			_ejecutar_animacion_procedural_ataque("melee")
+			_crear_onda_solar(dir, es_crit, dano_ataque_actual)
+			registrar_dano_telemetria("armas", dano_ataque_actual)
+			return
+		"Berserker Sangriento":
+			var pct_vida_perdida = clampf(1.0 - (vida / maxf(1.0, vida_maxima)), 0.0, 0.95)
+			var mult_berserk = 1.0 + (pct_vida_perdida * 1.5)
+			var dano_berserk = dano_ataque_actual * mult_berserk
+			_ejecutar_corte_giratorio_berserker(es_crit, dano_berserk)
+			var curacion_vamp = maxf(2.0, vida_maxima * 0.03)
+			vida = minf(vida + curacion_vamp, vida_maxima)
+			registrar_dano_telemetria("armas", dano_berserk)
+			return
+		"Francotirador Astral":
+			accion = "shoot-bow"
+			_reloj_anim_accion = 0.20
+			if _anim_ctrl != null:
+				_anim_ctrl.reproducir_accion("shoot-bow", 2, 0.05, 1.25)
+			_ejecutar_animacion_procedural_ataque("arco")
+			_disparar_riel_astral(dir, dano_ataque_actual * 1.45, es_crit)
+			registrar_dano_telemetria("armas", dano_ataque_actual * 1.45)
+			return
+		"Maestro de Sombras":
+			accion = "attack-melee-left"
+			_reloj_anim_accion = 0.18
+			if _anim_ctrl != null:
+				_anim_ctrl.reproducir_accion("attack-melee-left", 2, 0.04, 1.4)
+			_disparar_espiral_dagas_sombras(dano_ataque_actual * 0.75, es_crit)
+			registrar_dano_telemetria("armas", dano_ataque_actual * 2.5)
+			return
+		"Archimago del Vacío":
+			accion = "cast-magic"
+			_reloj_anim_accion = 0.25
+			if _anim_ctrl != null:
+				_anim_ctrl.reproducir_accion("cast-magic", 2, 0.05, 1.1)
+			_ejecutar_animacion_procedural_ataque("mago")
+			_lanzar_orbe_vacio(dir, enemigo, dano_ataque_actual, es_crit)
+			registrar_dano_telemetria("armas", dano_ataque_actual)
+			return
+		"Piromante Cataclísmico":
+			accion = "cast-magic"
+			_reloj_anim_accion = 0.25
+			if _anim_ctrl != null:
+				_anim_ctrl.reproducir_accion("cast-magic", 2, 0.05, 1.1)
+			_ejecutar_animacion_procedural_ataque("mago")
+			_lanzar_meteoro_magma(dir, enemigo, dano_ataque_actual, es_crit)
+			registrar_dano_telemetria("armas", dano_ataque_actual)
+			return
+		"Avatar del Núcleo":
+			accion = "cast-magic"
+			_reloj_anim_accion = 0.22
+			if _anim_ctrl != null:
+				_anim_ctrl.reproducir_accion("cast-magic", 2, 0.05, 1.2)
+			_ejecutar_golpe_avatar_resonancia(dir, dano_ataque_actual, es_crit)
+			registrar_dano_telemetria("armas", dano_ataque_actual * 1.25)
+			return
 
 	if clase == "Novato":
 		# Corte melee alternado con barrido en arco frontal (Cleave) y tajo luminoso visible
@@ -556,6 +668,7 @@ func _ejecutar_ataque(enemigo: Node3D):
 					if dir.dot(hacia_e) > (0.20 if bonus_asc else 0.35):
 						if e.has_method("recibir_dano"):
 							e.recibir_dano(dano_melee, es_crit)
+							registrar_dano_telemetria("armas", dano_melee)
 						AudioManager.play("golpe_impacto", randf_range(0.95, 1.15))
 	elif clase == "Guerrero":
 		# CORTE GIRATORIO MELEE EN ÁREA 360° (Whirlwind)
@@ -579,6 +692,7 @@ func _ejecutar_ataque(enemigo: Node3D):
 				var dir_o = dir.rotated(Vector3.UP, deg_to_rad(inicio_orbe + i * paso_orbe)).normalized()
 				get_parent().add_child(orbe)
 				orbe.iniciar(origen, dir_o, dano_ataque_actual, enemigo)
+			registrar_dano_telemetria("armas", dano_ataque_actual * float(cant_orbes))
 	else:
 		# Especialidad Cazador: Disparo múltiple de flechas (Multishot) en abanico
 		accion = "shoot-bow"
@@ -615,7 +729,192 @@ func _ejecutar_ataque(enemigo: Node3D):
 				get_parent().add_child(p)
 				if "rebotes_restantes" in p:
 					p.rebotes_restantes = rebotes_armas
-				p.iniciar(origen, dir_flecha, dano_flecha, vel_flecha, perforaciones)
+				p.iniciar(origen, dir_flecha, dano_flecha, vel_flecha, perforaciones, es_crit)
+			registrar_dano_telemetria("armas", dano_flecha * float(cant_flechas))
+
+func _crear_onda_solar(dir: Vector3, es_crit: bool, dano_onda: float) -> void:
+	AudioManager.play("corte_espada", 1.25)
+	_repeler_enemigos_alrededor(rango_ataque + 1.2, 8.0, dano_onda)
+	_crear_tajo_espada(dir, es_crit or true)
+
+func _ejecutar_corte_giratorio_berserker(es_crit: bool, dano_corte: float) -> void:
+	accion = "whirlwind"
+	_reloj_anim_accion = 0.25
+	if _anim_ctrl != null:
+		_anim_ctrl.reproducir_accion("whirlwind", 3, 0.04, 1.4)
+	AudioManager.play("corte_giratorio", 1.3)
+	_crear_efecto_disco_cortante(rango_ataque + 0.4)
+	_repeler_enemigos_alrededor(rango_ataque + 0.8, 9.5, dano_corte)
+	var _c := es_crit
+
+func _disparar_riel_astral(dir: Vector3, dano_riel: float, es_crit: bool) -> void:
+	AudioManager.play("disparo_arco", 1.45)
+	var objetivos = _obtener_todos_los_enemigos()
+	var origen = global_position + Vector3(0, 0.9, 0)
+	var impacto_alguno := false
+	for e in objetivos:
+		if is_instance_valid(e) and e is Node3D:
+			var hacia_e = (e.global_position - origen)
+			hacia_e.y = 0.0
+			var dist = hacia_e.length()
+			if dist <= 13.0 and hacia_e.normalized().dot(dir) > 0.82:
+				if e.has_method("recibir_dano"):
+					e.recibir_dano(dano_riel, es_crit)
+					impacto_alguno = true
+	if impacto_alguno:
+		AudioManager.play("golpe_impacto", 1.3)
+
+func _disparar_espiral_dagas_sombras(dano_daga: float, es_crit: bool) -> void:
+	AudioManager.play("corte_espada", 1.4)
+	var proyectil_escena = load("res://proyectil.tscn")
+	if proyectil_escena != null and get_parent() != null:
+		var num_dagas = 10 + proyectiles_extra
+		var origen = global_position + Vector3(0, 0.8, 0)
+		for i in range(num_dagas):
+			var ang = (TAU / float(num_dagas)) * float(i)
+			var dir_d = Vector3(cos(ang), 0.0, sin(ang)).normalized()
+			var p = proyectil_escena.instantiate()
+			get_parent().add_child(p)
+			p.iniciar(origen, dir_d, dano_daga, 20.0, 1 + perforacion_armas, es_crit)
+
+func _crear_senuelo_sombra(pos: Vector3) -> void:
+	if get_parent() == null:
+		return
+	var deco = MeshInstance3D.new()
+	var box = BoxMesh.new()
+	box.size = Vector3(0.5, 1.2, 0.5)
+	deco.mesh = box
+	var mat = StandardMaterial3D.new()
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.albedo_color = Color(0.65, 0.15, 1.0, 0.75)
+	mat.emission_enabled = true
+	mat.emission = Color(0.6, 0.1, 1.0)
+	mat.emission_energy_multiplier = 3.0
+	deco.material_override = mat
+	get_parent().add_child(deco)
+	deco.global_position = pos + Vector3(0, 0.6, 0)
+	var tw = deco.create_tween()
+	tw.tween_interval(0.22)
+	tw.tween_callback(func():
+		if is_instance_valid(self):
+			_repeler_enemigos_alrededor(4.5, 10.0, dano * 1.25)
+			registrar_dano_telemetria("armas", dano * 1.25)
+			AudioManager.play("orbe_explosion", 1.4)
+		if is_instance_valid(deco):
+			deco.queue_free()
+	)
+
+func _lanzar_orbe_vacio(dir: Vector3, enemigo: Node3D, dano_v: float, _es_crit: bool) -> void:
+	var orbe_escena = load("res://orbe_arcano.tscn")
+	if orbe_escena != null and get_parent() != null:
+		var orbe = orbe_escena.instantiate()
+		var origen = global_position + Vector3(0, 0.9, 0)
+		get_parent().add_child(orbe)
+		orbe.iniciar(origen, dir, dano_v, enemigo)
+		var pos_ref = enemigo.global_position if is_instance_valid(enemigo) else global_position + dir * 4.5
+		var tw_sing = create_tween()
+		tw_sing.tween_interval(0.32)
+		tw_sing.tween_callback(func():
+			if is_instance_valid(self):
+				var p_dest = enemigo.global_position if is_instance_valid(enemigo) else pos_ref
+				_crear_vortice_vacio(p_dest)
+		)
+
+func _crear_vortice_vacio(pos: Vector3) -> void:
+	if get_parent() == null:
+		return
+	var vortice = MeshInstance3D.new()
+	var torus = TorusMesh.new()
+	torus.inner_radius = 1.1
+	torus.outer_radius = 2.6
+	vortice.mesh = torus
+	var mat = StandardMaterial3D.new()
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.albedo_color = Color(0.55, 0.10, 0.95, 0.72)
+	mat.emission_enabled = true
+	mat.emission = Color(0.65, 0.15, 1.0)
+	mat.emission_energy_multiplier = 3.2
+	vortice.material_override = mat
+	get_parent().add_child(vortice)
+	vortice.global_position = Vector3(pos.x, 0.15, pos.z)
+	var tick_state := [0.0]
+	var tw = vortice.create_tween()
+	tw.tween_method(func(_v):
+		vortice.rotation.y += 0.18
+		var now = Time.get_ticks_msec() / 1000.0
+		if now - tick_state[0] < 0.35:
+			return
+		tick_state[0] = now
+		if not is_instance_valid(self):
+			return
+		for e in _obtener_todos_los_enemigos():
+			if is_instance_valid(e) and e is Node3D:
+				var dist = pos.distance_to(e.global_position)
+				if dist <= 5.5 and dist > 0.4:
+					var hacia = (pos - e.global_position).normalized()
+					if e.has_method("aplicar_knockback"):
+						e.aplicar_knockback(hacia * 4.5)
+					if e.has_method("recibir_dano"):
+						e.recibir_dano(dano * 0.25, false)
+						registrar_dano_telemetria("armas", dano * 0.25)
+	, 0.0, 1.0, 2.5)
+	tw.chain().tween_callback(vortice.queue_free)
+
+func _lanzar_meteoro_magma(dir: Vector3, enemigo: Node3D, dano_m: float, _es_crit: bool) -> void:
+	var orbe_escena = load("res://orbe_arcano.tscn")
+	if orbe_escena != null and get_parent() != null:
+		var orbe = orbe_escena.instantiate()
+		var origen = global_position + Vector3(0, 0.9, 0)
+		get_parent().add_child(orbe)
+		orbe.iniciar(origen, dir, dano_m, enemigo)
+		var pos_ref = enemigo.global_position if is_instance_valid(enemigo) else global_position + dir * 4.5
+		var tw_m = create_tween()
+		tw_m.tween_interval(0.32)
+		tw_m.tween_callback(func():
+			if is_instance_valid(self):
+				var p_dest = enemigo.global_position if is_instance_valid(enemigo) else pos_ref
+				_crear_charco_magma(p_dest)
+		)
+
+func _crear_charco_magma(pos: Vector3) -> void:
+	if get_parent() == null:
+		return
+	var charco = MeshInstance3D.new()
+	var cyl = CylinderMesh.new()
+	cyl.top_radius = 2.4
+	cyl.bottom_radius = 2.4
+	cyl.height = 0.04
+	charco.mesh = cyl
+	var mat = StandardMaterial3D.new()
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.albedo_color = Color(1.0, 0.45, 0.05, 0.85)
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.4, 0.05)
+	mat.emission_energy_multiplier = 2.5
+	charco.material_override = mat
+	get_parent().add_child(charco)
+	charco.global_position = Vector3(pos.x, 0.02, pos.z)
+	var tick_state := [0.0]
+	var tw = charco.create_tween()
+	tw.tween_method(func(_v):
+		var now = Time.get_ticks_msec() / 1000.0
+		if now - tick_state[0] < 0.35:
+			return
+		tick_state[0] = now
+		if not is_instance_valid(self):
+			return
+		for e in _obtener_todos_los_enemigos():
+			if is_instance_valid(e) and e is Node3D and charco.global_position.distance_to(e.global_position) <= 2.4:
+				if e.has_method("recibir_dano"):
+					e.recibir_dano(dano * 0.30, false)
+					registrar_dano_telemetria("armas", dano * 0.30)
+	, 0.0, 1.0, 2.8)
+	tw.chain().tween_callback(charco.queue_free)
+
+func _ejecutar_golpe_avatar_resonancia(dir: Vector3, dano_g: float, _es_crit: bool) -> void:
+	AudioManager.play("corte_espada", 1.35)
+	_repeler_enemigos_alrededor(5.0, 10.0, dano_g * 1.25)
+	_crear_tajo_espada(dir, true)
 
 func click_attack():
 	# El combate es 100% automático (Autobattler continuo por proximidad).
@@ -676,7 +975,7 @@ func _crear_tajo_espada(dir_ataque: Vector3, es_critico: bool = false):
 	var mat = StandardMaterial3D.new()
 	mat.shading_mode = StandardMaterial3D.SHADING_MODE_UNSHADED
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	var color_base = Color(1.0, 0.88, 0.25, 0.95) if es_critico else (Color(1.0, 0.55, 0.15, 0.95) if clase == "Guerrero" else Color(0.35, 0.85, 1.0, 0.95))
+	var color_base = Color(1.0, 0.88, 0.25, 0.95) if es_critico else (Color(1.0, 0.55, 0.15, 0.95) if es_arquetipo("Guerrero") else Color(0.35, 0.85, 1.0, 0.95))
 	mat.albedo_color = color_base
 	mesh_inst.mesh = _mesh_tajo_torus
 	mesh_inst.material_override = mat
@@ -692,7 +991,27 @@ func _crear_tajo_espada(dir_ataque: Vector3, es_critico: bool = false):
 	tw.tween_property(mat, "albedo_color:a", 0.0, 0.16)
 	tw.chain().tween_callback(tajo.queue_free)
 
-func recibir_dano(cantidad: float):
+func recibir_dano(cantidad: float, fuente: String = ""):
+	if fuente != "":
+		ultimo_atacante_tipo = fuente
+		ultimo_atacante_nombre = fuente.capitalize()
+	else:
+		var cercano = _obtener_enemigo_cercano()
+		if cercano != null:
+			if "tipo_enemigo_id" in cercano and str(cercano.tipo_enemigo_id) != "":
+				ultimo_atacante_tipo = str(cercano.tipo_enemigo_id)
+			elif cercano.scene_file_path != "":
+				ultimo_atacante_tipo = cercano.scene_file_path.get_file().get_basename()
+			else:
+				ultimo_atacante_tipo = cercano.name
+			ultimo_atacante_nombre = cercano.name.capitalize()
+	if _procesando_recibir_dano:
+		return
+	_procesando_recibir_dano = true
+	_recibir_dano_interno(cantidad)
+	_procesando_recibir_dano = false
+
+func _recibir_dano_interno(cantidad: float):
 	if _reloj_invulnerable > 0.0 or _muerto_definitivo:
 		if bloqueo_genera_clics > 0:
 			clics_disponibles += bloqueo_genera_clics
@@ -713,8 +1032,8 @@ func recibir_dano(cantidad: float):
 	var mitigacion_total = clampf(mitigacion_pasiva_pct + mitigacion_armadura, 0.0, 0.78)
 	cantidad *= (1.0 - mitigacion_total)
 
-	# 2. Mitigación por Bloqueo Activo de Escudo (Mecánica Tanque del Guerrero)
-	if bloqueando and clase == "Guerrero":
+	# 2. Mitigación por Bloqueo Activo de Escudo (Mecánica Tanque del Guerrero / Subclases)
+	if bloqueando and es_arquetipo("Guerrero"):
 		var dano_mitigado = cantidad * (1.0 - reduccion_dano_bloqueo)
 		var mitigado_total = cantidad - dano_mitigado
 		AudioManager.play("escudo_bloqueo", randf_range(0.95, 1.05))
@@ -726,8 +1045,15 @@ func recibir_dano(cantidad: float):
 
 		_parpadear_escudo()
 		_mostrar_feedback_bloqueo(mitigado_total, dano_mitigado)
-		var dano_espinas_bloq = mitigado_total * (1.5 if bendiciones_run.has("guerrero_espinas_titan") else 0.4)
-		_repeler_enemigos_alrededor(3.2, 6.5, dano_espinas_bloq)
+		if subclase_tier2 == "Paladín Solar":
+			vida = minf(vida + 4.0, vida_maxima)
+			_repeler_enemigos_alrededor(4.2, 7.5, dano * 1.1)
+			registrar_dano_telemetria("armas", dano * 1.1)
+			_spawn_texto_3d("☀️ ¡NOVA SOLAR! (+4 HP)", Color(1.0, 0.85, 0.2))
+			AudioManager.play("altar_activado", 1.4)
+		else:
+			var dano_espinas_bloq = mitigado_total * (1.5 if bendiciones_run.has("guerrero_espinas_titan") else 0.4)
+			_repeler_enemigos_alrededor(3.2, 6.5, dano_espinas_bloq)
 
 		cantidad = dano_mitigado
 		if cantidad <= 0.0:
@@ -788,7 +1114,7 @@ func recibir_dano(cantidad: float):
 func ganar_xp(cantidad: int):
 	if cantidad <= 0:
 		return
-	var xp_final = int(ceil(float(cantidad) * (1.0 + xp_ganada_pct)))
+	var xp_final = int(ceil(float(cantidad) * (1.0 + xp_ganada_pct) * multiplicador_abismo_recompensas))
 	xp += xp_final
 	if xp_a_oro_pct > 0.0:
 		var oro_alquimia = max(1, int(ceil(float(xp_final) * xp_a_oro_pct)))
@@ -801,7 +1127,7 @@ func ganar_xp(cantidad: int):
 func recoger_drop(tipo: int, valor: int):
 	match tipo:
 		0: # ORO
-			var bonus_mult = (1.0 + oro_por_baja_pct + (float(mejoras_arbol.get("mon_oro", 0)) * 0.25)) * float(multiplicador_fiebre_actual)
+			var bonus_mult = (1.0 + oro_por_baja_pct + (float(mejoras_arbol.get("mon_oro", 0)) * 0.25)) * float(multiplicador_fiebre_actual) * multiplicador_abismo_recompensas
 			if ascension_suprema:
 				bonus_mult *= 2.0
 			if orbes_oro_duplicados_pct > 0.0 and FortunaManager.tirar(orbes_oro_duplicados_pct):
@@ -853,14 +1179,14 @@ func subir_nivel():
 	nivel += 1
 	xp_siguiente_nivel = int(round(float(xp_siguiente_nivel) * 1.30 + 10.0))
 
-	# Escalado de especialidades por clase al subir nivel
-	if clase == "Cazador":
+	# Escalado de especialidades por clase / arquetipo al subir nivel
+	if es_arquetipo("Cazador"):
 		base_cadencia_ataque = maxf(0.18, base_cadencia_ataque * 0.94)
 		base_dano *= 1.08
-	elif clase == "Guerrero":
+	elif es_arquetipo("Guerrero"):
 		base_dano *= 1.10
-		base_rango_ataque = minf(3.8, base_rango_ataque + 0.05)
-	elif clase == "Mago":
+		base_rango_ataque = minf(4.0, base_rango_ataque + 0.05)
+	elif es_arquetipo("Mago"):
 		base_dano *= 1.12
 	else:
 		base_dano *= 1.08
@@ -958,23 +1284,28 @@ func mostrar_preview_clase(nombre_clase: String):
 	var clase_mostrar := nombre_clase if not nombre_clase.is_empty() else clase
 	equipar_armas_clase(clase_mostrar)
 	if _escudo_visual != null:
-		_escudo_visual.visible = (nombre_clase == "Guerrero" or (clase == "Guerrero" and bloqueando))
+		_escudo_visual.visible = (nombre_clase in ["Guerrero", "Paladín Solar"] or (es_arquetipo("Guerrero") and bloqueando))
 
 func _asegurar_armas_preview():
 	equipar_armas_clase(clase)
 
+func obtener_arquetipo_clase() -> String:
+	return clase_base if clase_base != "Novato" and clase_base != "" else clase
+
+func es_arquetipo(arq: String) -> bool:
+	return clase == arq or clase_base == arq
+
+func aplicar_subclase_tier2(nombre_subclase: String):
+	subclase_tier2 = nombre_subclase
+	aplicar_clase(nombre_subclase)
+
 func aplicar_clase(nombre: String):
 	var ratio_vida_prev = clampf(vida / maxf(1.0, vida_maxima), 0.65, 1.0)
 	clase = nombre
-	if clase != "Guerrero":
-		if bloqueando:
-			_actualizar_estado_bloqueo(false)
-		if _escudo_visual != null:
-			_escudo_visual.visible = false
-	else:
-		_crear_escudo_visual()
 	match nombre:
 		"Novato":
+			clase_base = "Novato"
+			subclase_tier2 = ""
 			base_vida_maxima = 100.0
 			base_dano = 12.0
 			base_rango_ataque = 2.6
@@ -982,6 +1313,8 @@ func aplicar_clase(nombre: String):
 			base_speed_caminar = 3.4
 			base_speed_correr = 5.4
 		"Guerrero":
+			clase_base = "Guerrero"
+			subclase_tier2 = ""
 			base_vida_maxima = 160.0
 			base_dano = 22.0
 			base_rango_ataque = 3.2
@@ -989,6 +1322,8 @@ func aplicar_clase(nombre: String):
 			base_speed_caminar = 3.2
 			base_speed_correr = 5.6
 		"Cazador":
+			clase_base = "Cazador"
+			subclase_tier2 = ""
 			base_vida_maxima = 100.0
 			base_dano = 14.0
 			base_rango_ataque = 7.5
@@ -996,12 +1331,79 @@ func aplicar_clase(nombre: String):
 			base_speed_caminar = 3.8
 			base_speed_correr = 6.4
 		"Mago":
+			clase_base = "Mago"
+			subclase_tier2 = ""
 			base_vida_maxima = 85.0
 			base_dano = 28.0
 			base_rango_ataque = 5.5
 			base_cadencia_ataque = 0.90
 			base_speed_caminar = 3.3
 			base_speed_correr = 5.7
+		"Paladín Solar":
+			clase_base = "Guerrero"
+			subclase_tier2 = nombre
+			base_vida_maxima = 220.0
+			base_dano = 28.0
+			base_rango_ataque = 3.6
+			base_cadencia_ataque = 0.65
+			bono_run_armadura_plana += 50.0
+		"Berserker Sangriento":
+			clase_base = "Guerrero"
+			subclase_tier2 = nombre
+			base_vida_maxima = 170.0
+			base_dano = 34.0
+			base_rango_ataque = 3.2
+			base_cadencia_ataque = 0.50
+		"Francotirador Astral":
+			clase_base = "Cazador"
+			subclase_tier2 = nombre
+			base_vida_maxima = 130.0
+			base_dano = 26.0
+			base_rango_ataque = 10.0
+			base_cadencia_ataque = 0.40
+			base_speed_caminar = 4.0
+			base_speed_correr = 6.8
+		"Maestro de Sombras":
+			clase_base = "Cazador"
+			subclase_tier2 = nombre
+			base_vida_maxima = 135.0
+			base_dano = 22.0
+			base_rango_ataque = 6.0
+			base_cadencia_ataque = 0.32
+			bono_run_crit_prob += 0.15
+			base_speed_caminar = 4.2
+			base_speed_correr = 7.0
+		"Archimago del Vacío":
+			clase_base = "Mago"
+			subclase_tier2 = nombre
+			base_vida_maxima = 125.0
+			base_dano = 40.0
+			base_rango_ataque = 7.0
+			base_cadencia_ataque = 0.80
+		"Piromante Cataclísmico":
+			clase_base = "Mago"
+			subclase_tier2 = nombre
+			base_vida_maxima = 130.0
+			base_dano = 46.0
+			base_rango_ataque = 6.5
+			base_cadencia_ataque = 0.82
+		"Avatar del Núcleo":
+			clase_base = "Novato"
+			subclase_tier2 = nombre
+			base_vida_maxima = 160.0
+			base_dano = 32.0
+			base_rango_ataque = 5.0
+			base_cadencia_ataque = 0.60
+			bono_subclase_onda_radio_mult = 2.0
+
+	if not es_arquetipo("Guerrero"):
+		if bloqueando:
+			_actualizar_estado_bloqueo(false)
+		if _escudo_visual != null:
+			_escudo_visual.visible = false
+	else:
+		_crear_escudo_visual()
+
 	# Recalcular preservando 100% de los bonos de run y árbol
 	equipar_armas_clase(nombre)
 	recalcular_stats_incrementales()
@@ -1429,14 +1831,67 @@ func recalcular_stats_incrementales():
 	if oro_salud_conversion > 0:
 		regen_vida_seg += floor(float(oro) / 400.0) * float(oro_salud_conversion)
 
-	# 7. Consolidar estadísticas finales
+	# 6.5 Maestría Cósmica, Prestigio y Keystones Tier 6 (Sin duplicar lo ya sumado en match)
+	MetaprogresoManager.asegurar_inicializado()
+	var mult_prestigio = MetaprogresoManager.obtener_multiplicador_prestigio()
+	if mult_prestigio > 1.0:
+		bonus_dano_pct += (mult_prestigio - 1.0)
+		bonus_dano_clic_pct += (mult_prestigio - 1.0)
+	var lvl_inf_fortuna = float(mejoras_arbol.get("inf_fortuna_eterna", 0))
+	if lvl_inf_fortuna > 0.0:
+		oro_por_baja_pct += 0.02 * lvl_inf_fortuna
+		xp_ganada_pct += 0.02 * lvl_inf_fortuna
+	if int(mejoras_arbol.get("cosm_keystone_genesis", 0)) > 0:
+		bonus_dano_pct += 0.50
+		proyectiles_extra += 2
+	if int(mejoras_arbol.get("cosm_corona_astral", 0)) > 0 and escudo_almas > 0.0:
+		regen_vida_seg += 5.0 * float(mejoras_arbol.get("cosm_corona_astral", 0))
+
+	bono_clics_tormento_mult = 1.0
+	var _tree_tor = _obtener_tree()
+	if _tree_tor != null:
+		var _logros_tor = _tree_tor.get_first_node_in_group("logros_manager")
+		if _logros_tor != null and _logros_tor.has_method("obtener_multiplicadores_tormento"):
+			var mt: Dictionary = _logros_tor.obtener_multiplicadores_tormento()
+			oro_por_baja_pct += float(mt.get("bono_oro_pct", 0.0))
+			bono_clics_tormento_mult = 1.0 + float(mt.get("bono_clics_pct", 0.0))
+
+	# 7. Consolidar estadísticas finales y Bendiciones Corruptas
+	suerte_corrupta = 0.0
+	if bendiciones_corruptas.has("corrupta_pacto_cristal"):
+		vida_maxima = maxf(20.0, vida_maxima * 0.60)
+		prob_critico += 0.25
+	if bendiciones_corruptas.has("corrupta_hilo_corto"):
+		bonus_cadencia_pct += 0.35
+	if bendiciones_corruptas.has("corrupta_avaricia_sangrienta"):
+		oro_por_baja_pct += 1.20
+		bonus_dano_pct += 0.40
+	if bendiciones_corruptas.has("corrupta_coloso_inamovible"):
+		armadura_plana += 120.0
+		resistencia_estados_pct = 1.0
+	if bendiciones_corruptas.has("corrupta_destino_caotico"):
+		suerte_corrupta = -0.35
+		match _bonus_caotico_actual:
+			"dano":
+				bonus_dano_pct += _bonus_caotico_mult
+			"cadencia":
+				bonus_cadencia_pct += minf(0.45, _bonus_caotico_mult * 0.25)
+			"critico":
+				prob_critico += minf(0.65, _bonus_caotico_mult * 0.35)
+
 	dano = (base_dano + bono_run_dano_plana) * (1.0 + bonus_dano_pct + bonus_dano_armas_pct) * bono_run_dano_mult
+	if bendiciones_corruptas.has("corrupta_pacto_cristal"):
+		dano *= 1.4
 	cadencia_ataque = maxf(0.12, (base_cadencia_ataque * bono_run_cadencia_mult) * (1.0 - minf(bonus_cadencia_pct, 0.72)))
 	speed_caminar = (base_speed_caminar + bono_run_vel_plana) * (1.0 + bonus_velocidad_mov_pct) * bono_run_vel_mult
 	speed_correr = (base_speed_correr + bono_run_vel_plana) * (1.0 + bonus_velocidad_mov_pct) * bono_run_vel_mult
+	if bendiciones_corruptas.has("corrupta_coloso_inamovible"):
+		speed_caminar *= 0.75
+		speed_correr *= 0.75
 
 	if vida_maxima > vida_anterior_max:
 		vida = minf(vida + (vida_maxima - vida_anterior_max), vida_maxima)
+	vida = minf(vida, vida_maxima)
 
 	escudo_almas = maxf(escudo_almas, max_escudo_almas)
 
@@ -1453,22 +1908,20 @@ func recalcular_stats_incrementales():
 	emit_signal("economia_actualizada", oro, clics_disponibles, clics_totales)
 
 func puede_comprar_mejora(id: String) -> bool:
-	if ArbolInterconectadoDatos != null:
-		var nodos = ArbolInterconectadoDatos.generar_arbol()
-		if nodos.has(id):
-			var n: SkillNodeData = nodos[id]
-			return MetaprogresoManager.puede_comprar(n)
+	var nodos = ArbolInterconectadoDatos.generar_arbol()
+	if nodos.has(id):
+		var n: SkillNodeData = nodos[id]
+		return MetaprogresoManager.puede_comprar(n)
 	return false
 
 func comprar_mejora(id: String) -> bool:
-	if ArbolInterconectadoDatos != null:
-		var nodos = ArbolInterconectadoDatos.generar_arbol()
-		if nodos.has(id):
-			var n: SkillNodeData = nodos[id]
-			var exito = MetaprogresoManager.comprar_nodo(n)
-			if exito:
-				recalcular_stats_incrementales()
-				return true
+	var nodos = ArbolInterconectadoDatos.generar_arbol()
+	if nodos.has(id):
+		var n: SkillNodeData = nodos[id]
+		var exito = MetaprogresoManager.comprar_nodo(n)
+		if exito:
+			recalcular_stats_incrementales()
+			return true
 	return false
 
 ## Llamado desde BotonMovil cuando el jugador hace clic sobre el Núcleo Móvil 3D
@@ -1539,6 +1992,8 @@ func registrar_click_jugador(es_anomalia: bool = false):
 		clics_ganados *= 2
 	if es_anomalia:
 		clics_ganados += 3 * multiplicador_fiebre_actual
+	if multiplicador_abismo_recompensas > 1.0 or bono_clics_tormento_mult > 1.0:
+		clics_ganados = int(round(float(clics_ganados) * bono_clics_tormento_mult * multiplicador_abismo_recompensas))
 
 	# Eco de Clic (probabilidad de duplicar)
 	if bonus_eco_clic_prob > 0.0 and FortunaManager.tirar(bonus_eco_clic_prob):
@@ -1599,13 +2054,24 @@ func obtener_radio_atraccion_extra() -> float:
 	return radio_iman_extra + bonus_nivel_iman
 
 func obtener_bonus_onda_clic() -> Dictionary:
-	var r_mult = (1.0 + (bonus_radio_aoe_clic * 0.20)) * bono_run_onda_radio_mult
+	var r_mult = (1.0 + (bonus_radio_aoe_clic * 0.20)) * bono_run_onda_radio_mult * bono_subclase_onda_radio_mult
 	var d_mult = (1.0 + bonus_dano_clic_pct + penetracion_clic_pct * 0.5) * bono_run_onda_dano_mult
 	if keystone_soberania:
 		d_mult += 2.0
+	if bendiciones_corruptas.has("corrupta_pacto_cristal"):
+		d_mult *= 2.2
+	if bendiciones_corruptas.has("corrupta_hilo_corto"):
+		d_mult *= 2.5
+	var r_extra = bonus_radio_aoe_clic * 0.5
+	var m_empuje = 1.0 + bonus_empuje_clic_pct
+	var es_crit = FortunaManager.tirar(prob_critico + bonus_critico_clic_prob)
 	return {
 		"radio_mult": r_mult,
-		"dano_mult": d_mult
+		"dano_mult": d_mult,
+		"radio_extra": r_extra,
+		"mult_empuje": m_empuje,
+		"mult_dano_clic": d_mult,
+		"es_critico": es_crit
 	}
 
 func _procesar_incremental_pasivo(delta: float):
@@ -1659,9 +2125,15 @@ func _procesar_incremental_pasivo(delta: float):
 # ==============================================================================
 
 func obtener_suerte_personaje() -> float:
-	return suerte + suerte_arbol + ReliquiaDatos.calcular_suerte(reliquias)
+	return suerte + suerte_arbol + suerte_corrupta + ReliquiaDatos.calcular_suerte(reliquias)
+
+func activar_multiplicador_abismo(mult: float = 4.0) -> void:
+	multiplicador_abismo_recompensas = maxf(1.0, mult)
+	recalcular_stats_incrementales()
 
 func obtener_suerte_total() -> float:
+	if FortunaManager != null and FortunaManager.has_method("obtener_suerte_efectiva"):
+		return FortunaManager.obtener_suerte_efectiva()
 	return obtener_suerte_personaje() + FortunaManager.suerte + FortunaManager.suerte_oculta
 
 func sumar_suerte(cantidad: float) -> void:
@@ -1786,7 +2258,7 @@ func elegir_estado():
 func animar():
 	if _anim_ctrl == null or not _anim_ctrl.esta_listo():
 		return
-	if bloqueando and clase == "Guerrero":
+	if bloqueando and es_arquetipo("Guerrero"):
 		var rapidez = Vector2(velocity.x, velocity.z).length()
 		if rapidez < 0.2:
 			if _anim_ctrl.tiene_clip("holding-both"):
@@ -1813,7 +2285,7 @@ func _prueba():
 			if _cuadro == 1: Input.action_press("move_up")
 			elif _cuadro == 60:
 				var r = Vector2(velocity.x, velocity.z).length()
-				print("[prueba] pos: ", global_position.snappedf(0.01), " · vel: ", snappedf(r, 0.01), " · anim: ", anim.current_animation)
+				print("[prueba] pos: ", global_position.snappedf(0.01), " · vel: ", snappedf(r, 0.01), " · anim: ", anim.current_animation if anim != null else "null")
 				Input.action_release("move_up")
 				_termino = true
 		2:
@@ -1829,7 +2301,7 @@ func _prueba():
 				if InputMap.has_action(accion_prueba): Input.action_press(accion_prueba)
 			if _cuadro >= 30 and _cuadro <= 45:
 				var r = Vector2(velocity.x, velocity.z).length()
-				print("cuadro ", _cuadro, ": ", snappedf(r, 0.01), " · anim: ", anim.current_animation)
+				print("cuadro ", _cuadro, ": ", snappedf(r, 0.01), " · anim: ", anim.current_animation if anim != null else "null")
 			elif _cuadro == 60:
 				Input.action_release("move_up")
 				if InputMap.has_action(accion_prueba): Input.action_release(accion_prueba)
@@ -1909,6 +2381,8 @@ func _repeler_enemigos_alrededor(radio: float, fuerza: float, dano_extra: float 
 	var enemigos = _obtener_todos_los_enemigos()
 	for e in enemigos:
 		if is_instance_valid(e) and e is Node3D:
+			if "muerto" in e and e.muerto:
+				continue
 			var dist = global_position.distance_to(e.global_position)
 			if dist <= radio:
 				if dano_extra > 0.0 and e.has_method("recibir_dano"):
@@ -1951,6 +2425,8 @@ func _ejecutar_corte_giratorio_guerrero(es_click: bool = false, es_crit: bool = 
 
 	for e in enemigos:
 		if is_instance_valid(e) and e is Node3D:
+			if "muerto" in e and e.muerto:
+				continue
 			var dist = global_position.distance_to(e.global_position)
 			if dist <= rango_ataque + 0.6:
 				if e.has_method("recibir_dano"):
@@ -2028,24 +2504,133 @@ func _procesar_caida_jugador():
 
 		emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
 	else:
-		_muerto_definitivo = true
-		vida = 0.0
-		emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
-
-		if has_node("Salud"):
-			var s = get_node("Salud")
-			s.vida = 0
-			s.reapariciones = 0
-			s.sin_vida.emit()
-
+		if _estado_juicio_emperador:
+			return
 		var tree = _obtener_tree()
 		if tree != null:
-			var partida = tree.get_first_node_in_group("partida")
-			if partida != null and partida.has_method("perder"):
-				if obtener_vidas_maximas() == 1:
-					partida.perder("Caíste en combate (1 vida)")
-				else:
-					partida.perder("Agotaste tus %d vidas en combate" % obtener_vidas_maximas())
+			var favor_mgr = tree.get_first_node_in_group("favor_emperador_manager")
+			if favor_mgr != null and favor_mgr.has_method("intentar_juicio_emperador_al_morir"):
+				if favor_mgr.intentar_juicio_emperador_al_morir(self):
+					_estado_juicio_emperador = true
+					_reloj_invulnerable = 999.0
+					return
+
+		finalizar_muerte_definitiva()
+
+func revivir_por_emperador(fraccion_hp: float = 0.60) -> void:
+	_estado_juicio_emperador = false
+	_muerto_definitivo = false
+	vida = vida_maxima * clampf(fraccion_hp, 0.15, 1.0)
+	_reloj_invulnerable = 3.0
+	_repeler_enemigos_alrededor(12.0, 16.0, dano * 2.0)
+	AudioManager.play("victoria", 1.4)
+	_spawn_texto_3d("👑 ¡EL EMPERADOR CONCEDE CLEMENCIA!", Color(1.0, 0.85, 0.2))
+	if has_node("Salud"):
+		var s = get_node("Salud")
+		s.vida = int(vida)
+		s.cambio.emit(s.vida)
+	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
+
+func finalizar_muerte_definitiva() -> void:
+	_muerto_definitivo = true
+	_estado_juicio_emperador = false
+	vida = 0.0
+
+	MetaprogresoManager.registrar_nemesis_verdugo(ultimo_atacante_tipo, ultimo_atacante_nombre, oro, clics_disponibles)
+
+	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
+
+	if has_node("Salud"):
+		var s = get_node("Salud")
+		s.vida = 0
+		s.reapariciones = 0
+		s.sin_vida.emit()
+
+	var tree = _obtener_tree()
+	if tree != null:
+		var partida = tree.get_first_node_in_group("partida")
+		if partida != null and partida.has_method("perder"):
+			if obtener_vidas_maximas() == 1:
+				partida.perder("Caíste ante %s" % ultimo_atacante_nombre)
+			else:
+				partida.perder("Agotaste tus %d vidas ante %s" % [obtener_vidas_maximas(), ultimo_atacante_nombre])
+
+func aplicar_bendicion_corrupta(id_corrupta: String) -> void:
+	if id_corrupta == "":
+		return
+	if not bendiciones_corruptas.has(id_corrupta):
+		bendiciones_corruptas.append(id_corrupta)
+	match id_corrupta:
+		"corrupta_pacto_cristal":
+			_spawn_texto_3d("🩸 PACTO CRISTAL: -40% HP · x2.2 CLIC", Color(0.95, 0.15, 0.30))
+		"corrupta_hilo_corto":
+			_spawn_texto_3d("⚡ HILO CORTO: x2.5 ONDA · 5.5m RANGO", Color(0.4, 0.9, 1.0))
+		"corrupta_avaricia_sangrienta":
+			_spawn_texto_3d("🪙 AVARICIA SANGRIENTA: -1 HP/s · +120% ORO", Color(1.0, 0.8, 0.1))
+		"corrupta_coloso_inamovible":
+			_spawn_texto_3d("🗿 COLOSO INAMOVIBLE: +120 ARMADURA · SIN DASH", Color(0.8, 0.7, 0.5))
+		"corrupta_destino_caotico":
+			_spawn_texto_3d("🎲 DESTINO CAÓTICO: Bonos Aleatorios c/20s", Color(0.9, 0.4, 1.0))
+			_cooldown_rotacion_caotica = 0.05
+		"corrupta_sobrecarga_sin_freno":
+			_spawn_texto_3d("🔥 SOBRECARGA SIN FRENO: x5 FRENESÍ c/12 CLICS", Color(1.0, 0.3, 0.1))
+	recalcular_stats_incrementales()
+	corrupta_aplicada.emit(id_corrupta)
+
+func tiene_corrupta_sobrecarga_sin_freno() -> bool:
+	return bendiciones_corruptas.has("corrupta_sobrecarga_sin_freno")
+
+func registrar_dano_telemetria(fuente: String, cantidad: float) -> void:
+	if cantidad <= 0.0:
+		return
+	var t_ahora = Time.get_ticks_msec() / 1000.0
+	_telemetria_registros.append({
+		"tiempo": t_ahora,
+		"fuente": fuente,
+		"cantidad": cantidad
+	})
+	_dano_total_acumulado += cantidad
+
+func obtener_telemetria_dps() -> Dictionary:
+	var t_ahora = Time.get_ticks_msec() / 1000.0
+	var t_limite = t_ahora - 5.0
+	var dps_total := 0.0
+	var dps_armas := 0.0
+	var dps_onda := 0.0
+	var dps_hilo := 0.0
+
+	var nuevos_registros: Array = []
+	for r in _telemetria_registros:
+		if r["tiempo"] >= t_limite:
+			nuevos_registros.append(r)
+			var cant: float = r["cantidad"]
+			dps_total += cant
+			match r["fuente"]:
+				"armas":
+					dps_armas += cant
+				"onda":
+					dps_onda += cant
+				"hilo":
+					dps_hilo += cant
+				_:
+					dps_armas += cant
+	_telemetria_registros = nuevos_registros
+
+	return {
+		"dps_total": dps_total / 5.0,
+		"dps_armas": dps_armas / 5.0,
+		"dps_onda": dps_onda / 5.0,
+		"dps_hilo": dps_hilo / 5.0,
+		"dano_total_acumulado": _dano_total_acumulado,
+		"ventana_segundos": 5.0
+	}
+
+func notificar_baja_enemigo(_tipo: String = "", _pos: Vector3 = Vector3.ZERO) -> void:
+	if bendiciones_corruptas.has("corrupta_avaricia_sangrienta"):
+		vida = minf(vida + 3.0, vida_maxima)
+	if subclase_tier2 == "Berserker Sangriento":
+		vida = minf(vida + 3.0, vida_maxima)
+	registrar_baja()
 
 func _crear_feedback_reaparicion():
 	if not is_inside_tree() or get_parent() == null:

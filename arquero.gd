@@ -207,7 +207,7 @@ func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 		es_critico = fuente
 		fuente = "normal"
 
-	var cantidad_final: float = cantidad
+	var cantidad_final: float = cantidad * (1.0 + MetaprogresoManager.obtener_bono_bestiario("arquero"))
 	if marca_conductiva_timer > 0.0:
 		cantidad_final *= 1.25
 
@@ -248,8 +248,7 @@ func morir():
 
 	FortunaManager.soltar_drops(get_parent(), global_position, "arquero")
 
-	if jugador != null and is_instance_valid(jugador) and jugador.has_method("registrar_baja"):
-		jugador.registrar_baja()
+	MetaprogresoManager.procesar_baja_completa(self, jugador, "arquero", false)
 
 	if modelo != null:
 		var tw = create_tween().set_parallel(true)

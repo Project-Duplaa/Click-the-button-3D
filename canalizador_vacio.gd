@@ -9,7 +9,7 @@ var _orbe_area: Area3D = null
 var _orbe_mesh: MeshInstance3D = null
 var _reloj_pulso: float = 0.0
 
-func _ready():
+func _ready() -> void:
 	rapidez = 2.1
 	vida_maxima = 58.0
 	dano_contacto = 10.0
@@ -92,9 +92,12 @@ func _calcular_velocidad_ia(delta: float) -> Vector3:
 		return dif.normalized() * rapidez
 	return Vector3.ZERO
 
+var _orbe_detonado: bool = false
+
 func _detonar_orbe_vacio():
-	if muerto:
+	if muerto or _orbe_detonado:
 		return
+	_orbe_detonado = true
 	AudioManager.play("orbe_explosion", 1.35)
 	var pool = get_tree().get_first_node_in_group("damage_numbers")
 	if pool != null and pool.has_method("mostrar_texto"):

@@ -67,7 +67,7 @@ func _ready():
 	if hud != null and hud.has_method("mostrar_barra_jefe"):
 		hud.mostrar_barra_jefe("⚔️ GLADIADOR DE ÉLITE", vida_maxima, vida)
 
-func aplicar_knockback(impulso: Vector3):
+func aplicar_knockback(impulso: Vector3, _duracion_stun: float = 0.08):
 	var kb = impulso * 0.45
 	kb.y = 0.0
 	_knockback_velocity += kb
@@ -237,7 +237,7 @@ func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 		es_critico = fuente
 	else:
 		fuente_str = str(fuente)
-	var dano_final = cantidad
+	var dano_final = cantidad * (1.0 + MetaprogresoManager.obtener_bono_bestiario("mini_jefe"))
 	if _muralla_activa:
 		dano_final *= 0.15
 		AudioManager.play("escudo_bloqueo", 1.0)
@@ -295,8 +295,7 @@ func morir():
 	_sacudir_camara(0.4)
 
 	var pj = get_tree().get_first_node_in_group("jugador")
-	if pj != null and pj.has_method("registrar_baja"):
-		pj.registrar_baja()
+	MetaprogresoManager.procesar_baja_completa(self, pj, "mini_jefe", true)
 
 	if is_inside_tree() and get_parent() != null:
 		FortunaManager.soltar_drops(get_parent(), global_position, "mini_jefe")

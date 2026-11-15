@@ -27,6 +27,13 @@ var semilla_actual: int = 0
 var suerte: float = 0.0          # Suerte base de la run (presagio inicial, pactos...)
 var suerte_oculta: float = 0.0   # Pity: +0.05 por cada Común, se reinicia al sacar Raro o mejor
 
+var es_run_diaria: bool = false
+var fecha_seed_diaria: int = 0
+
+var suerte_total: float:
+	get:
+		return obtener_suerte_efectiva()
+
 # Estado del Presagio inicial y modificadores de run
 var presagio_id: String = "cielo_despejado"
 var presagio_nombre: String = "Cielo Despejado"
@@ -58,6 +65,7 @@ func iniciar_run(semilla: int = -1) -> void:
 	rng.seed = semilla_actual
 	suerte = 0.0
 	suerte_oculta = 0.0
+	es_run_diaria = false
 	presagio_id = "cielo_despejado"
 	presagio_nombre = "Cielo Despejado"
 	presagio_desc = "Sin alteraciones del destino."
@@ -145,13 +153,17 @@ func obtener_multiplicador_rareza(rareza: int) -> float:
 		_:
 			return 1.0
 
-## Suerte efectiva total: base + pity + extra + la que aporta el personaje (cartas, tréboles, árbol, reliquias)
+## Suerte efectiva total: base + pity + extra + personaje + Tormento
 func obtener_suerte_efectiva(extra_suerte: float = 0.0) -> float:
 	var l: float = suerte + suerte_oculta + extra_suerte
 	if is_inside_tree():
 		var pj = get_tree().get_first_node_in_group("jugador")
 		if pj != null and pj.has_method("obtener_suerte_personaje"):
 			l += float(pj.obtener_suerte_personaje())
+		var logros = get_tree().get_first_node_in_group("logros_manager")
+		if logros != null and logros.has_method("obtener_multiplicadores_tormento"):
+			var mt: Dictionary = logros.obtener_multiplicadores_tormento()
+			l += float(mt.get("bono_suerte", 0.0))
 	return clampf(l, -0.90, 50.0)
 
 ## Tirada binaria: p_final = 1 - (1 - p_base)^(1 + L). Nunca supera el 100 %.
@@ -364,3 +376,12 @@ func obtener_indice_fortuna() -> Dictionary:
 		"epicos_esperados": snappedf(_epicos_esperados, 0.1),
 		"total_tiradas": _total_tiradas_rareza
 	}
+
+## Inicia una run de desafío diario con semilla determinista basada en la fecha del sistema (YYYYMMDD)
+func iniciar_run_diaria() -> int:
+	var d := Time.get_date_dict_from_system()
+	fecha_seed_diaria = int(d.get("year", 2026)) * 10000 + int(d.get("month", 1)) * 100 + int(d.get("day", 1))
+	iniciar_run(fecha_seed_diaria)
+	es_run_diaria = true
+	print("[FortunaManager] Run diaria iniciada. Fecha/Semilla: %d" % fecha_seed_diaria)
+	return fecha_seed_diaria

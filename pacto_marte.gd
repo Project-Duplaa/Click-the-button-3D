@@ -239,7 +239,7 @@ func _process(delta: float) -> void:
 		return
 
 	_tiempo_restante = maxf(0.0, _tiempo_restante - delta)
-	var hud := get_tree().get_first_node_in_group("hud") if get_tree() != null else null
+	var hud: Node = get_tree().get_first_node_in_group("hud") if get_tree() != null else null
 	if hud != null and hud.has_method("actualizar_pacto_marte"):
 		hud.actualizar_pacto_marte(_tiempo_restante)
 	elif _badge_label != null:

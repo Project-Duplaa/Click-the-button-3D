@@ -172,6 +172,8 @@ func _procesar_contacto_hilo():
 				if (_jaula_faraday_activa or bifurcado_faraday) and e.has_method("recibir_dano"):
 					var dmg = int(maxf(1.0, dano_tick_conductivo * _mult_dano_hilo))
 					e.recibir_dano(dmg)
+					if jugador != null and is_instance_valid(jugador) and jugador.has_method("registrar_dano_telemetria"):
+						jugador.registrar_dano_telemetria("hilo", float(dmg))
 	
 	var drops = get_tree().get_nodes_in_group("drops")
 	for d in drops:
@@ -201,21 +203,22 @@ func disparar_descarga_clic(dano_base: int, es_critico_perfecto: bool = false, n
 	var mult_fiebre = 1.0 + (nivel_fiebre * 0.30)
 	var dano_descarga = int(ceil(dano_base * mult_tension * mult_crit * mult_fiebre * _mult_dano_hilo))
 	
-	var tw = create_tween().set_parallel(true)
-	if _cilindro != null:
-		tw.tween_property(_cilindro, "top_radius", 0.34, 0.05).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		tw.tween_property(_cilindro, "bottom_radius", 0.34, 0.05).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		tw.chain().tween_property(_cilindro, "top_radius", 0.07, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		tw.parallel().tween_property(_cilindro, "bottom_radius", 0.07, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		
-	if _material_haz != null:
-		var color_flash = Color.WHITE if not es_critico_perfecto else Color(1.0, 0.9, 0.2)
-		tw.tween_property(_material_haz, "albedo_color", color_flash, 0.04)
-		tw.chain().tween_property(_material_haz, "albedo_color", _color_haz_actual, 0.14)
-		
-	if _luz_haz != null:
-		tw.tween_property(_luz_haz, "light_energy", 6.0, 0.05)
-		tw.chain().tween_property(_luz_haz, "light_energy", 1.8, 0.14)
+	if _cilindro != null or _material_haz != null or _luz_haz != null:
+		var tw = create_tween().set_parallel(true)
+		if _cilindro != null:
+			tw.tween_property(_cilindro, "top_radius", 0.34, 0.05).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			tw.tween_property(_cilindro, "bottom_radius", 0.34, 0.05).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			tw.chain().tween_property(_cilindro, "top_radius", 0.07, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			tw.parallel().tween_property(_cilindro, "bottom_radius", 0.07, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			
+		if _material_haz != null:
+			var color_flash = Color.WHITE if not es_critico_perfecto else Color(1.0, 0.9, 0.2)
+			tw.tween_property(_material_haz, "albedo_color", color_flash, 0.04)
+			tw.chain().tween_property(_material_haz, "albedo_color", _color_haz_actual, 0.14)
+			
+		if _luz_haz != null:
+			tw.tween_property(_luz_haz, "light_energy", 6.0, 0.05)
+			tw.chain().tween_property(_luz_haz, "light_energy", 1.8, 0.14)
 		
 	var enemigos = get_tree().get_nodes_in_group("enemies")
 	if enemigos.is_empty():
@@ -253,6 +256,12 @@ func disparar_descarga_clic(dano_base: int, es_critico_perfecto: bool = false, n
 				if e.has_method("aplicar_knockback"):
 					e.aplicar_knockback(dir_empuje * fuerza_empuje)
 					
+	if dano_acumulado > 0 and jugador != null and is_instance_valid(jugador) and jugador.has_method("registrar_dano_telemetria"):
+		jugador.registrar_dano_telemetria("hilo", float(dano_acumulado))
+	if total_alcanzados > 0:
+		var fav_mgr = get_tree().get_first_node_in_group("favor_emperador_manager")
+		if fav_mgr != null and fav_mgr.has_method("notificar_electro_hilo"):
+			fav_mgr.notificar_electro_hilo(total_alcanzados)
 	descarga_detonada.emit(total_alcanzados, dano_acumulado)
 	return total_alcanzados
 

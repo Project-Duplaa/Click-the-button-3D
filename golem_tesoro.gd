@@ -9,7 +9,7 @@ var _tiempo_escape: float = 15.0
 var _mat_nucleo_dorado: StandardMaterial3D = null
 var _baliza_superior: MeshInstance3D = null
 
-func _ready():
+func _ready() -> void:
 	rapidez = 4.2
 	vida_maxima = 95.0
 	dano_contacto = 0.0
@@ -178,7 +178,7 @@ func _calcular_velocidad_ia(delta: float) -> Vector3:
 func _golpear_pinata_clic():
 	if muerto:
 		return
-	AudioManager.play("moneda", 1.35)
+	AudioManager.play("altar_activado", 1.55, -2.0)
 	if _mat_nucleo_dorado != null and is_instance_valid(_mat_nucleo_dorado):
 		_mat_nucleo_dorado.emission_energy_multiplier = 5.2
 		var tw_flash := create_tween()
@@ -187,16 +187,23 @@ func _golpear_pinata_clic():
 		jugador.recoger_drop(0, 4)
 	recibir_dano(14.0, true)
 
-func morir():
-	BunkerVisualKit.spawn_shockwave_ring(
-		get_parent(),
-		global_position,
-		0.4,
-		2.6,
-		BunkerVisualKit.COL_VAULT_GOLD,
-		0.36
-	)
-	var pool = get_tree().get_first_node_in_group("damage_numbers")
-	if pool != null and pool.has_method("mostrar_texto"):
-		pool.mostrar_texto(global_position + Vector3(0, 2.2, 0), "🪙 ¡BOTÍN DORADO MASIVO! +35🪙 +45 XP", Color(1.0, 0.88, 0.15), 1.35)
+func morir() -> void:
+	if _muerto:
+		return
+	var padre = get_parent()
+	var pos_muerte = global_position
+	var arbol = get_tree()
 	super.morir()
+	if padre != null:
+		BunkerVisualKit.spawn_shockwave_ring(
+			padre,
+			pos_muerte,
+			0.4,
+			2.6,
+			BunkerVisualKit.COL_VAULT_GOLD,
+			0.36
+		)
+	if arbol != null:
+		var pool = arbol.get_first_node_in_group("damage_numbers")
+		if pool != null and pool.has_method("mostrar_texto"):
+			pool.mostrar_texto(pos_muerte + Vector3(0, 2.2, 0), "🪙 ¡BOTÍN DORADO MASIVO! +35🪙 +45 XP", Color(1.0, 0.88, 0.15), 1.35)

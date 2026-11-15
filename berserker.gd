@@ -214,7 +214,7 @@ func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 			if n.has_method("iniciar"):
 				n.iniciar(0, false, false, "🛡️ ESCUDO RÚNICO")
 
-	var cantidad_final: float = cantidad
+	var cantidad_final: float = cantidad * (1.0 + MetaprogresoManager.obtener_bono_bestiario("berserker"))
 	if marca_conductiva_timer > 0.0:
 		cantidad_final *= 1.25
 
@@ -255,8 +255,7 @@ func morir():
 
 	FortunaManager.soltar_drops(get_parent(), global_position, "berserker")
 
-	if jugador != null and is_instance_valid(jugador) and jugador.has_method("registrar_baja"):
-		jugador.registrar_baja()
+	MetaprogresoManager.procesar_baja_completa(self, jugador, "berserker", false)
 
 	if modelo != null:
 		var tw = create_tween().set_parallel(true)

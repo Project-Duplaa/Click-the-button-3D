@@ -87,7 +87,7 @@ func _ready():
 		var titulo_inicial = "💀 LA PARCA ROJA [🛡️ ESCUDO: 0/%d CLICS AL NÚCLEO]" % clics_para_romper_escudo
 		hud.mostrar_barra_jefe(titulo_inicial, vida_maxima, vida)
 
-func aplicar_knockback(impulso: Vector3):
+func aplicar_knockback(impulso: Vector3, _duracion_stun: float = 0.08):
 	var kb = impulso * 0.4
 	kb.y = 0.0
 	_knockback_velocity += kb
@@ -433,7 +433,7 @@ func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 		_crear_texto_flotante("🛡️ ¡ESCUDO! (%d Clics al Núcleo)" % (clics_para_romper_escudo - clics_actuales_escudo), false)
 		return
 
-	var dano_final = cantidad * 1.25
+	var dano_final = cantidad * 1.25 * (1.0 + MetaprogresoManager.obtener_bono_bestiario("parca"))
 	vida = maxf(vida - dano_final, 1.0)
 	_anim_ctrl.disparar_golpe()
 
@@ -504,8 +504,7 @@ func morir():
 	AudioManager.play("victoria", 1.0, 4.0)
 
 	var pj = get_tree().get_first_node_in_group("jugador")
-	if pj != null and pj.has_method("registrar_baja"):
-		pj.registrar_baja()
+	MetaprogresoManager.procesar_baja_completa(self, pj, "parca", true)
 
 	emit_signal("parca_derrotada")
 

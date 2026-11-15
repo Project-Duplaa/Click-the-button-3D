@@ -4,14 +4,22 @@ class_name EnemigoBase
 # EnemigoBase - Clase base modular para enemigos en Clicklike 3D
 # Gestiona física real de retroceso (knockback), aturdimiento, marcas conductivas,
 # IA base para subclases interactivas con el cursor, shudder visual al recibir daño y pop de muerte.
+# Domain 3: Telemetría de daño, Bono de Bestiario, Sistema Némesis y Chasis Gravitatorio (+25% XP).
 
 const AudioManager = preload("res://audio_manager.gd")
+const MetaprogresoManager = preload("res://metaprogreso_manager.gd")
 
+@export var tipo_enemigo_id: String = ""
 @export var rapidez: float = 2.85
 @export var vida_maxima: float = 14.0
 @export var dano_ataque: float = 4.5
 @export var cadencia_ataque: float = 1.0
 @export var rango_ataque: float = 1.1
+
+# Propiedades del Sistema Némesis Vengativo
+@export var es_nemesis: bool = false
+@export var oro_nemesis_extra: int = 0
+@export var clics_nemesis_extra: int = 0
 
 var dano_contacto: float = 6.0
 var xp_otorgada: int = 10
@@ -39,6 +47,26 @@ func _ready() -> void:
 	jugador = get_tree().get_first_node_in_group("player")
 	if jugador == null:
 		jugador = get_tree().get_first_node_in_group("jugador")
+
+	_autodetectar_tipo_enemigo()
+
+func _autodetectar_tipo_enemigo() -> void:
+	if tipo_enemigo_id != "":
+		return
+	var nom := name.to_lower()
+	if nom.contains("guardia"): tipo_enemigo_id = "guardia"
+	elif nom.contains("espectro"): tipo_enemigo_id = "espectro"
+	elif nom.contains("arquero"): tipo_enemigo_id = "arquero"
+	elif nom.contains("berserker"): tipo_enemigo_id = "berserker"
+	elif nom.contains("kamikaze"): tipo_enemigo_id = "kamikaze"
+	elif nom.contains("bruto"): tipo_enemigo_id = "bruto"
+	elif nom.contains("centurion"): tipo_enemigo_id = "centurion"
+	elif nom.contains("mini_jefe") or nom.contains("gladiador"): tipo_enemigo_id = "mini_jefe"
+	elif nom.contains("maestra"): tipo_enemigo_id = "maestra"
+	elif nom.contains("coloso"): tipo_enemigo_id = "coloso"
+	elif nom.contains("parca"): tipo_enemigo_id = "parca"
+	elif nom.contains("espejo"): tipo_enemigo_id = "espejo_sombrio"
+	else: tipo_enemigo_id = "guardia"
 
 func _physics_process(delta: float) -> void:
 	if _muerto:
@@ -103,6 +131,10 @@ func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false) 
 	if marca_conductiva_timer > 0.0:
 		cantidad_final *= 1.25
 
+	# Multiplicador de daño por Bono de Bestiario (retorna 0.00..0.20 extra)
+	var bono_bestiario: float = float(MetaprogresoManager.obtener_bono_bestiario(tipo_enemigo_id))
+	cantidad_final *= (1.0 + bono_bestiario)
+
 	vida -= cantidad_final
 
 	var tw = create_tween()
@@ -134,17 +166,72 @@ func morir() -> void:
 	_muerto = true
 
 	set_physics_process(false)
+
+	# 1. Registro de baja en Bestiario y Telemetría
+	MetaprogresoManager.registrar_baja_bestiario(tipo_enemigo_id)
+
+	# 2. Notificación al jugador (notificar_baja_enemigo ya invoca registrar_baja)
+	if jugador != null and is_instance_valid(jugador):
+		if jugador.has_method("notificar_baja_enemigo"):
+			jugador.notificar_baja_enemigo(tipo_enemigo_id, global_position)
+		elif jugador.has_method("registrar_baja"):
+			jugador.registrar_baja()
+
+	# 3. Notificación al FavorEmperadorManager
+	var favor_mgr = get_tree().get_first_node_in_group("favor_emperador_manager")
+	if favor_mgr != null and favor_mgr.has_method("notificar_baja"):
+		var es_elite_o_jefe: bool = is_in_group("jefes") or is_in_group("bosses") or es_nemesis or vida_maxima >= 150.0
+		favor_mgr.notificar_baja(tipo_enemigo_id, es_elite_o_jefe)
+
+	# 4. Bono de Chasis Gravitatorio: +25% XP si muere a menos de 6.5m del Botón Móvil
+	var mult_xp_chasis: float = 1.0
+	var boton = get_tree().get_first_node_in_group("boton_movil")
+	if boton != null and is_instance_valid(boton):
+		if "chasis_actual" in boton and boton.chasis_actual == "gravitatorio":
+			if global_position.distance_to(boton.global_position) <= 6.5:
+				mult_xp_chasis = 1.25
+
 	var tw = create_tween().set_parallel(true)
 	tw.tween_property(self, "scale", _escala_base * 1.35, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_property(self, "position:y", position.y + 0.4, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
-	FortunaManager.soltar_drops(get_parent(), global_position, "espectro")
+	FortunaManager.soltar_drops(get_parent(), global_position, tipo_enemigo_id)
+
 	if jugador != null and is_instance_valid(jugador):
-		if xp_otorgada > 10 and jugador.has_method("ganar_xp"):
-			jugador.ganar_xp(xp_otorgada - 10)
+		var xp_calculada = int(ceil(float(xp_otorgada) * mult_xp_chasis))
+		if xp_calculada > 10 and jugador.has_method("ganar_xp"):
+			jugador.ganar_xp(xp_calculada - 10)
 		if oro_otorgado > 5 and jugador.has_method("recoger_drop"):
 			jugador.recoger_drop(0, oro_otorgado - 5)
-		if jugador.has_method("registrar_baja"):
-			jugador.registrar_baja()
+
+	# 5. Sistema Némesis: Payout de Venganza y Cofre Dorado
+	if es_nemesis:
+		_ejecutar_recompensa_nemesis()
 
 	tw.chain().tween_callback(queue_free)
+
+func _ejecutar_recompensa_nemesis() -> void:
+	AudioManager.play("victoria", 1.45)
+	if jugador != null and is_instance_valid(jugador):
+		if oro_nemesis_extra > 0 and jugador.has_method("recoger_drop"):
+			jugador.recoger_drop(0, oro_nemesis_extra)
+		if clics_nemesis_extra > 0 and "clics_disponibles" in jugador:
+			jugador.clics_disponibles += clics_nemesis_extra
+			if "clics_totales" in jugador:
+				jugador.clics_totales += clics_nemesis_extra
+
+	var escena_cofre = load("res://cofre_dorado.tscn")
+	if escena_cofre != null and get_parent() != null:
+		var c = escena_cofre.instantiate()
+		get_parent().add_child(c)
+		c.global_position = global_position
+
+	MetaprogresoManager.limpiar_nemesis_derrotado()
+
+	var logros = get_tree().get_first_node_in_group("logros_manager")
+	if logros != null and logros.has_method("registrar_baja_nemesis"):
+		logros.registrar_baja_nemesis()
+
+	var eventos = get_tree().get_first_node_in_group("eventos_coliseo_manager")
+	if eventos != null and eventos.has_signal("nemesis_derrotado"):
+		eventos.emit_signal("nemesis_derrotado")

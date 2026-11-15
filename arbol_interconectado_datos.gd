@@ -1,9 +1,9 @@
 class_name ArbolInterconectadoDatos
 extends RefCounted
 
-## ArbolInterconectadoDatos - Catálogo y Generador del Grafo Web (Estilo Path of Exile / Nodebreaker)
-## Constelación masiva de 55 nodos interconectados en 5 Tiers.
-## Desarrollado para progresión metaprogresiva incremental y roguelike.
+## ArbolInterconectadoDatos - Catálogo y Generador del Grafo Web (Estilo Path of Exile)
+## Constelación masiva de 67 nodos interconectados en 6 Tiers.
+## Tier 6 incluye la Constelación Cósmica y 3 Nodos de Maestría Infinita (Nivel Máx. 999).
 
 static func generar_arbol() -> Dictionary:
 	var nodos: Dictionary = {}
@@ -127,14 +127,14 @@ static func generar_arbol() -> Dictionary:
 		"clk_keystone_cataclismo", "Keystone: Cataclismo Cinético",
 		"Cada 8 clics resetea CDs de armas y barre la arena",
 		"azul", Vector2(-880, -180), 1, "clics", 0, 1250, 1.0, "keystone_cataclismo", 1.0,
-		["clk_sobrecarga_1"], true, "⚡⚡"
+		["clk_sobrecarga_1", "cosm_singularidad_estelar"], true, "⚡⚡"
 	)
 
 	registrar.call(
 		"clk_keystone_soberania", "Keystone: Soberanía del Clic Rúnico",
 		"Clics escalan con 200% del daño del arma principal",
 		"azul", Vector2(-820, -450), 1, "ambas", 450, 1500, 1.0, "keystone_soberania", 1.0,
-		["clk_frenesi_1"], true, "👑👆"
+		["clk_frenesi_1", "cosm_ojo_cosmos"], true, "👑👆"
 	)
 
 	# ==========================================================================
@@ -336,14 +336,14 @@ static func generar_arbol() -> Dictionary:
 		"eco_keystone_usura", "Keystone: Usura y Riqueza Infinita",
 		"+20% interés oleada; +2.5% daño global por cada 100 de oro",
 		"dorada", Vector2(870, -180), 1, "oro", 2200, 0, 1.0, "keystone_usura", 1.0,
-		["eco_alcance_1"], true, "🏦👑"
+		["eco_alcance_1", "cosm_pulso_supernova"], true, "🏦👑"
 	)
 
 	registrar.call(
 		"eco_keystone_fabrica", "Keystone: Fábrica Autónoma del Coliseo",
 		"Autoclicker a 6 clics/s; heredan 100% de los efectos del clic manual",
 		"dorada", Vector2(810, -440), 1, "ambas", 1200, 1100, 1.0, "keystone_fabrica", 1.0,
-		["eco_reloj_1"], true, "⚙️🤖"
+		["eco_reloj_1", "cosm_vortice_tiempo"], true, "⚙️🤖"
 	)
 
 	# ==========================================================================
@@ -437,14 +437,103 @@ static func generar_arbol() -> Dictionary:
 		"apex_keystone_ascension", "KEYSTONE SUPREMO: ASCENSIÓN DE LA CONSTELACIÓN",
 		"[CULMINACIÓN DEL JUEGO] +100% Daño Global, +50% Velocidad, proyectiles triples y x2 en todos los ingresos de Oro y Clics",
 		"hibrido", Vector2(0, -960), 1, "ambas", 2500, 2000, 1.0, "ascension_suprema", 1.0,
-		["pnt_keystone_apex_orb"], true, "👑🏆"
+		["pnt_keystone_apex_orb", "cosm_nexo_primordial"], true, "👑🏆"
+	)
+
+	# ==========================================================================
+	# TIER 6: CONSTELACIÓN CÓSMICA ASTRAL & MAESTRÍAS INFINITAS (y = -1120 a -1450)
+	# ==========================================================================
+	registrar.call(
+		"cosm_nexo_primordial", "Nexo Astral Primordial",
+		"+30% Daño a enemigos élite y jefes, y abre el umbral a las Maestrías Infinitas",
+		"cosmico", Vector2(0, -1120), 5, "ambas", 800, 750, 1.45, "dano_armas_pct", 30.0,
+		["apex_keystone_ascension", "inf_poder_armas", "inf_resonancia_clic", "inf_fortuna_eterna", "cosm_singularidad_estelar", "cosm_pulso_supernova"], false, "🌌"
+	)
+
+	# --- 3 NODOS DE MAESTRÍA INFINITA (nivel_max = 999) ---
+	registrar.call(
+		"inf_poder_armas", "Maestría Cósmica: Poder de Armas",
+		"[NIVEL INFINITO] +5% Daño Global por nivel de forma acumulativa y permanente",
+		"cosmico", Vector2(-150, -1160), 999, "oro", 300, 0, 1.15, "dano_armas_pct", 5.0,
+		["cosm_nexo_primordial"], false, "⚔️✨"
+	)
+
+	registrar.call(
+		"inf_resonancia_clic", "Maestría Cósmica: Resonancia de Clic",
+		"[NIVEL INFINITO] +8% Daño de Clic & Resonancia por nivel de forma ilimitada",
+		"cosmico", Vector2(150, -1160), 999, "clics", 0, 250, 1.15, "dano_clic_pct", 8.0,
+		["cosm_nexo_primordial"], false, "⚡✨"
+	)
+
+	registrar.call(
+		"inf_fortuna_eterna", "Maestría Cósmica: Fortuna Eterna",
+		"[NIVEL INFINITO] +2% Oro, +2% Experiencia y +0.02 Suerte por nivel",
+		"cosmico", Vector2(0, -1250), 999, "ambas", 200, 200, 1.16, "suerte", 0.02,
+		["cosm_nexo_primordial", "cosm_keystone_genesis"], false, "🍀✨"
+	)
+
+	# --- CONSTELACIÓN CÓSMICA EXTERIOR ---
+	registrar.call(
+		"cosm_singularidad_estelar", "Singularidad Estelar",
+		"Ondas de clic arrastran a todos los enemigos de la arena hacia el epicentro",
+		"cosmico", Vector2(-260, -1180), 3, "clics", 0, 650, 1.5, "radio_aoe_clic", 2.5,
+		["cosm_nexo_primordial", "clk_keystone_cataclismo", "cosm_ojo_cosmos"], false, "🌀"
+	)
+
+	registrar.call(
+		"cosm_pulso_supernova", "Pulso de Supernova",
+		"+20% Cadencia de ataque y los golpes críticos detonan novas estelares (+90 dmg)",
+		"cosmico", Vector2(260, -1180), 3, "oro", 700, 0, 1.5, "cadencia_armas_pct", 20.0,
+		["cosm_nexo_primordial", "eco_keystone_usura", "cosm_vortice_tiempo"], false, "☄️"
+	)
+
+	registrar.call(
+		"cosm_ojo_cosmos", "Ojo del Cosmos",
+		"Duplica el multiplicador de daño crítico de todas las armas y ondas de choque",
+		"cosmico", Vector2(-420, -1260), 3, "ambas", 600, 550, 1.55, "dano_critico_pct", 50.0,
+		["cosm_singularidad_estelar", "clk_keystone_soberania", "cosm_constelacion_draconis"], false, "👁️"
+	)
+
+	registrar.call(
+		"cosm_vortice_tiempo", "Vórtice del Tiempo",
+		"Los autoclickers ganan +100% velocidad y reducen el enfriamiento del Dash un 30%",
+		"cosmico", Vector2(420, -1260), 3, "ambas", 650, 500, 1.55, "autoclick_tasa", 3.0,
+		["cosm_pulso_supernova", "eco_keystone_fabrica", "cosm_corona_astral"], false, "⌛"
+	)
+
+	registrar.call(
+		"cosm_constelacion_draconis", "Constelación Draconis",
+		"+40 Armadura plana y desata un aliento de fuego estelar que calcina la arena",
+		"cosmico", Vector2(-180, -1350), 3, "oro", 850, 0, 1.6, "armadura_plana", 40.0,
+		["cosm_ojo_cosmos", "cosm_espejo_vacio", "cosm_keystone_genesis"], false, "🐉"
+	)
+
+	registrar.call(
+		"cosm_corona_astral", "Corona Astral",
+		"+60 HP Escudo de Almas y regenera 5 HP/s mientras el escudo esté activo",
+		"cosmico", Vector2(180, -1350), 3, "oro", 850, 0, 1.6, "escudo_almas", 60.0,
+		["cosm_vortice_tiempo", "cosm_keystone_genesis"], false, "👑🌟"
+	)
+
+	registrar.call(
+		"cosm_espejo_vacio", "Espejo del Vacío",
+		"15% Probabilidad de anular daño fatal y reflejar el 200% del impacto al agresor",
+		"cosmico", Vector2(-350, -1440), 2, "ambas", 950, 800, 1.65, "invulnerable_extra_seg", 1.0,
+		["cosm_constelacion_draconis", "cosm_keystone_genesis"], false, "🪞✨"
+	)
+
+	registrar.call(
+		"cosm_keystone_genesis", "KEYSTONE CÓSMICO: GÉNESIS CELESTIAL",
+		"[TRASCENDENCIA SUPREMA] +50% Daño Global, +2 Proyectiles triples y las almas derrotadas detonan en cometas sagrados",
+		"cosmico", Vector2(0, -1450), 1, "ambas", 3500, 3000, 1.0, "cosm_keystone_genesis", 1.0,
+		["cosm_constelacion_draconis", "cosm_corona_astral", "cosm_espejo_vacio", "inf_fortuna_eterna"], true, "🌟🔱"
 	)
 
 	# El nodo origen comienza activo
 	if nodos.has("nodo_origen"):
 		nodos["nodo_origen"].nivel_actual = 1
 
-	# Asegurar bidireccionalidad de todas las conexiones en el grafo
+	# Asegurar bidireccionalidad de todas las conexiones en el grafo (100% Simetría)
 	for n_id in nodos.keys():
 		var nodo = nodos[n_id]
 		for vecino_id in nodo.nodos_conectados:

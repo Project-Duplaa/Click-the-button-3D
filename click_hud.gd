@@ -11,8 +11,12 @@ const MALLAS_AVATAR := {
 	"Cazador": preload("res://personaje/character-female-e.glb"),
 	"Mago": preload("res://personaje/character-female-b.glb"),
 	"Paladín Solar": preload("res://personaje/character-male-d.glb"),
+	"Berserker Sangriento": preload("res://personaje/character-male-d.glb"),
 	"Francotirador Astral": preload("res://personaje/character-female-e.glb"),
+	"Maestro de Sombras": preload("res://personaje/character-female-e.glb"),
 	"Archimago del Vacío": preload("res://personaje/character-female-b.glb"),
+	"Piromante Cataclísmico": preload("res://personaje/character-female-b.glb"),
+	"Avatar del Núcleo": preload("res://personaje/character-male-a.glb"),
 }
 
 const WEAPON_KEYS := {
@@ -21,8 +25,12 @@ const WEAPON_KEYS := {
 	"Cazador": "Cazador",
 	"Mago": "Mago",
 	"Paladín Solar": "Guerrero",
+	"Berserker Sangriento": "Guerrero",
 	"Francotirador Astral": "Cazador",
+	"Maestro de Sombras": "Cazador",
 	"Archimago del Vacío": "Mago",
+	"Piromante Cataclísmico": "Mago",
+	"Avatar del Núcleo": "Novato",
 }
 
 const CLASS_ACCENTS := {
@@ -31,8 +39,12 @@ const CLASS_ACCENTS := {
 	"Cazador": Color(0.20, 0.85, 0.50),
 	"Mago": Color(0.55, 0.35, 1.00),
 	"Paladín Solar": Color(1.00, 0.82, 0.20),
+	"Berserker Sangriento": Color(0.95, 0.15, 0.15),
 	"Francotirador Astral": Color(0.22, 0.78, 1.00),
+	"Maestro de Sombras": Color(0.48, 0.20, 0.75),
 	"Archimago del Vacío": Color(0.95, 0.20, 0.70),
+	"Piromante Cataclísmico": Color(1.00, 0.42, 0.10),
+	"Avatar del Núcleo": Color(0.25, 0.95, 1.00),
 }
 
 const TEX_CORAZON_LLENO := preload("res://ui_assets/hud_gem_heart.png")
@@ -73,6 +85,7 @@ const SELLO_MAX_TOTAL_MS: int = 2200
 const ArbolMejorasPoEEscena := preload("res://arbol_mejoras_poe.tscn")
 const CatalogoBendiciones := preload("res://catalogo_bendiciones.gd")
 const AnimadorEntidad := preload("res://animador_entidad.gd")
+const MetaprogresoManager := preload("res://metaprogreso_manager.gd")
 
 # --- Referencias Top Bar ---
 @onready var overlay_colapso: ColorRect = $Control/OverlayColapso
@@ -250,6 +263,11 @@ func _ready() -> void:
 	_conectar_boton_movil()
 	call_deferred("_conectar_boton_movil")
 	_crear_boton_test_parca()
+	_crear_boton_codice_en_status_rail()
+	_crear_strip_favor_y_contrato()
+	_crear_panel_f3_telemetria()
+	_crear_modales_dominio4()
+	call_deferred("_bootstrap_domain4_managers")
 	call_deferred("_ajustar_layout_resolucion")
 
 
@@ -402,6 +420,11 @@ func _process(delta: float) -> void:
 	if _reloj_jefe_sync >= 0.1:
 		_reloj_jefe_sync = 0.0
 		_sincronizar_jefe_prioritario()
+	if panel_f3 != null and panel_f3.visible:
+		_reloj_f3_sample += delta
+		if _reloj_f3_sample >= 0.25:
+			_reloj_f3_sample = 0.0
+			_actualizar_telemetria_f3()
 
 
 func _actualizar_timer_y_oleada() -> void:
@@ -409,7 +432,7 @@ func _actualizar_timer_y_oleada() -> void:
 	var segundos := int(tiempo_total) % 60
 	if _partida_ref == null or not is_instance_valid(_partida_ref):
 		_partida_ref = get_tree().get_first_node_in_group("partida")
-	var juicio := _partida_ref != null and "modo_juicio_final" in _partida_ref and bool(_partida_ref.modo_juicio_final)
+	var juicio: bool = _partida_ref != null and "modo_juicio_final" in _partida_ref and bool(_partida_ref.modo_juicio_final)
 
 	if label_tiempo != null:
 		var txt_t := ("JUICIO %02d:%02d" % [minutos, segundos]) if juicio else ("%02d:%02d" % [minutos, segundos])
@@ -462,16 +485,16 @@ func _actualizar_telemetria_nucleo_y_fiebre(delta: float) -> void:
 		var nuevo_col := Color(0.32, 0.90, 0.98)
 		var nuevo_ico: Texture2D = TEX_ICO_CLICKS
 
-		if clicks_boton == 0:
+		if clicks_boton == 0 and (boton == null or not ("sobrecalentado" in boton and bool(boton.sobrecalentado))):
 			var pulso := 0.82 + sin(Time.get_ticks_msec() * 0.0045) * 0.18
 			nuevo_txt = "Pulsa el Núcleo para iniciar"
 			nuevo_col = Color(0.28, 0.94, 1.0, pulso)
 		elif boton != null and "estado_actual" in boton:
 			match int(boton.estado_actual):
-				1: # ENCADENADO
+				1: # ENCADENADO / ESTROPEADO POR SOBRECALENTAMIENTO
 					var cad_act := int(boton.cadenas_activas) if "cadenas_activas" in boton else 3
-					nuevo_txt = "NÚCLEO ENCADENADO  ·  %d palancas" % cad_act
-					nuevo_col = Color(1.0, 0.78, 0.25) if (int(Time.get_ticks_msec() * 0.004) % 2 == 0) else Color(1.0, 0.30, 0.32)
+					nuevo_txt = "¡NÚCLEO ESTROPEADO!  ·  Activa %d/3 palancas" % cad_act
+					nuevo_col = Color(1.0, 0.22, 0.25) if (int(Time.get_ticks_msec() * 0.006) % 2 == 0) else Color(1.0, 0.72, 0.20)
 					nuevo_ico = TEX_ICO_PACTO
 				2: # SOBRECARGA_FRENESI
 					var t_fren := float(boton._tiempo_frenesi) if "_tiempo_frenesi" in boton else 0.0
@@ -479,12 +502,17 @@ func _actualizar_telemetria_nucleo_y_fiebre(delta: float) -> void:
 					nuevo_col = Color(1.0, 0.85, 0.22)
 					nuevo_ico = TEX_ICO_FEVER
 				_:
-					var clk_bloq := int(boton.clics_para_bloqueo) if "clics_para_bloqueo" in boton else 20
-					var prox := clk_bloq - (clicks_boton % maxi(clk_bloq, 1))
-					nuevo_txt = "Clics: %d  ·  Bloqueo en %d" % [clicks_boton, prox]
-					nuevo_col = Color(0.98, 0.42, 0.88) if en_overdrive else Color(0.36, 0.90, 0.98)
+					var cal_act := float(boton.calor_actual) if "calor_actual" in boton else 0.0
+					var umb_sob := float(boton.umbral_sobrecarga_termica) if "umbral_sobrecarga_termica" in boton else 65.0
+					if cal_act >= umb_sob:
+						nuevo_txt = "🔥 SOBRECARGA %d%% (x1.5)  ·  ¡Deja enfriar!" % int(round(cal_act))
+						nuevo_col = Color(1.0, 0.55, 0.14)
+						nuevo_ico = TEX_ICO_FEVER
+					else:
+						nuevo_txt = "Clics: %s  ·  Calor: %d%%" % [_formatear_numero(clicks_boton), int(round(cal_act))]
+						nuevo_col = Color(0.98, 0.42, 0.88) if en_overdrive else Color(0.36, 0.90, 0.98)
 		else:
-			nuevo_txt = "Clics: %d  ·  %.1f m/s" % [clicks_boton, vel_boton]
+			nuevo_txt = "Clics: %s  ·  %.1f m/s" % [_formatear_numero(clicks_boton), vel_boton]
 
 		if nuevo_txt != _ultimo_txt_nucleo:
 			_ultimo_txt_nucleo = nuevo_txt
@@ -603,7 +631,7 @@ func _actualizar_chips_estado(_delta: float) -> void:
 		var detalles: PackedStringArray = []
 		if hay_reliquias:
 			for id_rel in jugador.reliquias:
-				var stacks := int(jugador.reliquias[id_rel])
+				var stacks: int = int(jugador.reliquias[id_rel])
 				n_rel += stacks
 				detalles.append("%s x%d" % [ReliquiaDatos.obtener_nombre(str(id_rel)), stacks])
 		if chip_reliquias != null:
@@ -638,7 +666,7 @@ func _actualizar_chips_estado(_delta: float) -> void:
 	# Actualizar botón [U] Ascensión
 	if label_arbol != null and "clics_disponibles" in jugador:
 		var pts := int(jugador.clics_disponibles)
-		var nuevo_lbl := "[U] Ascensión (%d)" % pts if pts > 0 else "[U] Ascensión"
+		var nuevo_lbl := "[U] Ascensión (%s)" % _formatear_numero(pts) if pts > 0 else "[U] Ascensión"
 		if label_arbol.text != nuevo_lbl:
 			label_arbol.text = nuevo_lbl
 		var ready_gl: int = 1 if pts >= 10 else 0
@@ -692,7 +720,7 @@ func _on_stats_actualizadas(vida: float, max_vida: float, xp: int, xp_sig: int, 
 		bar_vida.max_value = safe_max
 		bar_vida.value = vida
 	if label_vida != null:
-		label_vida.text = "%d / %d HP" % [int(ceil(vida)), int(round(safe_max))]
+		label_vida.text = "%s / %s HP" % [_formatear_numero(int(ceil(vida))), _formatear_numero(int(round(safe_max)))]
 
 	var esc: float = float(jugador.escudo_almas) if (jugador != null and "escudo_almas" in jugador) else 0.0
 	_shield_ratio_actual = clampf(esc / safe_max, 0.0, 1.0)
@@ -707,24 +735,24 @@ func _on_stats_actualizadas(vida: float, max_vida: float, xp: int, xp_sig: int, 
 		bar_xp.max_value = max(xp_sig, 1)
 		bar_xp.value = xp
 	if label_xp != null:
-		label_xp.text = "%d / %d XP" % [xp, xp_sig]
+		label_xp.text = "%s / %s XP" % [_formatear_numero(xp), _formatear_numero(xp_sig)]
 
 	if label_oro != null:
-		label_oro.text = "%d" % oro
+		label_oro.text = _formatear_numero(oro)
 	if label_bajas != null:
-		label_bajas.text = "%d Bajas" % bajas
+		label_bajas.text = "%s Bajas" % _formatear_numero(bajas)
 
 
 func _on_economia_actualizada(oro_cnt: int, clics_disp: int, _clics_tot: int) -> void:
 	if label_oro != null:
-		label_oro.text = "%d" % oro_cnt
+		label_oro.text = _formatear_numero(oro_cnt)
 	if label_arbol != null:
-		label_arbol.text = "[U] Ascensión (%d)" % clics_disp if clics_disp > 0 else "[U] Ascensión"
+		label_arbol.text = "[U] Ascensión (%s)" % _formatear_numero(clics_disp) if clics_disp > 0 else "[U] Ascensión"
 
 
 func _on_denarios_actualizados(denarios_actuales: int) -> void:
 	if label_denarios != null:
-		label_denarios.text = "%d" % denarios_actuales
+		label_denarios.text = _formatear_numero(denarios_actuales)
 
 
 func _on_suerte_cambiada(nueva_suerte: float) -> void:
@@ -1215,7 +1243,7 @@ func _extraer_chips_estadisticas(desc: String, b: Dictionary) -> PackedStringArr
 	var matches := regex.search_all(desc)
 	var palabras := desc.split(" ")
 	for m in matches:
-		var token := m.get_string()
+		var token: String = str((m as RegExMatch).get_string())
 		var etiqueta := token
 		for idx in range(palabras.size()):
 			if palabras[idx].contains(token):
@@ -1720,7 +1748,9 @@ func _seleccionar_carta_bendicion(indice: int) -> void:
 	if indice >= 0 and indice < _opciones_bendicion_actuales.size():
 		var elegida: Dictionary = _opciones_bendicion_actuales[indice]
 		var id_bendicion := str(elegida.get("id", ""))
-		if jugador != null and jugador.has_method("aplicar_bendicion_roguelike") and id_bendicion != "":
+		if str(elegida.get("categoria", "")) == "corrupta" and jugador != null and jugador.has_method("aplicar_bendicion_corrupta") and id_bendicion != "":
+			jugador.aplicar_bendicion_corrupta(id_bendicion)
+		elif jugador != null and jugador.has_method("aplicar_bendicion_roguelike") and id_bendicion != "":
 			jugador.aplicar_bendicion_roguelike(id_bendicion)
 		elif jugador != null and jugador.has_method("aplicar_mejora"):
 			jugador.aplicar_mejora("dano")
@@ -1778,7 +1808,7 @@ func mostrar_barra_jefe(nombre: String, max_hp: float, hp_actual: float) -> void
 		bar_vida_jefe.max_value = safe_max
 		bar_vida_jefe.value = hp_actual
 	if label_vida_jefe != null:
-		label_vida_jefe.text = "%d / %d HP" % [int(ceil(hp_actual)), int(round(safe_max))]
+		label_vida_jefe.text = "%s / %s HP" % [_formatear_numero(int(ceil(hp_actual))), _formatear_numero(int(round(safe_max)))]
 	if estaba_oculto:
 		panel_jefe.scale = Vector2(0.90, 0.90)
 		panel_jefe.modulate.a = 0.0
@@ -1801,7 +1831,7 @@ func actualizar_barra_jefe(hp_actual: float, texto_nombre: String = "") -> void:
 
 	bar_vida_jefe.value = hp_actual
 	if label_vida_jefe != null:
-		label_vida_jefe.text = "%d / %d HP" % [int(ceil(hp_actual)), int(round(safe_max))]
+		label_vida_jefe.text = "%s / %s HP" % [_formatear_numero(int(ceil(hp_actual))), _formatear_numero(int(round(safe_max)))]
 	if texto_nombre != "" and label_nombre_jefe != null:
 		label_nombre_jefe.text = _limpiar_prefijo_emoji_jefe(texto_nombre)
 
@@ -1880,8 +1910,20 @@ func _unhandled_input(event: InputEvent) -> void:
 				_seleccionar_carta_bendicion(2)
 				get_viewport().set_input_as_handled()
 				return
+		if modal_mercader != null and modal_mercader.visible and event.keycode == KEY_ESCAPE:
+			_cerrar_mercader_vacio()
+			get_viewport().set_input_as_handled()
+			return
 		if event.keycode == KEY_F11:
 			_toggle_pantalla_completa()
+			get_viewport().set_input_as_handled()
+			return
+		if event.keycode == KEY_F3:
+			_toggle_panel_f3()
+			get_viewport().set_input_as_handled()
+			return
+		if event.keycode == KEY_C:
+			_toggle_codice()
 			get_viewport().set_input_as_handled()
 			return
 		if event.keycode == KEY_U or event.keycode == KEY_B:
@@ -1892,7 +1934,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _toggle_arbol_poe() -> void:
 	if arbol_poe_instancia == null or not is_instance_valid(arbol_poe_instancia):
 		arbol_poe_instancia = ArbolMejorasPoEEscena.instantiate()
-		var root := get_tree().root if get_tree() != null else get_parent()
+		var root: Node = get_tree().root if get_tree() != null else get_parent()
 		if root != null:
 			root.add_child(arbol_poe_instancia)
 		else:
@@ -2144,9 +2186,859 @@ func _invocar_jefe_test(tipo: String) -> void:
 		var scn := load(escena_path) as PackedScene
 		if scn != null:
 			var inst: Node = scn.instantiate()
-			get_tree().current_scene.add_child(inst)
+			var padre: Node = get_tree().current_scene if get_tree().current_scene != null else get_tree().root
+			padre.add_child(inst)
 			if inst is Node3D and jugador != null:
 				inst.global_position = jugador.global_position + Vector3(0.0, 0.0, -7.0)
-				if inst.has_method("look_at"):
+				if inst.has_method("look_at") and inst.global_position.distance_squared_to(jugador.global_position) > 0.01:
 					inst.look_at(jugador.global_position, Vector3.UP)
 			print(">>> [HUD] Jefe invocado con éxito en arena: ", tipo)
+
+
+# ==============================================================================
+# DOMINIO 4: BOOTSTRAP, TELEMETRÍA F3, FAVOR, CÓDICE, MERCADER & PULGAR
+# ==============================================================================
+
+var btn_codice_rail: Button = null
+var strip_favor: PanelContainer = null
+var bar_favor_mini: ProgressBar = null
+var lbl_favor_mini: Label = null
+var chip_contrato: PanelContainer = null
+var lbl_contrato_mini: Label = null
+var chip_mutador: PanelContainer = null
+var lbl_mutador_mini: Label = null
+
+var panel_f3: PanelContainer = null
+var lbl_f3_dps: Label = null
+var lbl_f3_eco: Label = null
+var lbl_f3_estado: Label = null
+var _reloj_f3_sample: float = 0.0
+
+var _muestras_dano_5s: Array = []
+
+var banner_hazana: PanelContainer = null
+var lbl_hazana_titulo: Label = null
+var lbl_hazana_desc: Label = null
+var _hazana_activa_tw: Tween = null
+
+var modal_mercader: ColorRect = null
+var contenedor_cartas_mercader: HBoxContainer = null
+
+var overlay_pulgar: ColorRect = null
+var lbl_pulgar_titulo: Label = null
+var lbl_pulgar_desc: Label = null
+var icono_pulgar: Label = null
+
+func _formatear_numero(val: Variant) -> String:
+	return str(MetaprogresoManager.formatear_numero(val))
+
+func _bootstrap_domain4_managers() -> void:
+	MetaprogresoManager.asegurar_inicializado()
+	var padre_escena: Node = get_tree().current_scene if (get_tree() != null and get_tree().current_scene != null) else get_tree().root
+
+	# 1. Altar Tormento y Chasis
+	var altar = get_tree().get_first_node_in_group("altar_tormento_chasis")
+	if altar == null and ResourceLoader.exists("res://altar_tormento_chasis.gd"):
+		var scr_altar = load("res://altar_tormento_chasis.gd")
+		if scr_altar != null:
+			var inst_altar = scr_altar.new()
+			inst_altar.name = "AltarTormentoChasis"
+			if padre_escena != null:
+				padre_escena.add_child(inst_altar)
+
+	# 2. Favor del Emperador Manager (añadir al nodo de escena actual para que get_parent() sea la Arena)
+	var favor = get_tree().get_first_node_in_group("favor_emperador_manager")
+	if favor == null and ResourceLoader.exists("res://favor_emperador_manager.gd"):
+		var scr_favor = load("res://favor_emperador_manager.gd")
+		if scr_favor != null:
+			favor = scr_favor.new()
+			favor.name = "FavorEmperadorManager"
+			favor.add_to_group("favor_emperador_manager")
+			if padre_escena != null:
+				padre_escena.add_child(favor)
+
+	# 3. Eventos Coliseo Manager (añadir al nodo de escena actual para acceso directo a WorldEnvironment/Arena)
+	var eventos = get_tree().get_first_node_in_group("eventos_coliseo_manager")
+	if eventos == null and ResourceLoader.exists("res://eventos_coliseo_manager.gd"):
+		var scr_eventos = load("res://eventos_coliseo_manager.gd")
+		if scr_eventos != null:
+			eventos = scr_eventos.new()
+			eventos.name = "EventosColiseoManager"
+			eventos.add_to_group("eventos_coliseo_manager")
+			if padre_escena != null:
+				padre_escena.add_child(eventos)
+
+	# 4. Códice Gladiador UI
+	var codice = get_tree().get_first_node_in_group("codice_gladiador_ui")
+	if codice == null and ResourceLoader.exists("res://codice_gladiador_ui.gd"):
+		var scr_codice = load("res://codice_gladiador_ui.gd")
+		if scr_codice != null:
+			codice = scr_codice.new()
+			codice.name = "CodiceGladiadorUI"
+			codice.add_to_group("codice_gladiador_ui")
+			if padre_escena != null:
+				padre_escena.add_child(codice)
+
+	_conectar_senales_dominio4()
+
+func _conectar_senales_dominio4() -> void:
+	var favor = get_tree().get_first_node_in_group("favor_emperador_manager")
+	if favor != null:
+		if favor.has_signal("favor_cambiado") and not favor.favor_cambiado.is_connected(_on_favor_cambiado):
+			favor.favor_cambiado.connect(_on_favor_cambiado)
+		if favor.has_signal("pulgar_emperador_iniciado") and not favor.pulgar_emperador_iniciado.is_connected(_on_pulgar_iniciado):
+			favor.pulgar_emperador_iniciado.connect(_on_pulgar_iniciado)
+		if favor.has_signal("pulgar_emperador_resuelto") and not favor.pulgar_emperador_resuelto.is_connected(_on_pulgar_resuelto):
+			favor.pulgar_emperador_resuelto.connect(_on_pulgar_resuelto)
+		if favor.has_signal("contrato_actualizado") and not favor.contrato_actualizado.is_connected(_on_contrato_actualizado):
+			favor.contrato_actualizado.connect(_on_contrato_actualizado)
+		if favor.has_signal("contrato_completado") and not favor.contrato_completado.is_connected(_on_contrato_terminado):
+			favor.contrato_completado.connect(_on_contrato_terminado)
+		if "favor" in favor:
+			_on_favor_cambiado(float(favor.favor), "")
+
+	var eventos = get_tree().get_first_node_in_group("eventos_coliseo_manager")
+	if eventos != null:
+		if eventos.has_signal("mercader_vacio_disponible") and not eventos.mercader_vacio_disponible.is_connected(_on_mercader_disponible):
+			eventos.mercader_vacio_disponible.connect(_on_mercader_disponible)
+		if eventos.has_signal("mutador_cambiado") and not eventos.mutador_cambiado.is_connected(_on_mutador_cambiado):
+			eventos.mutador_cambiado.connect(_on_mutador_cambiado)
+		if "mutador_actual" in eventos and str(eventos.mutador_actual) != "":
+			_on_mutador_cambiado(str(eventos.mutador_actual))
+
+	var logros = get_tree().get_first_node_in_group("logros_manager")
+	if logros != null:
+		if logros.has_signal("hazana_desbloqueada") and not logros.hazana_desbloqueada.is_connected(_on_hazana_desbloqueada):
+			logros.hazana_desbloqueada.connect(_on_hazana_desbloqueada)
+		elif logros.has_signal("logro_desbloqueado") and not logros.logro_desbloqueado.is_connected(_on_logro_desbloqueado_adaptador):
+			logros.logro_desbloqueado.connect(_on_logro_desbloqueado_adaptador)
+
+func _crear_boton_codice_en_status_rail() -> void:
+	var rail_box = get_node_or_null("Control/StatusRail/HBoxStatusRail")
+	if rail_box == null:
+		return
+
+	btn_codice_rail = Button.new()
+	btn_codice_rail.name = "BtnCodice"
+	btn_codice_rail.custom_minimum_size = Vector2(105, 26)
+	btn_codice_rail.focus_mode = Control.FOCUS_NONE
+
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.065, 0.055, 0.10, 0.92)
+	sb.border_width_left = 1
+	sb.border_width_top = 1
+	sb.border_width_right = 1
+	sb.border_width_bottom = 1
+	sb.border_color = Color(0.70, 0.54, 0.28, 0.92)
+	sb.corner_radius_top_left = 4
+	sb.corner_radius_top_right = 4
+	sb.corner_radius_bottom_right = 4
+	sb.corner_radius_bottom_left = 4
+
+	var sb_hov := sb.duplicate() as StyleBoxFlat
+	sb_hov.border_color = Color(1.0, 0.85, 0.40, 1.0)
+	sb_hov.bg_color = Color(0.12, 0.09, 0.18, 0.98)
+
+	btn_codice_rail.add_theme_stylebox_override("normal", sb)
+	btn_codice_rail.add_theme_stylebox_override("hover", sb_hov)
+	btn_codice_rail.add_theme_stylebox_override("pressed", sb_hov)
+
+	var hbox := HBoxContainer.new()
+	hbox.set_anchors_preset(Control.PRESET_FULL_RECT)
+	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_theme_constant_override("separation", 5)
+	btn_codice_rail.add_child(hbox)
+
+	var lbl := Label.new()
+	lbl.text = "📖 [C] Códice"
+	lbl.add_theme_font_size_override("font_size", 10)
+	lbl.add_theme_color_override("font_color", Color(0.92, 0.86, 0.72))
+	hbox.add_child(lbl)
+
+	btn_codice_rail.pressed.connect(_toggle_codice)
+	rail_box.add_child(btn_codice_rail)
+	if btn_arbol_poe != null:
+		rail_box.move_child(btn_codice_rail, btn_arbol_poe.get_index())
+
+func _toggle_codice() -> void:
+	var codice = get_tree().get_first_node_in_group("codice_gladiador_ui")
+	if codice == null and ResourceLoader.exists("res://codice_gladiador_ui.gd"):
+		var scr = load("res://codice_gladiador_ui.gd")
+		if scr != null:
+			codice = scr.new()
+			codice.name = "CodiceGladiadorUI"
+			codice.add_to_group("codice_gladiador_ui")
+			var padre_escena: Node = get_tree().current_scene if (get_tree() != null and get_tree().current_scene != null) else get_tree().root
+			if padre_escena != null:
+				padre_escena.add_child(codice)
+	if codice != null and codice.has_method("toggle"):
+		codice.toggle()
+
+func _crear_strip_favor_y_contrato() -> void:
+	strip_favor = PanelContainer.new()
+	strip_favor.name = "StripFavorContrato"
+	strip_favor.offset_left = 18.0
+	strip_favor.offset_top = 134.0
+	strip_favor.offset_right = 302.0
+	strip_favor.offset_bottom = 188.0
+	strip_favor.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var sb_vacio := StyleBoxEmpty.new()
+	strip_favor.add_theme_stylebox_override("panel", sb_vacio)
+	$Control.add_child(strip_favor)
+
+	var vbox_strip := VBoxContainer.new()
+	vbox_strip.add_theme_constant_override("separation", 4)
+	vbox_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	strip_favor.add_child(vbox_strip)
+
+	var hbox_fila1 := HBoxContainer.new()
+	hbox_fila1.add_theme_constant_override("separation", 6)
+	hbox_fila1.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox_strip.add_child(hbox_fila1)
+
+	# 1. Pill Favor del Emperador
+	var pill_f := PanelContainer.new()
+	pill_f.add_theme_stylebox_override("panel", _crear_style_pill(Color(0.06, 0.05, 0.09, 0.90), Color(0.70, 0.54, 0.28, 0.85)))
+	hbox_fila1.add_child(pill_f)
+
+	var h_f := HBoxContainer.new()
+	h_f.add_theme_constant_override("separation", 5)
+	pill_f.add_child(h_f)
+
+	lbl_favor_mini = Label.new()
+	lbl_favor_mini.text = "🏛️ FAVOR: 15%"
+	lbl_favor_mini.add_theme_font_size_override("font_size", 10)
+	lbl_favor_mini.add_theme_color_override("font_color", Color(1.0, 0.88, 0.45))
+	h_f.add_child(lbl_favor_mini)
+
+	bar_favor_mini = ProgressBar.new()
+	bar_favor_mini.custom_minimum_size = Vector2(44, 8)
+	bar_favor_mini.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	bar_favor_mini.max_value = 100.0
+	bar_favor_mini.value = 15.0
+	bar_favor_mini.show_percentage = false
+	h_f.add_child(bar_favor_mini)
+
+	# 2. Chip Mutador de Clima
+	chip_mutador = PanelContainer.new()
+	chip_mutador.visible = false
+	chip_mutador.add_theme_stylebox_override("panel", _crear_style_pill(Color(0.04, 0.08, 0.14, 0.92), Color(0.25, 0.70, 0.95, 0.85)))
+	hbox_fila1.add_child(chip_mutador)
+
+	lbl_mutador_mini = Label.new()
+	lbl_mutador_mini.text = "❄️ Escarcha"
+	lbl_mutador_mini.add_theme_font_size_override("font_size", 10)
+	lbl_mutador_mini.add_theme_color_override("font_color", Color(0.65, 0.90, 1.0))
+	chip_mutador.add_child(lbl_mutador_mini)
+
+	# 3. Chip Contrato Lanista (en fila inferior para jamás invadir la barra del Jefe a los 316px)
+	chip_contrato = PanelContainer.new()
+	chip_contrato.visible = false
+	chip_contrato.add_theme_stylebox_override("panel", _crear_style_pill(Color(0.12, 0.06, 0.04, 0.92), Color(0.95, 0.45, 0.20, 0.85)))
+	vbox_strip.add_child(chip_contrato)
+
+	lbl_contrato_mini = Label.new()
+	lbl_contrato_mini.text = "📜 CONTRATO: 0/10 (30s)"
+	lbl_contrato_mini.add_theme_font_size_override("font_size", 10)
+	lbl_contrato_mini.add_theme_color_override("font_color", Color(1.0, 0.78, 0.55))
+	chip_contrato.add_child(lbl_contrato_mini)
+
+func _crear_style_pill(bg: Color, borde: Color) -> StyleBoxFlat:
+	var s := StyleBoxFlat.new()
+	s.bg_color = bg
+	s.border_width_left = 1
+	s.border_width_top = 1
+	s.border_width_right = 1
+	s.border_width_bottom = 1
+	s.border_color = borde
+	s.corner_radius_top_left = 4
+	s.corner_radius_top_right = 4
+	s.corner_radius_bottom_right = 4
+	s.corner_radius_bottom_left = 4
+	s.content_margin_left = 6.0
+	s.content_margin_right = 6.0
+	s.content_margin_top = 2.0
+	s.content_margin_bottom = 2.0
+	return s
+
+func _on_favor_cambiado(nuevo_pct: float, _nivel_txt: String = "") -> void:
+	if bar_favor_mini != null:
+		bar_favor_mini.value = nuevo_pct
+	if lbl_favor_mini != null:
+		if nuevo_pct >= 80.0:
+			lbl_favor_mini.text = "🏛️ ¡LOCURA! (%d%%)" % int(round(nuevo_pct))
+			lbl_favor_mini.add_theme_color_override("font_color", Color(1.0, 0.84, 0.20))
+		else:
+			lbl_favor_mini.text = "🏛️ FAVOR: %d%%" % int(round(nuevo_pct))
+			lbl_favor_mini.add_theme_color_override("font_color", Color(0.95, 0.85, 0.60))
+
+func _on_contrato_actualizado(datos: Dictionary) -> void:
+	if chip_contrato == null:
+		return
+	if datos.is_empty() or not bool(datos.get("activo", true)):
+		chip_contrato.visible = false
+		return
+	chip_contrato.visible = true
+	if lbl_contrato_mini != null:
+		var tit: String = str(datos.get("titulo", "Contrato"))
+		var prog: int = int(datos.get("progreso", 0))
+		var meta: int = maxi(1, int(datos.get("meta", 1)))
+		var rest: float = float(datos.get("tiempo_restante", 0.0))
+		lbl_contrato_mini.text = "📜 %s: %d/%d (%02ds)" % [tit, prog, meta, int(ceil(maxf(rest, 0.0)))]
+
+func _on_contrato_terminado(_tit: Variant = "", _desc: Variant = "") -> void:
+	if chip_contrato != null:
+		chip_contrato.visible = false
+
+func _on_mutador_cambiado(mutador_in: Variant) -> void:
+	if chip_mutador == null:
+		return
+	var id_mut := ""
+	var nombre_ui := ""
+	var col_borde := Color(0.25, 0.70, 0.95, 0.85)
+	var col_txt := Color(0.65, 0.90, 1.0)
+	if mutador_in is Dictionary:
+		id_mut = str(mutador_in.get("id", "")).to_lower()
+		nombre_ui = str(mutador_in.get("nombre", id_mut))
+	else:
+		id_mut = str(mutador_in).to_lower()
+	match id_mut:
+		"":
+			chip_mutador.visible = false
+			return
+		"escarcha":
+			nombre_ui = "❄️ Escarcha"
+			col_borde = Color(0.35, 0.85, 1.0, 0.90)
+			col_txt = Color(0.65, 0.92, 1.0)
+		"fragua":
+			nombre_ui = "🔥 Fragua"
+			col_borde = Color(1.0, 0.45, 0.15, 0.90)
+			col_txt = Color(1.0, 0.72, 0.42)
+		"eclipse":
+			nombre_ui = "🌑 Eclipse"
+			col_borde = Color(0.75, 0.35, 1.0, 0.90)
+			col_txt = Color(0.88, 0.65, 1.0)
+		_:
+			if nombre_ui == "":
+				nombre_ui = "🌪️ " + id_mut.capitalize()
+	chip_mutador.visible = true
+	chip_mutador.add_theme_stylebox_override("panel", _crear_style_pill(Color(0.05, 0.06, 0.12, 0.92), col_borde))
+	if lbl_mutador_mini != null:
+		lbl_mutador_mini.text = nombre_ui
+		lbl_mutador_mini.add_theme_color_override("font_color", col_txt)
+
+func _crear_panel_f3_telemetria() -> void:
+	panel_f3 = PanelContainer.new()
+	panel_f3.name = "PanelF3Telemetria"
+	panel_f3.offset_left = 18.0
+	panel_f3.offset_top = 194.0
+	panel_f3.offset_right = 296.0
+	panel_f3.offset_bottom = 220.0
+	panel_f3.custom_minimum_size = Vector2(278, 0)
+	panel_f3.visible = false
+
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.04, 0.05, 0.08, 0.94)
+	sb.border_width_left = 1
+	sb.border_width_top = 1
+	sb.border_width_right = 1
+	sb.border_width_bottom = 1
+	sb.border_color = Color(0.72, 0.56, 0.28, 0.90)
+	sb.corner_radius_top_left = 6
+	sb.corner_radius_top_right = 6
+	sb.corner_radius_bottom_right = 6
+	sb.corner_radius_bottom_left = 6
+	sb.content_margin_left = 10.0
+	sb.content_margin_right = 10.0
+	sb.content_margin_top = 8.0
+	sb.content_margin_bottom = 8.0
+	panel_f3.add_theme_stylebox_override("panel", sb)
+	$Control.add_child(panel_f3)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 6)
+	panel_f3.add_child(vbox)
+
+	var header := Label.new()
+	header.text = "⚡ TELEMETRÍA DEL COLISEO [F3]"
+	header.add_theme_font_size_override("font_size", 11)
+	header.add_theme_color_override("font_color", Color(1.0, 0.85, 0.35))
+	vbox.add_child(header)
+
+	lbl_f3_dps = Label.new()
+	lbl_f3_dps.add_theme_font_size_override("font_size", 10)
+	lbl_f3_dps.add_theme_color_override("font_color", Color(0.88, 0.92, 0.98))
+	vbox.add_child(lbl_f3_dps)
+
+	lbl_f3_eco = Label.new()
+	lbl_f3_eco.add_theme_font_size_override("font_size", 10)
+	lbl_f3_eco.add_theme_color_override("font_color", Color(0.75, 0.95, 0.80))
+	vbox.add_child(lbl_f3_eco)
+
+	lbl_f3_estado = Label.new()
+	lbl_f3_estado.add_theme_font_size_override("font_size", 10)
+	lbl_f3_estado.add_theme_color_override("font_color", Color(0.95, 0.85, 0.65))
+	vbox.add_child(lbl_f3_estado)
+
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 4)
+	vbox.add_child(grid)
+
+	_crear_btn_debug(grid, "+1 Nivel", func():
+		if jugador != null and jugador.has_method("ganar_xp") and "xp_siguiente_nivel" in jugador:
+			jugador.ganar_xp(maxi(1, int(jugador.xp_siguiente_nivel) - int(jugador.xp)))
+	)
+	_crear_btn_debug(grid, "+500 Oro", func():
+		if jugador != null and "oro" in jugador:
+			jugador.oro += 500
+			if jugador.has_signal("economia_actualizada"):
+				jugador.economia_actualizada.emit(jugador.oro, jugador.clics_disponibles, jugador.clics_totales)
+	)
+	_crear_btn_debug(grid, "Rueda T2", func():
+		var ev = get_tree().get_first_node_in_group("evolucion_manager")
+		if ev != null:
+			if ev.has_method("forzar_rueda_tier2"):
+				ev.forzar_rueda_tier2()
+			elif ev.has_method("mostrar_modal_ascension_tier2"):
+				ev.mostrar_modal_ascension_tier2()
+	)
+	_crear_btn_debug(grid, "Mercader", func():
+		var ev_col = get_tree().get_first_node_in_group("eventos_coliseo_manager")
+		if ev_col != null and ev_col.has_method("invocar_mercader_vacio"):
+			ev_col.invocar_mercader_vacio(true)
+	)
+	_crear_btn_debug(grid, "Monolito", func():
+		var ev_col = get_tree().get_first_node_in_group("eventos_coliseo_manager")
+		if ev_col != null and ev_col.has_method("activar_monolito_evento"):
+			ev_col.activar_monolito_evento()
+	)
+	_crear_btn_debug(grid, "Mutador", func():
+		var ev_col = get_tree().get_first_node_in_group("eventos_coliseo_manager")
+		if ev_col != null and ev_col.has_method("cambiar_clima_aleatorio"):
+			ev_col.cambiar_clima_aleatorio()
+	)
+
+func _crear_btn_debug(padre: Control, txt: String, cb: Callable) -> void:
+	var btn := Button.new()
+	btn.text = txt
+	btn.custom_minimum_size = Vector2(124, 22)
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.add_theme_font_size_override("font_size", 9)
+	btn.pressed.connect(cb)
+	padre.add_child(btn)
+
+func _toggle_panel_f3() -> void:
+	if panel_f3 != null:
+		panel_f3.visible = not panel_f3.visible
+		if panel_f3.visible:
+			_actualizar_telemetria_f3()
+
+func _actualizar_telemetria_f3() -> void:
+	if panel_f3 == null or not panel_f3.visible:
+		return
+
+	var dps_armas := 0.0
+	var dps_onda := 0.0
+	var dps_hilo := 0.0
+	var dps_total := 0.0
+
+	if jugador != null and jugador.has_method("obtener_telemetria_dps"):
+		var t_dps: Dictionary = jugador.obtener_telemetria_dps()
+		dps_armas = float(t_dps.get("dps_armas", 0.0))
+		dps_onda = float(t_dps.get("dps_onda", 0.0))
+		dps_hilo = float(t_dps.get("dps_hilo", 0.0))
+		dps_total = float(t_dps.get("dps_total", 0.0))
+	else:
+		var t_actual := tiempo_total
+		var dano_armas := 0.0
+		var dano_onda := 0.0
+		var dano_hilo := 0.0
+		var filtro: Array = []
+		for m in _muestras_dano_5s:
+			if t_actual - float(m.get("t", 0.0)) <= 5.0:
+				filtro.append(m)
+				var tipo: String = str(m.get("tipo", "arma"))
+				var d: float = float(m.get("d", 0.0))
+				if tipo == "onda":
+					dano_onda += d
+				elif tipo == "hilo":
+					dano_hilo += d
+				else:
+					dano_armas += d
+		_muestras_dano_5s = filtro
+		dps_armas = dano_armas / 5.0
+		dps_onda = dano_onda / 5.0
+		dps_hilo = dano_hilo / 5.0
+		dps_total = dps_armas + dps_onda + dps_hilo
+
+	if dps_total <= 0.0 and jugador != null:
+		var d_base := float(jugador.dano) if "dano" in jugador else 15.0
+		var cad := maxf(float(jugador.cadencia_ataque) if "cadencia_ataque" in jugador else 0.8, 0.1)
+		dps_armas = d_base / cad
+		dps_total = dps_armas
+
+	if lbl_f3_dps != null:
+		lbl_f3_dps.text = "DPS (5s): Total %s\n  Armas: %s | Onda: %s | Hilo: %s" % [
+			_formatear_numero(dps_total),
+			_formatear_numero(dps_armas),
+			_formatear_numero(dps_onda),
+			_formatear_numero(dps_hilo)
+		]
+
+	var safe_t := maxf(tiempo_total, 1.0)
+	var oro_tot := int(jugador.oro) if (jugador != null and "oro" in jugador) else 0
+	var xp_tot := int(jugador.xp) if (jugador != null and "xp" in jugador) else 0
+	var rate_oro := (float(oro_tot) / safe_t) * 60.0
+	var rate_xp := (float(xp_tot) / safe_t) * 60.0
+	var rate_clics := (float(clicks_boton) / safe_t) * 60.0
+
+	if lbl_f3_eco != null:
+		lbl_f3_eco.text = "Tasas/min:\n  Oro: %s/min | XP: %s/min | Clics: %s/min" % [
+			_formatear_numero(rate_oro),
+			_formatear_numero(rate_xp),
+			_formatear_numero(rate_clics)
+		]
+
+	var l_efectiva := 0.0
+	if FortunaManager != null and FortunaManager.has_method("obtener_suerte_efectiva"):
+		l_efectiva = FortunaManager.obtener_suerte_efectiva()
+
+	var tormento := 0
+	var logros = get_tree().get_first_node_in_group("logros_manager")
+	if logros != null and logros.has_method("obtener_tormento"):
+		tormento = int(logros.obtener_tormento())
+
+	var chasis := "Estándar"
+	var boton_ref = get_tree().get_first_node_in_group("boton_movil")
+	if boton_ref != null and "chasis_actual" in boton_ref and str(boton_ref.chasis_actual) != "":
+		chasis = str(boton_ref.chasis_actual).capitalize()
+	elif str(MetaprogresoManager.chasis_equipado) != "":
+		chasis = str(MetaprogresoManager.chasis_equipado).capitalize()
+
+	var favor_pct := int(round(bar_favor_mini.value)) if bar_favor_mini != null else 15
+	var clase_str := str(jugador.clase) if (jugador != null and "clase" in jugador) else "Novato"
+
+	if lbl_f3_estado != null:
+		lbl_f3_estado.text = "Estado:\n  🍀 Suerte: +%d%% | 🔥 Tormento: %d\n  ⚙️ Chasis: %s | 🏛️ Favor: %d%%\n  ⚔️ Clase: %s" % [
+			int(round(l_efectiva * 100.0)),
+			tormento,
+			chasis,
+			favor_pct,
+			clase_str
+		]
+
+func registrar_impacto_dano_telemetria(cantidad: float, tipo: String = "arma") -> void:
+	_muestras_dano_5s.append({
+		"t": tiempo_total,
+		"d": cantidad,
+		"tipo": tipo
+	})
+
+func _crear_modales_dominio4() -> void:
+	# Toast de Hazañas
+	banner_hazana = PanelContainer.new()
+	banner_hazana.name = "BannerHazanaToast"
+	banner_hazana.z_index = 20
+	banner_hazana.anchor_left = 0.5
+	banner_hazana.anchor_right = 0.5
+	banner_hazana.offset_left = -210.0
+	banner_hazana.offset_right = 210.0
+	banner_hazana.offset_top = -70.0
+	banner_hazana.offset_bottom = -15.0
+	banner_hazana.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var sb_haz := StyleBoxFlat.new()
+	sb_haz.bg_color = Color(0.12, 0.08, 0.04, 0.95)
+	sb_haz.border_width_left = 1
+	sb_haz.border_width_top = 1
+	sb_haz.border_width_right = 1
+	sb_haz.border_width_bottom = 1
+	sb_haz.border_color = Color(1.0, 0.85, 0.35, 1.0)
+	sb_haz.corner_radius_top_left = 6
+	sb_haz.corner_radius_top_right = 6
+	sb_haz.corner_radius_bottom_right = 6
+	sb_haz.corner_radius_bottom_left = 6
+	banner_hazana.add_theme_stylebox_override("panel", sb_haz)
+	$Control.add_child(banner_hazana)
+
+	var v_haz := VBoxContainer.new()
+	v_haz.alignment = BoxContainer.ALIGNMENT_CENTER
+	banner_hazana.add_child(v_haz)
+
+	lbl_hazana_titulo = Label.new()
+	lbl_hazana_titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_hazana_titulo.add_theme_font_size_override("font_size", 11)
+	lbl_hazana_titulo.add_theme_color_override("font_color", Color(1.0, 0.88, 0.40))
+	v_haz.add_child(lbl_hazana_titulo)
+
+	lbl_hazana_desc = Label.new()
+	lbl_hazana_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_hazana_desc.add_theme_font_size_override("font_size", 9)
+	lbl_hazana_desc.add_theme_color_override("font_color", Color(0.90, 0.90, 0.95))
+	v_haz.add_child(lbl_hazana_desc)
+
+	# Modal Mercader del Vacío
+	modal_mercader = ColorRect.new()
+	modal_mercader.name = "ModalMercaderVacio"
+	modal_mercader.set_anchors_preset(Control.PRESET_FULL_RECT)
+	modal_mercader.color = Color(0.04, 0.02, 0.07, 0.88)
+	modal_mercader.visible = false
+	modal_mercader.mouse_filter = Control.MOUSE_FILTER_STOP
+	modal_mercader.process_mode = Node.PROCESS_MODE_ALWAYS
+	$Control.add_child(modal_mercader)
+
+	var panel_mer := PanelContainer.new()
+	panel_mer.anchor_left = 0.5
+	panel_mer.anchor_right = 0.5
+	panel_mer.anchor_top = 0.5
+	panel_mer.anchor_bottom = 0.5
+	panel_mer.offset_left = -335.0
+	panel_mer.offset_right = 335.0
+	panel_mer.offset_top = -195.0
+	panel_mer.offset_bottom = 195.0
+
+	var sb_mer := StyleBoxFlat.new()
+	sb_mer.bg_color = Color(0.07, 0.04, 0.12, 0.96)
+	sb_mer.border_width_left = 2
+	sb_mer.border_width_top = 2
+	sb_mer.border_width_right = 2
+	sb_mer.border_width_bottom = 2
+	sb_mer.border_color = Color(0.75, 0.35, 0.95, 0.95)
+	sb_mer.corner_radius_top_left = 8
+	sb_mer.corner_radius_top_right = 8
+	sb_mer.corner_radius_bottom_right = 8
+	sb_mer.corner_radius_bottom_left = 8
+	sb_mer.content_margin_left = 14.0
+	sb_mer.content_margin_right = 14.0
+	sb_mer.content_margin_top = 12.0
+	sb_mer.content_margin_bottom = 12.0
+	panel_mer.add_theme_stylebox_override("panel", sb_mer)
+	modal_mercader.add_child(panel_mer)
+
+	var v_mer := VBoxContainer.new()
+	v_mer.add_theme_constant_override("separation", 10)
+	panel_mer.add_child(v_mer)
+
+	var t_mer := Label.new()
+	t_mer.text = "🔮 EL MERCADER DEL VACÍO (PACTOS CORRUPTOS)"
+	t_mer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	t_mer.add_theme_font_size_override("font_size", 13)
+	t_mer.add_theme_color_override("font_color", Color(0.92, 0.65, 1.0))
+	v_mer.add_child(t_mer)
+
+	contenedor_cartas_mercader = HBoxContainer.new()
+	contenedor_cartas_mercader.add_theme_constant_override("separation", 12)
+	contenedor_cartas_mercader.alignment = BoxContainer.ALIGNMENT_CENTER
+	v_mer.add_child(contenedor_cartas_mercader)
+
+	var btn_cerrar_mer := Button.new()
+	btn_cerrar_mer.text = "❌ Rechazar Ofrenda del Vacío"
+	btn_cerrar_mer.custom_minimum_size = Vector2(210, 30)
+	btn_cerrar_mer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	btn_cerrar_mer.focus_mode = Control.FOCUS_NONE
+	btn_cerrar_mer.pressed.connect(_cerrar_mercader_vacio)
+	v_mer.add_child(btn_cerrar_mer)
+
+	# Overlay Pulgar del Emperador
+	overlay_pulgar = ColorRect.new()
+	overlay_pulgar.name = "OverlayPulgarEmperador"
+	overlay_pulgar.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay_pulgar.color = Color(0.0, 0.0, 0.0, 0.82)
+	overlay_pulgar.visible = false
+	overlay_pulgar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay_pulgar.process_mode = Node.PROCESS_MODE_ALWAYS
+	$Control.add_child(overlay_pulgar)
+
+	var v_pulg := VBoxContainer.new()
+	v_pulg.set_anchors_preset(Control.PRESET_CENTER)
+	v_pulg.add_theme_constant_override("separation", 10)
+	v_pulg.alignment = BoxContainer.ALIGNMENT_CENTER
+	overlay_pulgar.add_child(v_pulg)
+
+	icono_pulgar = Label.new()
+	icono_pulgar.text = "🏛️"
+	icono_pulgar.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	icono_pulgar.add_theme_font_size_override("font_size", 48)
+	v_pulg.add_child(icono_pulgar)
+
+	lbl_pulgar_titulo = Label.new()
+	lbl_pulgar_titulo.text = "EL JUICIO DEL EMPERADOR"
+	lbl_pulgar_titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_pulgar_titulo.add_theme_font_size_override("font_size", 18)
+	lbl_pulgar_titulo.add_theme_color_override("font_color", Color(1.0, 0.84, 0.28))
+	v_pulg.add_child(lbl_pulgar_titulo)
+
+	lbl_pulgar_desc = Label.new()
+	lbl_pulgar_desc.text = "El Coliseo ruge en silencio aguardando la sentencia..."
+	lbl_pulgar_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_pulgar_desc.add_theme_font_size_override("font_size", 12)
+	lbl_pulgar_desc.add_theme_color_override("font_color", Color(0.90, 0.90, 0.95))
+	v_pulg.add_child(lbl_pulgar_desc)
+
+func _on_hazana_desbloqueada(id_hazana: String, datos: Dictionary) -> void:
+	mostrar_toast_hazana(str(datos.get("titulo", id_hazana)), str(datos.get("recompensa", "¡Gloria Eterna!")))
+
+func _on_logro_desbloqueado_adaptador(id_logro: String, datos: Dictionary) -> void:
+	mostrar_toast_hazana(str(datos.get("titulo", id_logro)), str(datos.get("desc", "")))
+
+func mostrar_toast_hazana(titulo: String, desc: String) -> void:
+	if banner_hazana == null:
+		return
+	if lbl_hazana_titulo != null:
+		lbl_hazana_titulo.text = "🏆 ¡HAZAÑA DESBLOQUEADA: %s!" % titulo.to_upper()
+	if lbl_hazana_desc != null:
+		lbl_hazana_desc.text = desc
+
+	if _hazana_activa_tw != null:
+		_hazana_activa_tw.kill()
+
+	banner_hazana.offset_top = -70.0
+	banner_hazana.offset_bottom = -15.0
+	banner_hazana.modulate.a = 0.0
+
+	_hazana_activa_tw = create_tween()
+	_hazana_activa_tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	_hazana_activa_tw.set_parallel(true)
+	_hazana_activa_tw.tween_property(banner_hazana, "offset_top", 18.0, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_hazana_activa_tw.tween_property(banner_hazana, "offset_bottom", 73.0, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_hazana_activa_tw.tween_property(banner_hazana, "modulate:a", 1.0, 0.25)
+
+	_hazana_activa_tw.chain().tween_interval(3.2)
+
+	_hazana_activa_tw.chain().tween_property(banner_hazana, "offset_top", -70.0, 0.30).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_hazana_activa_tw.parallel().tween_property(banner_hazana, "modulate:a", 0.0, 0.25)
+
+func _on_mercader_disponible(opciones: Array, _restante: float = 0.0) -> void:
+	if modal_mercader == null or contenedor_cartas_mercader == null:
+		return
+
+	for child in contenedor_cartas_mercader.get_children():
+		child.queue_free()
+
+	for op in opciones:
+		var p := PanelContainer.new()
+		p.custom_minimum_size = Vector2(195, 235)
+
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.10, 0.06, 0.16, 0.95)
+		sb.border_width_left = 1
+		sb.border_width_top = 1
+		sb.border_width_right = 1
+		sb.border_width_bottom = 1
+		sb.border_color = Color(0.70, 0.40, 0.95, 0.85)
+		sb.corner_radius_top_left = 6
+		sb.corner_radius_top_right = 6
+		sb.corner_radius_bottom_right = 6
+		sb.corner_radius_bottom_left = 6
+		sb.content_margin_left = 10.0
+		sb.content_margin_right = 10.0
+		sb.content_margin_top = 10.0
+		sb.content_margin_bottom = 10.0
+		p.add_theme_stylebox_override("panel", sb)
+
+		var v := VBoxContainer.new()
+		v.add_theme_constant_override("separation", 6)
+		p.add_child(v)
+
+		var l_tit := Label.new()
+		l_tit.text = str(op.get("nombre", "Pacto Corrupto"))
+		l_tit.autowrap_mode = TextServer.AUTOWRAP_WORD
+		l_tit.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		l_tit.add_theme_font_size_override("font_size", 11)
+		l_tit.add_theme_color_override("font_color", Color(0.85, 0.70, 1.0))
+		v.add_child(l_tit)
+
+		var mal_txt: String = str(op.get("maldicion", op.get("desc", "")))
+		var ben_txt: String = str(op.get("bendicion", op.get("descripcion", "")))
+
+		var l_mal := Label.new()
+		l_mal.text = "💀 Maldición:\n" + mal_txt
+		l_mal.autowrap_mode = TextServer.AUTOWRAP_WORD
+		l_mal.add_theme_font_size_override("font_size", 9)
+		l_mal.add_theme_color_override("font_color", Color(1.0, 0.40, 0.40))
+		v.add_child(l_mal)
+
+		var l_ben := Label.new()
+		l_ben.text = "✨ Bendición:\n" + ben_txt
+		l_ben.autowrap_mode = TextServer.AUTOWRAP_WORD
+		l_ben.add_theme_font_size_override("font_size", 9)
+		l_ben.add_theme_color_override("font_color", Color(1.0, 0.88, 0.40))
+		v.add_child(l_ben)
+
+		var spacer := Control.new()
+		spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		v.add_child(spacer)
+
+		var id_corrupta: String = str(op.get("id", ""))
+		var btn_pactar := Button.new()
+		btn_pactar.text = "PACTAR"
+		btn_pactar.custom_minimum_size = Vector2(0, 26)
+		btn_pactar.focus_mode = Control.FOCUS_NONE
+		btn_pactar.pressed.connect(func(): _elegir_pacto_mercader(id_corrupta))
+		v.add_child(btn_pactar)
+
+		contenedor_cartas_mercader.add_child(p)
+
+	modal_mercader.visible = true
+	if is_inside_tree() and get_tree() != null:
+		get_tree().paused = true
+
+func _elegir_pacto_mercader(id: String) -> void:
+	var eventos = get_tree().get_first_node_in_group("eventos_coliseo_manager")
+	if eventos != null and eventos.has_method("aplicar_corrupta_elegida"):
+		eventos.aplicar_corrupta_elegida(id)
+	_cerrar_mercader_vacio()
+
+func _cerrar_mercader_vacio() -> void:
+	if modal_mercader != null:
+		modal_mercader.visible = false
+	if is_inside_tree() and get_tree() != null:
+		get_tree().paused = false
+
+func _on_pulgar_iniciado(_prob: float = 0.5) -> void:
+	if overlay_pulgar == null:
+		return
+	overlay_pulgar.modulate.a = 1.0
+	overlay_pulgar.visible = true
+	if icono_pulgar != null:
+		icono_pulgar.text = "🏛️"
+	if lbl_pulgar_titulo != null:
+		lbl_pulgar_titulo.text = "EL JUICIO DEL EMPERADOR"
+		lbl_pulgar_titulo.add_theme_color_override("font_color", Color(1.0, 0.85, 0.30))
+	if lbl_pulgar_desc != null:
+		lbl_pulgar_desc.text = "El Coliseo contiene el aliento... ¿Misericordia o Muerte?"
+
+func _on_pulgar_resuelto(salvado: bool, _prob: float = 0.5) -> void:
+	if overlay_pulgar == null:
+		return
+	overlay_pulgar.modulate.a = 1.0
+	overlay_pulgar.visible = true
+	if salvado:
+		if icono_pulgar != null:
+			icono_pulgar.text = "👍"
+		if lbl_pulgar_titulo != null:
+			lbl_pulgar_titulo.text = "¡EL EMPERADOR TE CONCEDE LA GLORIA!"
+			lbl_pulgar_titulo.add_theme_color_override("font_color", Color(1.0, 0.90, 0.35))
+		if lbl_pulgar_desc != null:
+			lbl_pulgar_desc.text = "El rugido del Coliseo te devuelve al combate con vigor renovado."
+	else:
+		if icono_pulgar != null:
+			icono_pulgar.text = "👎"
+		if lbl_pulgar_titulo != null:
+			lbl_pulgar_titulo.text = "SENTENCIA IMPERIAL"
+			lbl_pulgar_titulo.add_theme_color_override("font_color", Color(1.0, 0.25, 0.25))
+		if lbl_pulgar_desc != null:
+			lbl_pulgar_desc.text = "El pulgar desciende. La Parca reclama tu alma."
+
+	var tw := create_tween()
+	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tw.tween_interval(2.2)
+	tw.tween_property(overlay_pulgar, "modulate:a", 0.0, 0.40)
+	tw.finished.connect(func():
+		overlay_pulgar.visible = false
+		overlay_pulgar.modulate.a = 1.0
+	)

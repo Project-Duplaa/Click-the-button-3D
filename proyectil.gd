@@ -38,7 +38,7 @@ func _physics_process(delta):
 func _on_area_entered(area: Area3D):
 	if area == null or _enemigos_golpeados.has(area):
 		return
-	if area.is_in_group("cristal_jefe") and area.has_method("recibir_dano"):
+	if (area.is_in_group("cristal_jefe") or area.is_in_group("rompibles")) and area.has_method("recibir_dano"):
 		_enemigos_golpeados.append(area)
 		area.recibir_dano(dano, es_critico)
 		if perforaciones > 0:
@@ -49,7 +49,7 @@ func _on_area_entered(area: Area3D):
 func _on_body_entered(body):
 	if body == null or _enemigos_golpeados.has(body):
 		return
-	if body.is_in_group("enemigos") or body.is_in_group("enemies"):
+	if body.is_in_group("enemigos") or body.is_in_group("enemies") or body.is_in_group("rompibles"):
 		_enemigos_golpeados.append(body)
 		if body.has_method("recibir_dano"):
 			body.recibir_dano(dano, es_critico)

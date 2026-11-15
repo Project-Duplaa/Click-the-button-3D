@@ -1,17 +1,32 @@
 class_name CatalogoBendiciones
 extends RefCounted
 
-## CatalogoBendiciones — Catálogo Central de Bendiciones Roguelike y Fusiones Supremas (Sinergias Duales)
-## Desarrollado para Clicklike 3D (Godot 4.6).
-## Contiene 24 bendiciones con 4 rarezas (COMÚN, RARA, ÉPICA, LEGENDARIA) y 6 Sinergias Míticas Duales.
+## CatalogoBendiciones — Catálogo Central de Bendiciones Roguelike, Sinergias y Bendiciones Corruptas
+## Desarrollado para Clicklike 3D (Godot 4.7).
+## Contiene 24 bendiciones (10 iniciales + 14 desbloqueables), 6 Sinergias Míticas y 6 Bendiciones Corruptas.
 
 const RAREZAS = {
 	"COMUN": { "peso": 60.0, "color": Color(0.80, 0.84, 0.90) },
 	"RARA": { "peso": 28.0, "color": Color(0.25, 0.75, 1.0) },
 	"EPICA": { "peso": 10.0, "color": Color(0.75, 0.35, 1.0) },
 	"LEGENDARIA": { "peso": 2.0, "color": Color(1.0, 0.80, 0.20) },
-	"MITICA": { "peso": 0.0, "color": Color(1.0, 0.25, 0.65) }
+	"MITICA": { "peso": 0.0, "color": Color(1.0, 0.25, 0.65) },
+	"CORRUPTA": { "peso": 0.0, "color": Color(0.95, 0.15, 0.25) }
 }
+
+# 10 Bendiciones Iniciales Disponibles desde la primera partida
+const BENDICIONES_INICIALES: Array[String] = [
+	"iman_gravitatorio",
+	"lentes_critico",
+	"sangre_coloso",
+	"municion_perforante",
+	"botas_relampago",
+	"corazon_runico",
+	"cadena_rayos",
+	"anillo_fuego",
+	"dagas_fantasma",
+	"eco_clic"
+]
 
 const BENDICIONES: Dictionary = {
 	"cadena_rayos": {
@@ -183,7 +198,7 @@ const BENDICIONES: Dictionary = {
 		"id": "nova_helada",
 		"icono": "❄️",
 		"nombre": "Nova Helada",
-		"descripcion": "Cada clic en el Botón Móvil expande +1.2m el radio de onda y atrae enemigos cercanos.",
+		"descripcion": "Cada clic en el Botón Móvil expande +1.2m el radio de onda y ralentiza enemigos cercanos.",
 		"rareza": "EPICA",
 		"color": Color(0.45, 0.85, 1.0),
 		"categoria": "clic",
@@ -205,7 +220,7 @@ const BENDICIONES: Dictionary = {
 		"id": "supernova_inestable",
 		"icono": "☄️",
 		"nombre": "Supernova Inestable",
-		"descripcion": "+1.8m Radio de la onda de choque del Botón Móvil y +30% de fuerza de knockback a los enemigos.",
+		"descripcion": "+1.8m Radio de la onda de choque del Botón Móvil y +30% de fuerza de empuje a los enemigos.",
 		"rareza": "LEGENDARIA",
 		"color": Color(1.0, 0.35, 0.15),
 		"categoria": "clic",
@@ -271,7 +286,7 @@ const BENDICIONES: Dictionary = {
 		"id": "toque_de_midas",
 		"icono": "👑",
 		"nombre": "Toque de Midas",
-		"descripcion": "+25% Probabilidad de que cada clic en el Botón Móvil genere oro puro adicional y +25% XP.",
+		"descripcion": "+25% Probabilidad de que cada clic genere oro puro adicional y +25% de experiencia.",
 		"rareza": "LEGENDARIA",
 		"color": Color(1.0, 0.85, 0.15),
 		"categoria": "utilidad",
@@ -297,7 +312,7 @@ const SINERGIAS_DUALES: Dictionary = {
 		"id": "sinergia_estrella_enana",
 		"icono": "🌟",
 		"nombre": "Fusión: Estrella Enana",
-		"descripcion": "El Anillo de Fuego colapsa en un vórtice gravitacional que arrastra drops y calcina a quemarropa a los enemigos.",
+		"descripcion": "El Anillo de Fuego colapsa en un vórtice gravitacional que arrastra drops y calcina a quemarropa.",
 		"rareza": "MITICA",
 		"color": Color(1.0, 0.25, 0.65),
 		"categoria": "sinergia",
@@ -309,7 +324,7 @@ const SINERGIAS_DUALES: Dictionary = {
 		"id": "sinergia_verdugo_cortes",
 		"icono": "🗡️",
 		"nombre": "Fusión: Verdugo de Sombras",
-		"descripcion": "Las dagas espectrales siempre impactan con daño crítico letal y rebotan entre 3 objetivos adicionales.",
+		"descripcion": "Las dagas espectrales impactan con daño crítico letal garantizado y rebotan entre 3 objetivos.",
 		"rareza": "MITICA",
 		"color": Color(1.0, 0.25, 0.65),
 		"categoria": "sinergia",
@@ -333,7 +348,7 @@ const SINERGIAS_DUALES: Dictionary = {
 		"id": "sinergia_singularidad_cursor",
 		"icono": "🌀",
 		"nombre": "Fusión: Singularidad del Cursor",
-		"descripcion": "Durante Fiebre u Overdrive, cada clic detona una singularidad gravitatoria que comprime y aniquila a los enemigos.",
+		"descripcion": "Durante Fiebre u Overdrive, cada clic detona una singularidad gravitatoria que comprime y aniquila.",
 		"rareza": "MITICA",
 		"color": Color(1.0, 0.25, 0.65),
 		"categoria": "sinergia",
@@ -355,6 +370,90 @@ const SINERGIAS_DUALES: Dictionary = {
 	}
 }
 
+# ==============================================================================
+# LAS 6 BENDICIONES CORRUPTAS (ALTO RIESGO / PODER COLOSAL)
+# ==============================================================================
+const BENDICIONES_CORRUPTAS: Dictionary = {
+	"corrupta_pacto_cristal": {
+		"id": "corrupta_pacto_cristal",
+		"nombre": "Pacto del Cristal Quebrantado",
+		"descripcion": "x2.2 Daño de Clic, +40% Daño Global y +25% Crítico | MALDICIÓN: -40% Vida Máxima.",
+		"icono": "🔮🩸",
+		"maldicion": "-40% Vida Máxima permanente en la run.",
+		"bendicion": "x2.2 Daño de Clic, +40% Daño Global y +25% Crítico.",
+		"rareza": "CORRUPTA",
+		"color": Color(0.95, 0.15, 0.25),
+		"categoria": "corrupta",
+		"max_nivel": 1,
+		"es_sinergia": false
+	},
+	"corrupta_hilo_corto": {
+		"id": "corrupta_hilo_corto",
+		"nombre": "Hilo Corto de Fisión",
+		"descripcion": "x2.5 Daño Onda/Hilo y +35% Cadencia Global | MALDICIÓN: Órbita del Botón <= 5.5m.",
+		"icono": "⚡✂️",
+		"maldicion": "La órbita del Botón queda limitada a máximo 5.5m.",
+		"bendicion": "x2.5 Daño Onda/Hilo y +35% Cadencia de Ataque.",
+		"rareza": "CORRUPTA",
+		"color": Color(0.95, 0.15, 0.25),
+		"categoria": "corrupta",
+		"max_nivel": 1,
+		"es_sinergia": false
+	},
+	"corrupta_avaricia_sangrienta": {
+		"id": "corrupta_avaricia_sangrienta",
+		"nombre": "Avaricia Sangrienta",
+		"descripcion": "+120% Oro, +40% Daño Global y +3 HP/baja | MALDICIÓN: Pierdes 1 HP/s.",
+		"icono": "🪙🩸",
+		"maldicion": "Pierdes 1 HP cada segundo transcurrido en combate.",
+		"bendicion": "+120% Oro de bajas/drops, +40% Daño Global y +3 HP por baja.",
+		"rareza": "CORRUPTA",
+		"color": Color(0.95, 0.15, 0.25),
+		"categoria": "corrupta",
+		"max_nivel": 1,
+		"es_sinergia": false
+	},
+	"corrupta_coloso_inamovible": {
+		"id": "corrupta_coloso_inamovible",
+		"nombre": "Coloso Inamovible",
+		"descripcion": "+120 Armadura, Inmune a Empuje y Ondas al caminar | MALDICIÓN: Sin Dash y -25% Vel.",
+		"icono": "🗿⛓️",
+		"maldicion": "Sin Dash Táctico y -25% Velocidad de Movimiento.",
+		"bendicion": "+120 Armadura Plana, inmunidad total a empuje y ondas expansivas al caminar.",
+		"rareza": "CORRUPTA",
+		"color": Color(0.95, 0.15, 0.25),
+		"categoria": "corrupta",
+		"max_nivel": 1,
+		"es_sinergia": false
+	},
+	"corrupta_destino_caotico": {
+		"id": "corrupta_destino_caotico",
+		"nombre": "Destino Caótico",
+		"descripcion": "Cada 20s rota +50%..+180% en Daño, Cadencia o Crítico | MALDICIÓN: -0.35 Suerte.",
+		"icono": "💥🎲",
+		"maldicion": "-0.35 a la Suerte general de la run.",
+		"bendicion": "Cada 20s rota un bono aleatorio masivo (+50%..+180%) en Daño, Cadencia o Crítico.",
+		"rareza": "CORRUPTA",
+		"color": Color(0.95, 0.15, 0.25),
+		"categoria": "corrupta",
+		"max_nivel": 1,
+		"es_sinergia": false
+	},
+	"corrupta_sobrecarga_sin_freno": {
+		"id": "corrupta_sobrecarga_sin_freno",
+		"nombre": "Sobrecarga Sin Freno",
+		"descripcion": "Frenesí dura 24s con x5 Clics y Oro | MALDICIÓN: Cadenas cada 12 clics.",
+		"icono": "🔥⚡",
+		"maldicion": "El Núcleo se encadena cada 12 clics (en lugar de 20).",
+		"bendicion": "Frenesí dura 24s y multiplica Clics y Oro x5.",
+		"rareza": "CORRUPTA",
+		"color": Color(0.95, 0.15, 0.25),
+		"categoria": "corrupta",
+		"max_nivel": 1,
+		"es_sinergia": false
+	}
+}
+
 static func _obtener_nivel_actual(bendiciones_actuales: Dictionary, id: String) -> int:
 	if not bendiciones_actuales.has(id):
 		return 0
@@ -370,11 +469,11 @@ static func verificar_sinergia_desbloqueable(id_sinergia: String, bendiciones_ac
 		return false
 	var sinergia = SINERGIAS_DUALES[id_sinergia]
 	var nivel_sinergia = _obtener_nivel_actual(bendiciones_actuales, id_sinergia)
-	if nivel_sinergia >= sinergia["max_nivel"]:
+	if nivel_sinergia >= int(sinergia["max_nivel"]):
 		return false
 	var reqs = sinergia["requisitos"] as Array
 	for req_id in reqs:
-		if _obtener_nivel_actual(bendiciones_actuales, req_id) < 1:
+		if _obtener_nivel_actual(bendiciones_actuales, str(req_id)) < 1:
 			return false
 	return true
 
@@ -382,11 +481,14 @@ static func verificar_sinergia_desbloqueable(id_sinergia: String, bendiciones_ac
 static func obtener_3_opciones(bendiciones_actuales: Dictionary, suerte: float = 0.0) -> Array:
 	return obtener_opciones_nivel(bendiciones_actuales, suerte)
 
-## Selecciona 3 opciones distintas aleatorias para la pantalla de subida de nivel
+## Selecciona 3 opciones distintas aleatorias para la pantalla de subida de nivel,
+## FILTRANDO estrictamente por las bendiciones desbloqueadas en MetaprogresoManager.
 static func obtener_opciones_nivel(bendiciones_actuales: Dictionary, suerte: float = 0.0) -> Array:
+	MetaprogresoManager.asegurar_inicializado()
 	var seleccionadas: Array = []
 	var ids_elegidos: Dictionary = {}
 
+	# 1. Comprobar Sinergias Duales Míticas
 	var sinergias_posibles: Array = []
 	for id_sin in SINERGIAS_DUALES.keys():
 		if verificar_sinergia_desbloqueable(id_sin, bendiciones_actuales):
@@ -402,6 +504,7 @@ static func obtener_opciones_nivel(bendiciones_actuales: Dictionary, suerte: flo
 		datos_sin["desc"] = datos_sin.get("descripcion", "")
 		seleccionadas.append(datos_sin)
 		ids_elegidos[id_sinergia_escogida] = true
+		MetaprogresoManager.registrar_sinergia_descubierta(id_sinergia_escogida)
 
 	var mult_suerte = 1.0 + maxf(suerte, 0.0) * 0.45
 	var pesos_rareza = {
@@ -421,12 +524,28 @@ static func obtener_opciones_nivel(bendiciones_actuales: Dictionary, suerte: flo
 	for id_bend in BENDICIONES.keys():
 		if ids_elegidos.has(id_bend):
 			continue
+		# FILTRO METAPROGRESO: solo si está desbloqueada permanentemente
+		if not MetaprogresoManager.esta_bendicion_desbloqueada(id_bend):
+			continue
 		var nivel_act = _obtener_nivel_actual(bendiciones_actuales, id_bend)
-		var max_niv = BENDICIONES[id_bend]["max_nivel"]
+		var max_niv = int(BENDICIONES[id_bend]["max_nivel"])
 		if nivel_act < max_niv:
 			var rareza = BENDICIONES[id_bend]["rareza"]
 			if disponibles_por_rareza.has(rareza):
 				disponibles_por_rareza[rareza].append(id_bend)
+
+	# Salvaguarda: si por alguna razón el pool desbloqueado no llena 3 opciones,
+	# recurrir al mazo inicial de 10 cartas
+	var total_disponibles = 0
+	for r in disponibles_por_rareza.keys():
+		total_disponibles += disponibles_por_rareza[r].size()
+	if total_disponibles == 0:
+		for id_ini in BENDICIONES_INICIALES:
+			if ids_elegidos.has(id_ini):
+				continue
+			var rz = BENDICIONES[id_ini]["rareza"]
+			if disponibles_por_rareza.has(rz):
+				disponibles_por_rareza[rz].append(id_ini)
 
 	var intentos_seguridad = 0
 	while seleccionadas.size() < 3 and intentos_seguridad < 60:
@@ -468,11 +587,29 @@ static func obtener_opciones_nivel(bendiciones_actuales: Dictionary, suerte: flo
 
 	return seleccionadas
 
+# ==============================================================================
+# AYUDANTES PARA BENDICIONES CORRUPTAS
+# ==============================================================================
+static func obtener_opciones_corruptas(poseidas: Array = [], cantidad: int = 3) -> Array:
+	var pool: Array = []
+	for id_c in BENDICIONES_CORRUPTAS.keys():
+		if not poseidas.has(id_c):
+			pool.append(BENDICIONES_CORRUPTAS[id_c].duplicate(true))
+	pool.shuffle()
+	return pool.slice(0, min(cantidad, pool.size()))
+
+static func obtener_bendicion_corrupta(id: String) -> Dictionary:
+	if BENDICIONES_CORRUPTAS.has(id):
+		return BENDICIONES_CORRUPTAS[id].duplicate(true)
+	return {}
+
 static func obtener_bendicion(id: String) -> Dictionary:
 	if BENDICIONES.has(id):
 		return BENDICIONES[id]
 	if SINERGIAS_DUALES.has(id):
 		return SINERGIAS_DUALES[id]
+	if BENDICIONES_CORRUPTAS.has(id):
+		return BENDICIONES_CORRUPTAS[id]
 	return {}
 
 static func obtener_datos_bendicion(id: String) -> Dictionary:
@@ -488,5 +625,7 @@ static func verificar_nuevas_sinergias(bendiciones_actuales: Dictionary, sinergi
 	var nuevas: Array = []
 	for id_sin in SINERGIAS_DUALES.keys():
 		if not sinergias_activas.has(id_sin) and verificar_sinergia_desbloqueable(id_sin, bendiciones_actuales):
-			nuevas.append(SINERGIAS_DUALES[id_sin].duplicate(true))
+			var datos_sin = SINERGIAS_DUALES[id_sin].duplicate(true)
+			nuevas.append(datos_sin)
+			MetaprogresoManager.registrar_sinergia_descubierta(id_sin)
 	return nuevas

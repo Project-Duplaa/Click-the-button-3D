@@ -8,7 +8,7 @@ class_name HeraldoClic
 var _boton_movil: Node3D = null
 var _anillo_halo: MeshInstance3D = null
 
-func _ready():
+func _ready() -> void:
 	rapidez = 3.6
 	vida_maxima = 260.0
 	dano_contacto = 18.0
@@ -70,12 +70,17 @@ func _on_boton_click(_total: int):
 		return
 	recibir_dano(38.0, true)
 
-func morir():
-	var pool = get_tree().get_first_node_in_group("damage_numbers")
-	if pool != null and pool.has_method("mostrar_texto"):
-		pool.mostrar_texto(global_position + Vector3(0, 2.6, 0), "⚡ ¡HERALDO DEL CLIC ABATIDO! +45🪙 +80 XP +5⚡", Color(1.0, 0.35, 0.95), 1.4)
+func morir() -> void:
+	if _muerto:
+		return
+	var arbol = get_tree()
+	var pos_muerte = global_position
+	super.morir()
+	if arbol != null:
+		var pool = arbol.get_first_node_in_group("damage_numbers")
+		if pool != null and pool.has_method("mostrar_texto"):
+			pool.mostrar_texto(pos_muerte + Vector3(0, 2.6, 0), "⚡ ¡HERALDO DEL CLIC ABATIDO! +45🪙 +80 XP +5⚡", Color(1.0, 0.35, 0.95), 1.4)
 	if jugador != null and is_instance_valid(jugador):
 		for i in range(5):
 			if jugador.has_method("registrar_click_jugador"):
 				jugador.registrar_click_jugador(true)
-	super.morir()

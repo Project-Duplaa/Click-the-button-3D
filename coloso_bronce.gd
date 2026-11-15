@@ -63,7 +63,7 @@ func _ready():
 	if hud != null and hud.has_method("mostrar_barra_jefe"):
 		hud.mostrar_barra_jefe("🌋 COLOSO DE BRONCE", vida_maxima, vida)
 
-func aplicar_knockback(impulso: Vector3):
+func aplicar_knockback(impulso: Vector3, _duracion_stun: float = 0.08):
 	var kb = impulso * 0.35
 	kb.y = 0.0
 	_knockback_velocity += kb
@@ -244,7 +244,7 @@ func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 		_crear_texto_flotante("🛡️ ¡CORAZA! (%d Clics al Núcleo)" % (_clics_necesarios_coraza - _clics_coraza), false)
 		return
 
-	var dano_final = cantidad * (1.5 if _aturdido else 1.0)
+	var dano_final = cantidad * (1.5 if _aturdido else 1.0) * (1.0 + MetaprogresoManager.obtener_bono_bestiario("coloso"))
 	vida = maxf(vida - dano_final, 0.0)
 	_anim_ctrl.disparar_golpe()
 
@@ -302,9 +302,8 @@ func morir():
 	_sacudir_camara(0.55)
 
 	var pj = get_tree().get_first_node_in_group("jugador")
+	MetaprogresoManager.procesar_baja_completa(self, pj, "coloso", true)
 	if pj != null:
-		if pj.has_method("registrar_baja"):
-			pj.registrar_baja()
 		if pj.has_method("recoger_drop"):
 			pj.recoger_drop(0, 120)
 			pj.recoger_drop(1, 150)

@@ -3,9 +3,9 @@ extends Node3D
 class_name EvolucionRadial
 
 ## EvolucionRadial (Controlador 3D In-World de Gran Escala + Burbuja con Preview 3D en Vivo)
-## Despliega un círculo arcano 3D de gran tamaño bajo los pies del héroe con tótems 3D
-## reactivos en cada sector y proyecta una burbuja emergente con el diseño 3D en vivo
-## del personaje evolucionado (con su malla .glb, armas reales, pedestal y animación).
+## Despliega un círculo arcano 3D bajo los pies del héroe con tótems 3D reactivos
+## en cada sector (150° Izquierda, 30° Derecha, 270° Superior) y proyecta una burbuja
+## emergente con el preview 3D en vivo del héroe con sus armas procedurales reales.
 
 signal evolucion_seleccionada(nombre_clase: String)
 signal clase_preview_cambiada(nombre_clase: String)
@@ -13,10 +13,16 @@ signal clase_preview_cambiada(nombre_clase: String)
 const MALLAS_CLASE_PREVIEW = {
 	"Guerrero": preload("res://personaje/character-male-d.glb"),
 	"Cazador": preload("res://personaje/character-female-e.glb"),
-	"Mago": preload("res://personaje/character-female-b.glb")
+	"Mago": preload("res://personaje/character-female-b.glb"),
+	"Paladín Solar": preload("res://personaje/character-male-d.glb"),
+	"Berserker Sangriento": preload("res://personaje/character-male-d.glb"),
+	"Francotirador Astral": preload("res://personaje/character-female-e.glb"),
+	"Maestro de Sombras": preload("res://personaje/character-female-e.glb"),
+	"Archimago del Vacío": preload("res://personaje/character-female-b.glb"),
+	"Piromante Cataclísmico": preload("res://personaje/character-female-b.glb"),
+	"Avatar del Núcleo": preload("res://personaje/character-male-d.glb")
 }
 
-# Radios ampliados para la nueva rueda de 1024x1024 (pixel_size 0.0056 -> radio exterior ~2.16m)
 @export var radio_activacion_min: float = 0.72
 @export var radio_activacion_max: float = 2.30
 @export var altura_suelo_offset: float = 0.03
@@ -46,24 +52,28 @@ var activo: bool = false
 var personaje_padre: CharacterBody3D = null
 var camara_3d: Camera3D = null
 
+var tier_actual: int = 1
+var clase_base_actual: String = "Guerrero"
+var opciones_activas: Array[String] = ["Guerrero", "Cazador", "Mago"]
+
 var _tiempo_abierto: float = 0.0
 var _tiempo_desbloqueo_confirmacion: float = COOLDOWN_CONFIRMACION
 var _accion_base_tooltip: String = ""
 var _cursor_sobre_anillo: bool = false
 var _pos_pantalla_sector: Vector2 = Vector2.ZERO
 
-# Elementos 3D In-World sobre la rueda del suelo
 var _contenedor_3d_rueda: Node3D = null
 var _anillo_exterior_3d: MeshInstance3D = null
-var _totems_sector: Dictionary = {} # nombre_clase -> Dictionary { root, cristal, halo, luz, pos_base }
+var _totems_sector: Dictionary = {}
 
-# Estado del modelo 3D dentro de la burbuja emergente
 var _clase_preview_actual: String = ""
 var _modelo_preview_instancia: Node3D = null
 var _pedestal_preview: MeshInstance3D = null
 var _anim_preview_ctrl: AnimadorEntidad = null
 
 func _ready():
+	if Engine.is_editor_hint():
+		return
 	visible = false
 	scale = Vector3.ZERO
 	top_level = true
@@ -81,8 +91,10 @@ func _ready():
 		dibujador_cola.ocultar()
 
 	if control_radial != null:
-		control_radial.clase_resaltada.connect(_on_clase_resaltada)
-		control_radial.clase_confirmada.connect(confirmar_evolucion)
+		if not control_radial.clase_resaltada.is_connected(_on_clase_resaltada):
+			control_radial.clase_resaltada.connect(_on_clase_resaltada)
+		if not control_radial.clase_confirmada.is_connected(confirmar_evolucion):
+			control_radial.clase_confirmada.connect(confirmar_evolucion)
 
 	_construir_decoracion_3d_rueda()
 	_inicializar_escenario_preview_burbuja()
@@ -102,9 +114,24 @@ func _vincular_con_personaje():
 	if sprite_radial != null and subviewport != null:
 		sprite_radial.texture = subviewport.get_texture()
 
-# ==============================================================================
-# CONSTRUCCIÓN DE ANILLOS Y TÓTEMS 3D SOBRE LA RUEDA DEL SUELO
-# ==============================================================================
+func configurar_modo_tier(tier: int, clase_base: String):
+	tier_actual = tier
+	clase_base_actual = clase_base
+	if control_radial == null:
+		control_radial = get_node_or_null("SubViewport/ControlRadial") as ControlRadial
+	if control_radial != null:
+		control_radial.establecer_modo_opciones(tier, clase_base)
+		opciones_activas.assign(control_radial.opciones_activas)
+	_construir_decoracion_3d_rueda()
+
+func configurar_opciones(lista_3_opciones: Array, configs: Dictionary = {}):
+	if control_radial == null:
+		control_radial = get_node_or_null("SubViewport/ControlRadial") as ControlRadial
+	if control_radial != null:
+		control_radial.configurar_opciones(lista_3_opciones, configs)
+		opciones_activas.assign(control_radial.opciones_activas)
+	_construir_decoracion_3d_rueda()
+
 func _construir_decoracion_3d_rueda():
 	if _contenedor_3d_rueda != null and is_instance_valid(_contenedor_3d_rueda):
 		_contenedor_3d_rueda.queue_free()
@@ -113,7 +140,6 @@ func _construir_decoracion_3d_rueda():
 	_contenedor_3d_rueda.name = "Decoracion3DRueda"
 	add_child(_contenedor_3d_rueda)
 
-	# 1. Anillo Toroidal Dorado Exterior en 3D real
 	_anillo_exterior_3d = MeshInstance3D.new()
 	var torus_ext = TorusMesh.new()
 	torus_ext.inner_radius = 2.18
@@ -132,27 +158,24 @@ func _construir_decoracion_3d_rueda():
 	_anillo_exterior_3d.scale = Vector3(1.0, 0.25, 1.0)
 	_contenedor_3d_rueda.add_child(_anillo_exterior_3d)
 
-	# 2. Tótems / Cristales 3D flotantes en los 3 sectores (Guerrero 150°, Cazador 30°, Mago 270°)
-	var definiciones = {
-		"Guerrero": { "ang_deg": 150.0, "color": Color(0.95, 0.24, 0.28) },
-		"Cazador":  { "ang_deg": 30.0,  "color": Color(0.18, 0.88, 0.76) },
-		"Mago":     { "ang_deg": 270.0, "color": Color(0.28, 0.58, 1.00) }
-	}
+	var angulos_sectores = [150.0, 30.0, 270.0]
 	var radio_totem: float = 2.02
 	_totems_sector.clear()
 
-	for nombre_clase in definiciones.keys():
-		var info = definiciones[nombre_clase]
-		var ang_rad = deg_to_rad(float(info["ang_deg"]))
-		var col: Color = info["color"]
+	for i in range(min(opciones_activas.size(), 3)):
+		var nombre_opcion = opciones_activas[i]
+		var ang_deg = angulos_sectores[i]
+		var cfg = control_radial._obtener_config(nombre_opcion) if control_radial != null else {}
+		var col: Color = cfg.get("color", Color(0.9, 0.8, 0.2))
+
+		var ang_rad = deg_to_rad(ang_deg)
 		var pos_sector = Vector3(cos(ang_rad) * radio_totem, 0.16, -sin(ang_rad) * radio_totem)
 
 		var root_totem = Node3D.new()
-		root_totem.name = "Totem_" + nombre_clase
+		root_totem.name = "Totem_" + nombre_opcion.replace(" ", "_")
 		root_totem.position = pos_sector
 		_contenedor_3d_rueda.add_child(root_totem)
 
-		# Halo orbital 3D en la base del tótem
 		var halo = MeshInstance3D.new()
 		var torus_h = TorusMesh.new()
 		torus_h.inner_radius = 0.22
@@ -166,7 +189,6 @@ func _construir_decoracion_3d_rueda():
 		halo.scale = Vector3(1.0, 0.2, 1.0)
 		root_totem.add_child(halo)
 
-		# Cristal / Rombo 3D flotante
 		var cristal = MeshInstance3D.new()
 		var box = BoxMesh.new()
 		box.size = Vector3(0.18, 0.28, 0.18)
@@ -183,7 +205,6 @@ func _construir_decoracion_3d_rueda():
 		cristal.rotation_degrees = Vector3(35.0, 45.0, 35.0)
 		root_totem.add_child(cristal)
 
-		# Luz puntual 3D reactiva por sector
 		var luz = OmniLight3D.new()
 		luz.light_color = col
 		luz.light_energy = 0.8
@@ -191,7 +212,7 @@ func _construir_decoracion_3d_rueda():
 		luz.position = Vector3(0.0, 0.35, 0.0)
 		root_totem.add_child(luz)
 
-		_totems_sector[nombre_clase] = {
+		_totems_sector[nombre_opcion] = {
 			"root": root_totem,
 			"cristal": cristal,
 			"halo": halo,
@@ -199,9 +220,6 @@ func _construir_decoracion_3d_rueda():
 			"pos_base": pos_sector
 		}
 
-# ==============================================================================
-# ESCENARIO 3D EN VIVO DENTRO DE LA BURBUJA EMERGENTE (TOOLTIP)
-# ==============================================================================
 func _inicializar_escenario_preview_burbuja():
 	if camara_preview != null:
 		camara_preview.look_at_from_position(Vector3(0.0, 0.35, 0.96), Vector3(0.0, 0.28, 0.0), Vector3.UP)
@@ -229,7 +247,6 @@ func _actualizar_modelo_3d_en_burbuja(nombre_clase: String, col_clase: Color):
 	if pivote_modelo_preview == null:
 		return
 
-	# Colorear marco y luz de contorno del visor 3D según la clase
 	if luz_clase_preview != null:
 		luz_clase_preview.light_color = col_clase.lightened(0.15)
 		luz_clase_preview.light_energy = 3.2
@@ -249,37 +266,44 @@ func _actualizar_modelo_3d_en_burbuja(nombre_clase: String, col_clase: Color):
 	_clase_preview_actual = nombre_clase
 
 	if is_instance_valid(_modelo_preview_instancia):
+		if _modelo_preview_instancia.get_parent() != null:
+			_modelo_preview_instancia.get_parent().remove_child(_modelo_preview_instancia)
 		_modelo_preview_instancia.queue_free()
 		_modelo_preview_instancia = null
 
-	var escena_malla: PackedScene = MALLAS_CLASE_PREVIEW.get(nombre_clase, null)
+	var escena_malla: PackedScene = MALLAS_CLASE_PREVIEW.get(nombre_clase, MALLAS_CLASE_PREVIEW.get("Guerrero", null))
 	if escena_malla == null:
 		return
 
 	_modelo_preview_instancia = escena_malla.instantiate()
 	_modelo_preview_instancia.name = "HeroePreview3D"
-	# Mirar hacia la cámara (+Z) con un ligero ángulo heroico inicial
 	_modelo_preview_instancia.rotation_degrees = Vector3(0.0, 165.0, 0.0)
 	pivote_modelo_preview.add_child(_modelo_preview_instancia)
 
-	# Equipar las armas 3D reales de la clase (Espada+Escudo, Arco, o Bastón+Orbe)
 	AnimadorEntidad.equipar_armas_en_esqueleto(_modelo_preview_instancia, nombre_clase, true)
 
-	# Reproducir animación característica en bucle dentro de la burbuja
 	_anim_preview_ctrl = AnimadorEntidad.new(_modelo_preview_instancia)
 	if _anim_preview_ctrl != null and _anim_preview_ctrl.esta_listo():
 		match nombre_clase:
-			"Guerrero":
+			"Guerrero", "Paladín Solar":
 				_anim_preview_ctrl.reproducir_bucle("idle", 0.1, 1.0)
 				_anim_preview_ctrl.reproducir_accion("attack-melee-right", 2, 0.08, 0.9)
-			"Cazador":
+			"Berserker Sangriento":
+				_anim_preview_ctrl.reproducir_bucle("idle", 0.1, 1.0)
+				_anim_preview_ctrl.reproducir_accion("whirlwind", 2, 0.08, 1.1)
+			"Cazador", "Francotirador Astral":
 				_anim_preview_ctrl.reproducir_bucle("idle", 0.1, 1.0)
 				_anim_preview_ctrl.reproducir_accion("shoot-bow", 2, 0.08, 0.9)
-			"Mago":
+			"Maestro de Sombras":
+				_anim_preview_ctrl.reproducir_bucle("idle", 0.1, 1.0)
+				_anim_preview_ctrl.reproducir_accion("attack-melee-left", 2, 0.08, 1.1)
+			"Mago", "Archimago del Vacío", "Piromante Cataclísmico":
 				_anim_preview_ctrl.reproducir_bucle("idle", 0.1, 1.0)
 				_anim_preview_ctrl.reproducir_accion("cast-magic", 2, 0.08, 0.9)
+			"Avatar del Núcleo":
+				_anim_preview_ctrl.reproducir_bucle("idle", 0.1, 1.0)
+				_anim_preview_ctrl.reproducir_accion("cast-magic", 2, 0.08, 1.1)
 
-## Abre el menú radial escalando suavemente de 0 a 1 mediante Tween
 func abrir():
 	if activo:
 		return
@@ -310,7 +334,6 @@ func abrir():
 	if (camara_3d == null or not is_instance_valid(camara_3d)) and get_viewport() != null:
 		camara_3d = get_viewport().get_camera_3d()
 
-## Cierra el menú radial con Tween rápido
 func cerrar():
 	if not activo:
 		return
@@ -329,12 +352,11 @@ func cerrar():
 	)
 
 func _process(delta: float):
-	if not activo:
+	if Engine.is_editor_hint() or not activo:
 		return
 
 	_tiempo_abierto += delta
 
-	# Seguir la posición del héroe en el piso sin rotar con él
 	if personaje_padre != null and is_instance_valid(personaje_padre):
 		global_position = personaje_padre.global_position + Vector3(0, altura_suelo_offset, 0)
 		global_rotation = Vector3.ZERO
@@ -351,7 +373,6 @@ func _process(delta: float):
 func _animar_elementos_3d_rueda_y_burbuja(delta: float):
 	var clase_sel = control_radial.clase_seleccionada if control_radial != null else ""
 
-	# Animar tótems 3D de cada sector en el suelo
 	for nombre_clase in _totems_sector.keys():
 		var t_data: Dictionary = _totems_sector[nombre_clase]
 		var root_t: Node3D = t_data["root"]
@@ -373,7 +394,6 @@ func _animar_elementos_3d_rueda_y_burbuja(delta: float):
 		root_t.scale = root_t.scale.lerp(escala_obj, delta * 10.0)
 		luz.light_energy = lerpf(luz.light_energy, 2.8 if seleccionado else 0.7, delta * 10.0)
 
-	# Rotar suavemente el modelo 3D dentro de la burbuja emergente y mantener su animación viva
 	if is_instance_valid(_modelo_preview_instancia) and tooltip_flotante != null and tooltip_flotante.visible:
 		_modelo_preview_instancia.rotate_y(delta * 0.95)
 		if _anim_preview_ctrl != null:
@@ -382,7 +402,7 @@ func _animar_elementos_3d_rueda_y_burbuja(delta: float):
 				_anim_preview_ctrl.reproducir_bucle("idle", 0.15, 1.0)
 
 func _input(event: InputEvent):
-	if not activo:
+	if Engine.is_editor_hint() or not activo:
 		return
 	if _tiempo_abierto < _tiempo_desbloqueo_confirmacion:
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
@@ -452,8 +472,8 @@ func _on_clase_resaltada(nombre_clase: String):
 func _mostrar_tooltip_para_clase(nombre_clase: String):
 	if tooltip_flotante == null or control_radial == null:
 		return
-	var config = control_radial.CONFIG_CLASES.get(nombre_clase, null)
-	if config == null:
+	var config = control_radial._obtener_config(nombre_clase)
+	if config.is_empty():
 		return
 
 	var col_clase: Color = config.get("color", Color.WHITE)
@@ -472,7 +492,6 @@ func _mostrar_tooltip_para_clase(nombre_clase: String):
 		else:
 			label_accion.text = _accion_base_tooltip
 
-	# Actualizar el borde de la burbuja emergente con el color de la clase
 	var sb_tip = StyleBoxFlat.new()
 	sb_tip.bg_color = Color(0.06, 0.08, 0.14, 0.97)
 	sb_tip.border_color = col_clase.lerp(Color(0.95, 0.78, 0.36), 0.35)
@@ -486,7 +505,6 @@ func _mostrar_tooltip_para_clase(nombre_clase: String):
 	sb_tip.shadow_size = 16
 	tooltip_flotante.add_theme_stylebox_override("panel", sb_tip)
 
-	# Cargar e iluminar el diseño 3D del personaje evolucionado dentro de la burbuja
 	_actualizar_modelo_3d_en_burbuja(nombre_clase, col_clase)
 
 	tooltip_flotante.visible = true
@@ -514,17 +532,20 @@ func _actualizar_posicion_tooltip_2d():
 
 	var pj_pos = personaje_padre.global_position if (personaje_padre != null and is_instance_valid(personaje_padre)) else global_position
 	var clase_sel = control_radial.clase_seleccionada
-	var col_clase: Color = control_radial.CONFIG_CLASES.get(clase_sel, {}).get("color", Color(0.92, 0.76, 0.36))
+	var col_clase: Color = control_radial._obtener_config(clase_sel).get("color", Color(0.92, 0.76, 0.36))
 
-	# Posición 3D del sector activo en el suelo (radio medio ~1.51m)
+	var idx_sector = opciones_activas.find(clase_sel)
+	if idx_sector == -1:
+		idx_sector = 0
+
 	var sector_offset_3d = Vector3.ZERO
-	match clase_sel:
-		"Mago":
-			sector_offset_3d = Vector3(0.0, 0.0, 1.51)
-		"Guerrero":
+	match idx_sector:
+		0:
 			sector_offset_3d = Vector3(-1.31, 0.0, -0.75)
-		"Cazador":
+		1:
 			sector_offset_3d = Vector3(1.31, 0.0, -0.75)
+		2:
+			sector_offset_3d = Vector3(0.0, 0.0, 1.51)
 
 	var pos_sector_3d = pj_pos + sector_offset_3d
 	_pos_pantalla_sector = camara_3d.unproject_position(pos_sector_3d)
@@ -537,20 +558,20 @@ func _actualizar_posicion_tooltip_2d():
 	var p_origen1 = Vector2.ZERO
 	var p_origen2 = Vector2.ZERO
 
-	match clase_sel:
-		"Mago":
+	match idx_sector:
+		2:
 			pos_tip = pos_pj_pantalla + Vector2(85.0, -65.0)
 			pos_tip.x = clampf(pos_tip.x, 20.0, vp_size.x - tam_tip.x - 20.0)
 			pos_tip.y = clampf(pos_tip.y, 90.0, vp_size.y - tam_tip.y - 30.0)
 			p_origen1 = pos_tip + Vector2(0.0, tam_tip.y - 16.0)
 			p_origen2 = pos_tip + Vector2(24.0, tam_tip.y)
-		"Guerrero":
+		0:
 			pos_tip = pos_pj_pantalla + Vector2(-tam_tip.x - 85.0, -80.0)
 			pos_tip.x = clampf(pos_tip.x, 20.0, vp_size.x - tam_tip.x - 20.0)
 			pos_tip.y = clampf(pos_tip.y, 90.0, vp_size.y - tam_tip.y - 30.0)
 			p_origen1 = pos_tip + Vector2(tam_tip.x, tam_tip.y - 16.0)
 			p_origen2 = pos_tip + Vector2(tam_tip.x - 24.0, tam_tip.y)
-		"Cazador":
+		1:
 			pos_tip = pos_pj_pantalla + Vector2(85.0, -110.0)
 			pos_tip.x = clampf(pos_tip.x, 20.0, vp_size.x - tam_tip.x - 20.0)
 			pos_tip.y = clampf(pos_tip.y, 90.0, vp_size.y - tam_tip.y - 30.0)
@@ -573,7 +594,7 @@ func confirmar_evolucion(nombre_clase: String):
 	emit_signal("evolucion_seleccionada", nombre_clase)
 
 	if luz_flash != null and control_radial != null:
-		var info = control_radial.CONFIG_CLASES.get(nombre_clase, {})
+		var info = control_radial._obtener_config(nombre_clase)
 		luz_flash.light_color = info.get("color", Color.WHITE)
 		luz_flash.light_energy = 4.2
 		var tw_flash = create_tween()

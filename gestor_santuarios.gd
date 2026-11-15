@@ -105,7 +105,8 @@ func _poblar_arena_inicial() -> void:
 	if arena == null:
 		return
 
-	var puntos: Array[Vector3] = PUNTOS_SPAWN_VERIFICADOS.duplicate()
+	var puntos: Array[Vector3] = []
+	puntos.assign(PUNTOS_SPAWN_VERIFICADOS)
 	_barajar_con_rng(puntos)
 
 	# 1. Santuarios garantizados: al menos 1 Estatua de Fortuna y 1 Fuente de los Deseos
@@ -197,16 +198,17 @@ func _obtener_puntos_libres() -> Array[Vector3]:
 	if get_tree() != null:
 		ocupados.append_array(get_tree().get_nodes_in_group("santuarios"))
 		ocupados.append_array(get_tree().get_nodes_in_group("rompibles"))
-	var pj := get_tree().get_first_node_in_group("jugador") if get_tree() != null else null
+	var pj: Node = get_tree().get_first_node_in_group("jugador") if get_tree() != null else null
 
 	for p in PUNTOS_SPAWN_VERIFICADOS:
 		var libre := true
-		if pj is Node3D and Vector2(p.x - pj.global_position.x, p.z - pj.global_position.z).length() < 3.5:
+		if pj is Node3D and Vector2(p.x - (pj as Node3D).global_position.x, p.z - (pj as Node3D).global_position.z).length() < 3.5:
 			libre = false
 		if libre:
 			for o in ocupados:
 				if is_instance_valid(o) and o is Node3D:
-					var d := Vector2(p.x - o.global_position.x, p.z - o.global_position.z).length()
+					var pos_o: Vector3 = (o as Node3D).global_position
+					var d: float = Vector2(p.x - pos_o.x, p.z - pos_o.z).length()
 					if d < 3.0:
 						libre = false
 						break
@@ -288,7 +290,7 @@ func _mostrar_banner_presagio(presagio: Dictionary) -> void:
 	tw.finished.connect(capa.queue_free)
 
 func _ejecutar_debug_f8() -> void:
-	var pj := get_tree().get_first_node_in_group("jugador") if get_tree() != null else null
+	var pj: Node = get_tree().get_first_node_in_group("jugador") if get_tree() != null else null
 	if pj == null or not (pj is Node3D):
 		return
 	if pj.has_method("ganar_denarios"):

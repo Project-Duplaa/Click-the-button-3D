@@ -10,7 +10,7 @@ var adherido_al_boton: bool = false
 var clics_para_reventar: int = 3
 var _angulo_adherido: float = 0.0
 
-func _ready():
+func _ready() -> void:
 	rapidez = 4.6
 	vida_maxima = 32.0
 	dano_contacto = 6.0
@@ -88,9 +88,11 @@ func recibir_clic_directo():
 	if clics_para_reventar <= 0 and not muerto:
 		morir()
 
-func morir():
+func morir() -> void:
+	if _muerto:
+		return
 	adherido_al_boton = false
+	super.morir()
 	if jugador != null and is_instance_valid(jugador):
 		if jugador.has_method("registrar_click_jugador"):
 			jugador.registrar_click_jugador(true)
-	super.morir()

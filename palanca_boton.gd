@@ -13,6 +13,7 @@ const AudioManager = preload("res://audio_manager.gd")
 const Kit = preload("res://bunker_visual_kit.gd")
 
 @export var id_palanca: int = 1
+@export var distancia_max_clic: float = 3.5
 
 var activada: bool = false
 var habilitada: bool = false
@@ -123,6 +124,26 @@ func _physics_process(delta: float):
 	if luz_indicador != null:
 		luz_indicador.light_energy = lerpf(2.2, 3.6, pulso_01)
 
+	var dist_jug := _obtener_distancia_jugador()
+	var en_rango := dist_jug <= distancia_max_clic
+	if etiqueta_terminal != null:
+		if en_rango:
+			etiqueta_terminal.text = "DISYUNTOR %02d\n[PULSAR AHORA]" % id_palanca
+			etiqueta_terminal.modulate = Kit.COL_HAZARD_YELLOW
+		else:
+			etiqueta_terminal.text = "DISYUNTOR %02d\n[ACÉRCATE · %.0fm]" % [id_palanca, dist_jug]
+			etiqueta_terminal.modulate = Kit.COL_CRIMSON_ALERT
+
+func _obtener_distancia_jugador() -> float:
+	if get_tree() == null:
+		return 0.0
+	var jug := get_tree().get_first_node_in_group("jugador") as Node3D
+	if jug == null:
+		jug = get_tree().get_first_node_in_group("player") as Node3D
+	if jug == null or not is_instance_valid(jug):
+		return 0.0
+	return Vector2(global_position.x, global_position.z).distance_to(Vector2(jug.global_position.x, jug.global_position.z))
+
 func _registrar_tween(tw: Tween) -> Tween:
 	_tweens_activos.append(tw)
 	return tw
@@ -214,9 +235,19 @@ func desactivar_silencioso():
 	if _ground_ring != null:
 		_ground_ring.visible = false
 
-func accionar():
+func accionar() -> bool:
 	if not habilitada or activada:
-		return
+		return false
+
+	var dist_jug := _obtener_distancia_jugador()
+	if dist_jug > distancia_max_clic:
+		AudioManager.play("escudo_bloqueo", 1.15)
+		_spawn_floating_text("⚠️ ¡Acércate más a la palanca! (%.1fm)" % dist_jug, Kit.COL_HAZARD_YELLOW)
+		if manija != null:
+			var tw_bloqueo := create_tween()
+			tw_bloqueo.tween_property(manija, "rotation_degrees:x", -30.0, 0.05)
+			tw_bloqueo.tween_property(manija, "rotation_degrees:x", -40.0, 0.07)
+		return false
 
 	activada = true
 	_matar_tweens()
@@ -290,8 +321,9 @@ func accionar():
 		etiqueta_terminal.text = "DISYUNTOR %02d\n[EN LÍNEA]" % id_palanca
 		etiqueta_terminal.modulate = Kit.COL_NEON_GREEN
 
-	_spawn_floating_text("¡TERMINAL %d ACTIVADO! ⚡" % id_palanca)
+	_spawn_floating_text("¡TERMINAL %d ACTIVADO! ⚡" % id_palanca, Kit.COL_NEON_GREEN)
 	emit_signal("palanca_activada", id_palanca)
+	return true
 
 func _on_input_event(_camera, event, _position, _normal, _shape_idx):
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
@@ -302,10 +334,10 @@ func _on_body_entered(body):
 	if body != null and (body.is_in_group("jugador") or body.is_in_group("player")):
 		accionar()
 
-func _spawn_floating_text(txt: String):
+func _spawn_floating_text(txt: String, col: Color = Kit.COL_NEON_GREEN):
 	var pool = get_tree().get_first_node_in_group("damage_numbers") if get_tree() != null else null
 	if pool != null and pool.has_method("mostrar_texto"):
-		pool.mostrar_texto(global_position + Vector3(0, 2.2, 0), txt, Kit.COL_NEON_GREEN, 1.2)
+		pool.mostrar_texto(global_position + Vector3(0, 2.2, 0), txt, col, 1.2)
 		return
 	if get_parent() == null:
 		return

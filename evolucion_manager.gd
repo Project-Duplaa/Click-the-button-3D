@@ -3,19 +3,22 @@ extends Node
 
 ## EvolucionManager (FSM de Evolución de Clases y Metamorfosis 3D)
 ## Administra la transición de estados de clase del jugador (Tier 1 y Ascensión Tier 2)
-## y el intercambio de mallas 3D en tiempo real preservando bonos de run.
+## y el despliegue de la rueda radial 3D in-world preservando bonos de run y árbol.
 
 enum EstadoFSM {
 	NOVATO,             # Clase base inicial
 	DISPONIBLE,         # Cumplió hito Tier 1 (Nivel 3 + 15 clics + 8 bajas), listo para elegir
-	METAMORFOSIS,       # Modal activo / proceso de transformación
+	METAMORFOSIS,       # Modal activo / proceso de transformación Tier 1
 	EVOLUCIONADO,       # Clase Tier 1 seleccionada (Guerrero / Cazador / Mago)
-	ASCENDIDO_TIER_2    # Subclase Suprema Tier 2 desbloqueada (Nivel 8 + 60 clics)
+	ASCENSION_T2_LISTA, # Cumplió hito Tier 2 (Nivel 8 + 45 clics), rueda Tier 2 activa
+	ASCENDIDO_TIER_2    # Subclase Suprema Tier 2 desbloqueada
 }
 
 signal metamorfosis_disponible()
 signal clase_evolucionada(nombre_clase: String, stats: Dictionary)
 signal subclase_ascendida(nombre_subclase: String, stats: Dictionary)
+signal evolucion_tier2_completada(nombre_subclase: String)
+signal evolucion_completada(nombre_subclase: String)
 signal malla_cambiada(nuevo_modelo: Node3D)
 
 # Requisitos de Metamorfosis Tier 1 (Acelerados al minuto 1:15 - 1:30 para dopamina temprana)
@@ -24,22 +27,28 @@ signal malla_cambiada(nuevo_modelo: Node3D)
 @export var hito_bajas: int = 8
 @export var requiere_todos_los_hitos: bool = true
 
-# Requisitos de Ascensión Tier 2 (Mitad de partida ~minuto 4:30 - 5:30)
+# Requisitos de Ascensión Tier 2 (Nv.8 + 45 clics)
 @export var hito_nivel_tier2: int = 8
-@export var hito_clics_tier2: int = 60
+@export var hito_clics_tier2: int = 45
 
-# Constantes de compatibilidad
 const HITO_NIVEL: int = 3
 const HITO_CLICS: int = 15
 const HITO_BAJAS: int = 8
 const HITO_NIVEL_TIER2: int = 8
-const HITO_CLICS_TIER2: int = 60
+const HITO_CLICS_TIER2: int = 45
 
 const MALLAS_CLASE = {
 	"Novato": "res://personaje/character-male-a.glb",
 	"Guerrero": "res://personaje/character-male-d.glb",
 	"Cazador": "res://personaje/character-female-e.glb",
-	"Mago": "res://personaje/character-female-b.glb"
+	"Mago": "res://personaje/character-female-b.glb",
+	"Paladín Solar": "res://personaje/character-male-d.glb",
+	"Berserker Sangriento": "res://personaje/character-male-d.glb",
+	"Francotirador Astral": "res://personaje/character-female-e.glb",
+	"Maestro de Sombras": "res://personaje/character-female-e.glb",
+	"Archimago del Vacío": "res://personaje/character-female-b.glb",
+	"Piromante Cataclísmico": "res://personaje/character-female-b.glb",
+	"Avatar del Núcleo": "res://personaje/character-male-d.glb"
 }
 
 const STATS_CLASE = {
@@ -90,27 +99,82 @@ const STATS_CLASE = {
 }
 
 const SUBCLASES_TIER2 = {
-	"Guerrero": {
+	"Paladín Solar": {
 		"nombre": "Paladín Solar",
-		"bonus_vida": 80.0,
-		"mult_dano": 1.35,
+		"clase_base": "Guerrero",
+		"rol": "Coloso de Luz / Baluarte Sagrado",
+		"bonus_vida": 100.0,
+		"mult_dano": 1.40,
 		"mult_cadencia": 0.85,
-		"bonus_armadura": 30.0
+		"bonus_armadura": 50.0,
+		"descripcion": "Baluarte sagrado imbuido de fuego solar. Cada bloqueo desata una supernova radiante que sana y calcina."
 	},
-	"Cazador": {
+	"Berserker Sangriento": {
+		"nombre": "Berserker Sangriento",
+		"clase_base": "Guerrero",
+		"rol": "Frenesí Melee / Hachas Dobles",
+		"bonus_vida": 60.0,
+		"mult_dano": 1.65,
+		"mult_cadencia": 0.65,
+		"bonus_armadura": 10.0,
+		"descripcion": "Torbellino sangriento con dos hachas voraces. Gana velocidad y daño por vida faltante con robo de vida."
+	},
+	"Francotirador Astral": {
 		"nombre": "Francotirador Astral",
+		"clase_base": "Cazador",
+		"rol": "Riel Astral / Francotirador Perforante",
 		"bonus_vida": 45.0,
-		"mult_dano": 1.35,
-		"mult_cadencia": 0.82,
-		"proyectiles_extra": 1
+		"mult_dano": 1.70,
+		"mult_cadencia": 0.85,
+		"proyectiles_extra": 1,
+		"descripcion": "Dispara saetas de plasma a hipervelocidad perforando toda la línea recta con daño masivo."
 	},
-	"Mago": {
-		"nombre": "Archimago del Vacío",
+	"Maestro de Sombras": {
+		"nombre": "Maestro de Sombras",
+		"clase_base": "Cazador",
+		"rol": "Asesino Evasivo / Dagas Espectrales",
 		"bonus_vida": 50.0,
 		"mult_dano": 1.45,
+		"mult_cadencia": 0.70,
+		"proyectiles_extra": 2,
+		"descripcion": "Espiral de dagas espectrales en 360°, alta evasión pasiva (+35%) y señuelo explosivo en dash."
+	},
+	"Archimago del Vacío": {
+		"nombre": "Archimago del Vacío",
+		"clase_base": "Mago",
+		"rol": "Vórtice Gravitacional / Control Cósmico",
+		"bonus_vida": 55.0,
+		"mult_dano": 1.60,
 		"mult_cadencia": 0.85,
-		"bonus_aoe": 1.5
+		"bonus_aoe": 1.8,
+		"descripcion": "Orbes oscuros que colapsan en singularidades gravitacionales atrayendo y devorando enemigos."
+	},
+	"Piromante Cataclísmico": {
+		"nombre": "Piromante Cataclísmico",
+		"clase_base": "Mago",
+		"rol": "Magma Solar / Calamidad de Fuego",
+		"bonus_vida": 60.0,
+		"mult_dano": 1.75,
+		"mult_cadencia": 0.88,
+		"bonus_aoe": 2.0,
+		"descripcion": "Desata meteoros ígneos que dejan charcos de magma ardiente de 2.8s sobre la arena."
+	},
+	"Avatar del Núcleo": {
+		"nombre": "Avatar del Núcleo",
+		"clase_base": "Universal",
+		"rol": "Híbrido de Resonancia / Clic Supremo",
+		"bonus_vida": 75.0,
+		"mult_dano": 1.50,
+		"mult_cadencia": 0.80,
+		"bonus_armadura": 30.0,
+		"descripcion": "Sintonizado con el Núcleo 3D. Hilos gemelos de resonancia continua y doble onda de choque al hacer clic."
 	}
+}
+
+const OPCIONES_TIER2 = {
+	"Guerrero": ["Paladín Solar", "Berserker Sangriento", "Avatar del Núcleo"],
+	"Cazador": ["Francotirador Astral", "Maestro de Sombras", "Avatar del Núcleo"],
+	"Mago": ["Archimago del Vacío", "Piromante Cataclísmico", "Avatar del Núcleo"]
 }
 
 var estado_actual: EstadoFSM = EstadoFSM.NOVATO
@@ -118,8 +182,10 @@ var total_clics_acumulados: int = 0
 var subclase_activa: String = ""
 var personaje_ref: CharacterBody3D = null
 var modal_instancia: Node = null
+var tier_menu_activo: int = 1
 
 func _ready():
+	add_to_group("evolucion_manager")
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	if get_parent() is CharacterBody3D:
 		configurar_con_personaje(get_parent() as CharacterBody3D)
@@ -199,6 +265,8 @@ func obtener_texto_progreso_evolucion() -> String:
 			bajas_actuales, hito_bajas
 		]
 	elif estado_actual == EstadoFSM.EVOLUCIONADO:
+		if puede_ascender_tier2():
+			return "¡ASCENSIÓN T2 DISPONIBLE!"
 		return "Ascensión T2: Nv.%d/%d · Clics:%d/%d" % [
 			nivel_actual, hito_nivel_tier2,
 			clics_reales, hito_clics_tier2
@@ -211,30 +279,61 @@ func _evaluar_hito_evolucion():
 	if estado_actual == EstadoFSM.NOVATO and puede_evolucionar():
 		disparar_metamorfosis()
 	elif estado_actual == EstadoFSM.EVOLUCIONADO and puede_ascender_tier2():
-		_ascender_a_subclase_tier2()
+		disparar_ascension_tier2()
 
 func disparar_metamorfosis():
 	if estado_actual != EstadoFSM.NOVATO:
 		return
 	
 	estado_actual = EstadoFSM.DISPONIBLE
+	tier_menu_activo = 1
 	emit_signal("metamorfosis_disponible")
 	
 	AudioManager.play("altar_activado", 1.25, 2.0)
 	if personaje_ref != null and personaje_ref.has_method("_spawn_texto_3d"):
-		personaje_ref._spawn_texto_3d("✨ ¡METAMORFOSIS HEROICA DESBLOQUEADA!", Color(1.0, 0.85, 0.2))
+		personaje_ref._spawn_texto_3d("✨ ¡METAMORFOSIS HEROICA TIER 1!", Color(1.0, 0.85, 0.2))
 		
-	abrir_modal_evolucion()
+	abrir_modal_evolucion(1)
 
-func abrir_modal_evolucion():
+func disparar_ascension_tier2():
+	if estado_actual != EstadoFSM.EVOLUCIONADO:
+		return
+	
+	estado_actual = EstadoFSM.ASCENSION_T2_LISTA
+	tier_menu_activo = 2
+	
+	AudioManager.play("altar_activado", 1.35, 2.0)
+	if personaje_ref != null and personaje_ref.has_method("_spawn_texto_3d"):
+		personaje_ref._spawn_texto_3d("👑 ¡ASCENSIÓN SUPREMA TIER 2 DISPONIBLE!", Color(1.0, 0.85, 0.2))
+		
+	abrir_modal_evolucion(2)
+
+## Método público para el panel de depuración F3
+func forzar_rueda_tier2():
+	if personaje_ref == null:
+		return
+	if estado_actual == EstadoFSM.NOVATO or estado_actual == EstadoFSM.DISPONIBLE or estado_actual == EstadoFSM.METAMORFOSIS:
+		if modal_instancia != null and is_instance_valid(modal_instancia) and modal_instancia.has_method("cerrar"):
+			modal_instancia.cerrar()
+		estado_actual = EstadoFSM.NOVATO
+		evolucionar_a("Guerrero")
+	elif estado_actual == EstadoFSM.ASCENDIDO_TIER_2:
+		estado_actual = EstadoFSM.EVOLUCIONADO
+	if estado_actual == EstadoFSM.EVOLUCIONADO:
+		disparar_ascension_tier2()
+
+func abrir_modal_evolucion(tier: int = 1):
+	tier_menu_activo = tier
 	if modal_instancia != null and is_instance_valid(modal_instancia):
+		if modal_instancia.has_method("configurar_modo_tier"):
+			var base_clase = _obtener_arquetipo_base_personaje()
+			modal_instancia.configurar_modo_tier(tier, base_clase)
 		if modal_instancia.has_method("abrir"):
 			modal_instancia.abrir()
 		return
 	
-	estado_actual = EstadoFSM.METAMORFOSIS
+	estado_actual = EstadoFSM.METAMORFOSIS if tier == 1 else EstadoFSM.ASCENSION_T2_LISTA
 	
-	# 1. Prioridad: Interfaz Radial In-World a los pies del personaje (Diseño 3 sin pausar pantalla)
 	if personaje_ref != null and is_instance_valid(personaje_ref):
 		var radial = personaje_ref.get_node_or_null("EvolucionRadial")
 		if radial == null:
@@ -246,12 +345,14 @@ func abrir_modal_evolucion():
 				radial.personaje_padre = personaje_ref
 		if radial != null:
 			modal_instancia = radial
+			var base_clase = _obtener_arquetipo_base_personaje()
+			if radial.has_method("configurar_modo_tier"):
+				radial.configurar_modo_tier(tier, base_clase)
 			if not radial.evolucion_seleccionada.is_connected(_on_clase_elegida_en_modal):
 				radial.evolucion_seleccionada.connect(_on_clase_elegida_en_modal)
 			radial.abrir()
 			return
 
-	# 2. Fallback: Modal tradicional si no hay personaje disponible
 	var escena_modal = load("res://modal_evolucion.tscn")
 	if escena_modal != null:
 		modal_instancia = escena_modal.instantiate()
@@ -261,7 +362,16 @@ func abrir_modal_evolucion():
 			if modal_instancia.has_signal("clase_seleccionada"):
 				modal_instancia.clase_seleccionada.connect(_on_clase_elegida_en_modal)
 
-func _on_clase_elegida_en_modal(nombre_clase: String):
+func _obtener_arquetipo_base_personaje() -> String:
+	if personaje_ref == null:
+		return "Guerrero"
+	if "clase_base" in personaje_ref and personaje_ref.clase_base != "Novato" and personaje_ref.clase_base != "":
+		return personaje_ref.clase_base
+	if personaje_ref.clase != "Novato" and personaje_ref.clase != "":
+		return personaje_ref.clase
+	return "Guerrero"
+
+func _on_clase_elegida_en_modal(nombre_opcion: String):
 	if modal_instancia != null and is_instance_valid(modal_instancia):
 		if modal_instancia.has_method("cerrar"):
 			modal_instancia.cerrar()
@@ -271,11 +381,15 @@ func _on_clase_elegida_en_modal(nombre_clase: String):
 	var tree = _obtener_tree()
 	if tree != null:
 		tree.paused = false
-	evolucionar_a(nombre_clase)
+		
+	if tier_menu_activo == 2 or SUBCLASES_TIER2.has(nombre_opcion):
+		ascender_a_subclase_tier2(nombre_opcion)
+	else:
+		evolucionar_a(nombre_opcion)
 
 func evolucionar_a(nombre_clase: String):
 	if estado_actual == EstadoFSM.EVOLUCIONADO or estado_actual == EstadoFSM.ASCENDIDO_TIER_2:
-		return # Evita doble ejecución
+		return
 	if not STATS_CLASE.has(nombre_clase):
 		push_error("Clase desconocida para evolución: " + nombre_clase)
 		return
@@ -287,7 +401,6 @@ func evolucionar_a(nombre_clase: String):
 		if personaje_ref.has_method("aplicar_clase"):
 			personaje_ref.aplicar_clase(nombre_clase)
 		
-		# Sincronizar componente desacoplado Salud si existe
 		var nodo_salud = personaje_ref.get_node_or_null("Salud")
 		if nodo_salud != null:
 			if "vida" in nodo_salud:
@@ -295,7 +408,6 @@ func evolucionar_a(nombre_clase: String):
 			if "vida_inicial" in nodo_salud:
 				nodo_salud.vida_inicial = int(personaje_ref.vida_maxima)
 		
-		# Intercambio de malla 3D en tiempo real
 		var ruta_malla = MALLAS_CLASE.get(nombre_clase, "")
 		if ruta_malla != "":
 			var nuevo_anim = cambiar_malla_3d(personaje_ref, ruta_malla)
@@ -316,17 +428,25 @@ func evolucionar_a(nombre_clase: String):
 		)
 	
 	emit_signal("clase_evolucionada", nombre_clase, stats)
+	emit_signal("evolucion_completada", nombre_clase)
 	_evaluar_hito_evolucion()
 
-func _ascender_a_subclase_tier2():
-	if estado_actual != EstadoFSM.EVOLUCIONADO or personaje_ref == null:
+func ascender_a_subclase_tier2(nombre_subclase: String):
+	if estado_actual == EstadoFSM.ASCENDIDO_TIER_2 or personaje_ref == null:
 		return
-	var datos_t2 = SUBCLASES_TIER2.get(personaje_ref.clase, null)
+	var datos_t2 = SUBCLASES_TIER2.get(nombre_subclase, null)
 	if datos_t2 == null:
+		push_error("Subclase desconocida para Tier 2: " + nombre_subclase)
 		return
+		
 	estado_actual = EstadoFSM.ASCENDIDO_TIER_2
-	subclase_activa = datos_t2["nombre"]
+	subclase_activa = nombre_subclase
 	
+	if personaje_ref.has_method("aplicar_subclase_tier2"):
+		personaje_ref.aplicar_subclase_tier2(nombre_subclase)
+	elif personaje_ref.has_method("aplicar_clase"):
+		personaje_ref.aplicar_clase(nombre_subclase)
+		
 	if "bono_run_vida_plana" in personaje_ref:
 		personaje_ref.bono_run_vida_plana += float(datos_t2.get("bonus_vida", 50.0))
 	if "bono_run_dano_mult" in personaje_ref:
@@ -342,10 +462,24 @@ func _ascender_a_subclase_tier2():
 		personaje_ref.recalcular_stats_incrementales()
 	personaje_ref.vida = personaje_ref.vida_maxima
 	
-	AudioManager.play("victoria", 1.2)
+	if personaje_ref.has_method("equipar_armas_clase"):
+		personaje_ref.equipar_armas_clase(nombre_subclase)
+	
+	MetaprogresoManager.registrar_subclase_descubierta(nombre_subclase)
+		
+	var tree = _obtener_tree()
+	if tree != null:
+		var lm = tree.get_first_node_in_group("logros_manager")
+		if lm != null and lm.has_method("notificar_subclase"):
+			lm.notificar_subclase(nombre_subclase)
+	
+	AudioManager.play("victoria", 1.25)
 	if personaje_ref.has_method("_spawn_texto_3d"):
 		personaje_ref._spawn_texto_3d("👑 ¡ASCENSIÓN TIER 2: %s!" % subclase_activa.to_upper(), Color(1.0, 0.85, 0.2))
+		
 	emit_signal("subclase_ascendida", subclase_activa, datos_t2)
+	emit_signal("evolucion_tier2_completada", subclase_activa)
+	emit_signal("evolucion_completada", subclase_activa)
 
 func cambiar_malla_3d(personaje: CharacterBody3D, ruta_malla: String) -> AnimationPlayer:
 	if not ResourceLoader.exists(ruta_malla):

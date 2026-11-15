@@ -185,7 +185,7 @@ static func buscar_animation_player(nodo: Node) -> AnimationPlayer:
 	for hijo in nodo.get_children():
 		if hijo is AnimationPlayer:
 			return hijo as AnimationPlayer
-		var encontrado := buscar_animation_player(hijo)
+		var encontrado: AnimationPlayer = buscar_animation_player(hijo)
 		if encontrado != null:
 			return encontrado
 	return null
@@ -200,7 +200,7 @@ static func buscar_skeleton3d(nodo: Node) -> Skeleton3D:
 	for hijo in nodo.get_children():
 		if hijo is Skeleton3D:
 			return hijo as Skeleton3D
-		var encontrado := buscar_skeleton3d(hijo)
+		var encontrado: Skeleton3D = buscar_skeleton3d(hijo)
 		if encontrado != null:
 			return encontrado
 	return null
@@ -270,6 +270,71 @@ static func equipar_armas_en_esqueleto(modelo: Node3D, nombre_clase: String, inc
 			resultado["derecha"] = baston
 			if baston_data.has("luz"):
 				resultado["luz_orbe"] = baston_data["luz"]
+		"Paladín Solar":
+			var gran_espada_solar := _crear_gran_espada_paladin()
+			gran_espada_solar.position = offset_der
+			attach_der.add_child(gran_espada_solar)
+			resultado["derecha"] = gran_espada_solar
+
+			var escudo_solar := _crear_escudo_paladin()
+			escudo_solar.position = offset_izq
+			attach_izq.add_child(escudo_solar)
+			resultado["izquierda"] = escudo_solar
+		"Berserker Sangriento":
+			var hacha_der := _crear_hacha_berserker(incluir_particulas)
+			hacha_der.position = offset_der
+			attach_der.add_child(hacha_der)
+			resultado["derecha"] = hacha_der
+
+			var hacha_izq := _crear_hacha_berserker(incluir_particulas)
+			hacha_izq.position = offset_izq
+			hacha_izq.rotation_degrees = Vector3(0.0, 180.0, 0.0)
+			attach_izq.add_child(hacha_izq)
+			resultado["izquierda"] = hacha_izq
+		"Francotirador Astral":
+			var arco_astral := _crear_arco_astral(incluir_particulas)
+			arco_astral.position = offset_izq
+			arco_astral.rotation_degrees = Vector3(0.0, 90.0, 0.0)
+			attach_izq.add_child(arco_astral)
+			resultado["izquierda"] = arco_astral
+		"Maestro de Sombras":
+			var daga_der := _crear_daga_sombra(incluir_particulas, false)
+			daga_der.position = offset_der
+			attach_der.add_child(daga_der)
+			resultado["derecha"] = daga_der
+
+			var daga_izq := _crear_daga_sombra(incluir_particulas, true)
+			daga_izq.position = offset_izq
+			attach_izq.add_child(daga_izq)
+			resultado["izquierda"] = daga_izq
+		"Archimago del Vacío":
+			var baston_vacio := _crear_baston_vacio(incluir_particulas)
+			var b_v := baston_vacio["nodo"] as Node3D
+			b_v.position = offset_der
+			b_v.rotation_degrees = Vector3(12.0, 0.0, -28.0)
+			attach_der.add_child(b_v)
+			resultado["derecha"] = b_v
+			if baston_vacio.has("luz"):
+				resultado["luz_orbe"] = baston_vacio["luz"]
+		"Piromante Cataclísmico":
+			var baston_piro := _crear_baston_piromante(incluir_particulas)
+			var b_p := baston_piro["nodo"] as Node3D
+			b_p.position = offset_der
+			b_p.rotation_degrees = Vector3(12.0, 0.0, -28.0)
+			attach_der.add_child(b_p)
+			resultado["derecha"] = b_p
+			if baston_piro.has("luz"):
+				resultado["luz_orbe"] = baston_piro["luz"]
+		"Avatar del Núcleo":
+			var gauntlet := _crear_guantelete_avatar()
+			gauntlet.position = offset_der
+			attach_der.add_child(gauntlet)
+			resultado["derecha"] = gauntlet
+
+			var prisma := _crear_prisma_avatar(incluir_particulas)
+			prisma.position = offset_izq + Vector3(0.0, 0.12, 0.0)
+			attach_izq.add_child(prisma)
+			resultado["izquierda"] = prisma
 		_:
 			pass
 
@@ -512,6 +577,356 @@ static func _crear_baston_mago(incluir_particulas: bool = true) -> Dictionary:
 		root.add_child(part)
 
 	return {"nodo": root, "luz": luz}
+
+
+# ==============================================================================
+# ARMAS PROCEDURALES EVOLUCIONADAS TIER 2
+# ==============================================================================
+
+static func _crear_gran_espada_paladin() -> Node3D:
+	var root := Node3D.new()
+	root.name = "GranEspadaPaladin"
+	var mat_oro := _mat_simple(Color(1.0, 0.85, 0.32), 0.95, 0.18, Color(1.0, 0.75, 0.20), 1.2)
+	var mat_hoja := _mat_simple(Color(0.96, 0.98, 1.0), 0.98, 0.15)
+	var mat_solar := _mat_simple(Color(1.0, 0.92, 0.50), 0.0, 0.2, Color(1.0, 0.80, 0.15), 4.5)
+
+	var grip := MeshInstance3D.new()
+	var box_grip := BoxMesh.new()
+	box_grip.size = Vector3(0.028, 0.028, 0.16)
+	grip.mesh = box_grip
+	grip.position = Vector3(0, 0, -0.08)
+	grip.material_override = mat_oro
+	root.add_child(grip)
+
+	var guard := MeshInstance3D.new()
+	var box_guard := BoxMesh.new()
+	box_guard.size = Vector3(0.22, 0.045, 0.035)
+	guard.mesh = box_guard
+	guard.position = Vector3(0, 0, 0.02)
+	guard.material_override = mat_oro
+	root.add_child(guard)
+
+	var hoja := MeshInstance3D.new()
+	var box_hoja := BoxMesh.new()
+	box_hoja.size = Vector3(0.085, 0.016, 0.68)
+	hoja.mesh = box_hoja
+	hoja.position = Vector3(0, 0, 0.37)
+	hoja.material_override = mat_hoja
+	root.add_child(hoja)
+
+	var canal_solar := MeshInstance3D.new()
+	var box_solar := BoxMesh.new()
+	box_solar.size = Vector3(0.030, 0.022, 0.52)
+	canal_solar.mesh = box_solar
+	canal_solar.position = Vector3(0, 0, 0.35)
+	canal_solar.material_override = mat_solar
+	root.add_child(canal_solar)
+	return root
+
+static func _crear_escudo_paladin() -> Node3D:
+	var root := Node3D.new()
+	root.name = "EscudoPaladin"
+	var mat_oro := _mat_simple(Color(1.0, 0.85, 0.32), 0.95, 0.20, Color(1.0, 0.78, 0.25), 1.0)
+	var mat_placa := _mat_simple(Color(0.88, 0.92, 0.98), 0.90, 0.25)
+	var mat_crest := _mat_simple(Color(1.0, 0.90, 0.35), 0.2, 0.1, Color(1.0, 0.82, 0.18), 3.8)
+
+	var placa := MeshInstance3D.new()
+	var box_placa := BoxMesh.new()
+	box_placa.size = Vector3(0.30, 0.38, 0.030)
+	placa.mesh = box_placa
+	placa.position = Vector3(0.0, 0.0, 0.05)
+	placa.material_override = mat_placa
+	root.add_child(placa)
+
+	var borde := MeshInstance3D.new()
+	var box_borde := BoxMesh.new()
+	box_borde.size = Vector3(0.33, 0.41, 0.025)
+	borde.mesh = box_borde
+	borde.position = Vector3(0.0, 0.0, 0.044)
+	borde.material_override = mat_oro
+	root.add_child(borde)
+
+	var sol_crest := MeshInstance3D.new()
+	var box_crest := BoxMesh.new()
+	box_crest.size = Vector3(0.12, 0.12, 0.040)
+	sol_crest.mesh = box_crest
+	sol_crest.position = Vector3(0.0, 0.0, 0.065)
+	sol_crest.rotation_degrees = Vector3(0, 0, 45.0)
+	sol_crest.material_override = mat_crest
+	root.add_child(sol_crest)
+	return root
+
+static func _crear_hacha_berserker(incluir_particulas: bool = true) -> Node3D:
+	var root := Node3D.new()
+	root.name = "HachaBerserker"
+	var mat_mango := _mat_simple(Color(0.20, 0.15, 0.12), 0.1, 0.6)
+	var mat_hoja := _mat_simple(Color(0.85, 0.12, 0.16), 0.85, 0.22, Color(0.95, 0.10, 0.15), 2.8)
+
+	var mango := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = 0.015
+	cyl.bottom_radius = 0.013
+	cyl.height = 0.58
+	mango.mesh = cyl
+	mango.position = Vector3(0, 0.08, 0)
+	mango.material_override = mat_mango
+	root.add_child(mango)
+
+	var hoja_frente := MeshInstance3D.new()
+	var box_hf := BoxMesh.new()
+	box_hf.size = Vector3(0.018, 0.19, 0.14)
+	hoja_frente.mesh = box_hf
+	hoja_frente.position = Vector3(0, 0.28, 0.08)
+	hoja_frente.material_override = mat_hoja
+	root.add_child(hoja_frente)
+
+	var hoja_atras := MeshInstance3D.new()
+	var box_ha := BoxMesh.new()
+	box_ha.size = Vector3(0.016, 0.14, 0.09)
+	hoja_atras.mesh = box_ha
+	hoja_atras.position = Vector3(0, 0.28, -0.06)
+	hoja_atras.material_override = mat_hoja
+	root.add_child(hoja_atras)
+
+	if incluir_particulas:
+		var part := CPUParticles3D.new()
+		part.emitting = true
+		part.amount = 6
+		part.lifetime = 0.45
+		part.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+		part.emission_sphere_radius = 0.06
+		part.gravity = Vector3(0, 0.4, 0)
+		part.color = Color(1.0, 0.2, 0.1, 0.8)
+		part.position = Vector3(0, 0.28, 0.05)
+		root.add_child(part)
+	return root
+
+static func _crear_arco_astral(incluir_particulas: bool = true) -> Node3D:
+	var root := Node3D.new()
+	root.name = "ArcoAstral"
+	var mat_arco := _mat_simple(Color(0.12, 0.22, 0.38), 0.92, 0.15)
+	var mat_plasma := _mat_simple(Color(0.18, 0.95, 1.0), 0.0, 0.1, Color(0.15, 0.92, 1.0), 4.2)
+
+	var grip := MeshInstance3D.new()
+	var box_grip := BoxMesh.new()
+	box_grip.size = Vector3(0.026, 0.08, 0.034)
+	grip.mesh = box_grip
+	grip.material_override = mat_arco
+	root.add_child(grip)
+
+	var box_pala := BoxMesh.new()
+	box_pala.size = Vector3(0.020, 0.26, 0.024)
+
+	var pala_up := MeshInstance3D.new()
+	pala_up.mesh = box_pala
+	pala_up.position = Vector3(0, 0.15, -0.035)
+	pala_up.rotation_degrees = Vector3(22.0, 0.0, 0.0)
+	pala_up.material_override = mat_arco
+	root.add_child(pala_up)
+
+	var pala_down := MeshInstance3D.new()
+	pala_down.mesh = box_pala
+	pala_down.position = Vector3(0, -0.15, -0.035)
+	pala_down.rotation_degrees = Vector3(-22.0, 0.0, 0.0)
+	pala_down.material_override = mat_arco
+	root.add_child(pala_down)
+
+	var rail_plasma := MeshInstance3D.new()
+	var cyl_rail := CylinderMesh.new()
+	cyl_rail.top_radius = 0.005
+	cyl_rail.bottom_radius = 0.005
+	cyl_rail.height = 0.54
+	rail_plasma.mesh = cyl_rail
+	rail_plasma.position = Vector3(0, 0, -0.08)
+	rail_plasma.material_override = mat_plasma
+	root.add_child(rail_plasma)
+
+	if incluir_particulas:
+		var part := CPUParticles3D.new()
+		part.emitting = true
+		part.amount = 8
+		part.lifetime = 0.5
+		part.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+		part.emission_sphere_radius = 0.04
+		part.color = Color(0.2, 0.95, 1.0, 0.9)
+		part.position = Vector3(0, 0, 0.0)
+		root.add_child(part)
+	return root
+
+static func _crear_daga_sombra(incluir_particulas: bool = true, invertida: bool = false) -> Node3D:
+	var root := Node3D.new()
+	root.name = "DagaSombra"
+	var mat_grip := _mat_simple(Color(0.12, 0.10, 0.16), 0.1, 0.5)
+	var mat_hoja := _mat_simple(Color(0.65, 0.18, 1.0), 0.85, 0.20, Color(0.70, 0.20, 1.0), 3.2)
+
+	var grip := MeshInstance3D.new()
+	var box_grip := BoxMesh.new()
+	box_grip.size = Vector3(0.018, 0.018, 0.08)
+	grip.mesh = box_grip
+	grip.position = Vector3(0, 0, -0.03 if not invertida else 0.03)
+	grip.material_override = mat_grip
+	root.add_child(grip)
+
+	var hoja := MeshInstance3D.new()
+	var box_hoja := BoxMesh.new()
+	box_hoja.size = Vector3(0.026, 0.009, 0.24)
+	hoja.mesh = box_hoja
+	hoja.position = Vector3(0, 0, 0.13 if not invertida else -0.13)
+	hoja.material_override = mat_hoja
+	root.add_child(hoja)
+
+	if incluir_particulas:
+		var part := CPUParticles3D.new()
+		part.emitting = true
+		part.amount = 5
+		part.lifetime = 0.4
+		part.color = Color(0.75, 0.25, 1.0, 0.75)
+		part.position = Vector3(0, 0, 0.12 if not invertida else -0.12)
+		root.add_child(part)
+	return root
+
+static func _crear_baston_vacio(incluir_particulas: bool = true) -> Dictionary:
+	var root := Node3D.new()
+	root.name = "BastonVacio"
+	var mat_asta := _mat_simple(Color(0.15, 0.12, 0.22), 0.85, 0.25)
+	var mat_vacio := _mat_simple(Color(0.48, 0.06, 0.90), 0.1, 0.1, Color(0.60, 0.12, 1.0), 4.2)
+
+	var asta := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = 0.014
+	cyl.bottom_radius = 0.012
+	cyl.height = 0.82
+	asta.mesh = cyl
+	asta.position = Vector3(0, 0.08, 0)
+	asta.material_override = mat_asta
+	root.add_child(asta)
+
+	var orbe_vacio := MeshInstance3D.new()
+	var sph := SphereMesh.new()
+	sph.radius = 0.052
+	sph.height = 0.104
+	orbe_vacio.mesh = sph
+	orbe_vacio.position = Vector3(0, 0.54, 0)
+	orbe_vacio.material_override = mat_vacio
+	root.add_child(orbe_vacio)
+
+	var luz := OmniLight3D.new()
+	luz.name = "LuzVacio"
+	luz.position = Vector3(0, 0.54, 0)
+	luz.light_color = Color(0.65, 0.15, 1.0)
+	luz.light_energy = 2.2
+	luz.omni_range = 2.4
+	root.add_child(luz)
+
+	if incluir_particulas:
+		var part := CPUParticles3D.new()
+		part.emitting = true
+		part.amount = 12
+		part.lifetime = 0.75
+		part.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+		part.emission_sphere_radius = 0.08
+		part.gravity = Vector3(0, 0.35, 0)
+		part.color = Color(0.7, 0.2, 1.0, 0.95)
+		part.position = Vector3(0, 0.54, 0)
+		root.add_child(part)
+	return {"nodo": root, "luz": luz}
+
+static func _crear_baston_piromante(incluir_particulas: bool = true) -> Dictionary:
+	var root := Node3D.new()
+	root.name = "BastonPiromante"
+	var mat_basalto := _mat_simple(Color(0.18, 0.16, 0.15), 0.4, 0.6)
+	var mat_magma := _mat_simple(Color(1.0, 0.40, 0.05), 0.1, 0.15, Color(1.0, 0.48, 0.08), 4.5)
+
+	var asta := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = 0.015
+	cyl.bottom_radius = 0.013
+	cyl.height = 0.84
+	asta.mesh = cyl
+	asta.position = Vector3(0, 0.08, 0)
+	asta.material_override = mat_basalto
+	root.add_child(asta)
+
+	var orbe_magma := MeshInstance3D.new()
+	var sph := SphereMesh.new()
+	sph.radius = 0.058
+	sph.height = 0.116
+	orbe_magma.mesh = sph
+	orbe_magma.position = Vector3(0, 0.55, 0)
+	orbe_magma.material_override = mat_magma
+	root.add_child(orbe_magma)
+
+	var luz := OmniLight3D.new()
+	luz.name = "LuzMagma"
+	luz.position = Vector3(0, 0.55, 0)
+	luz.light_color = Color(1.0, 0.55, 0.12)
+	luz.light_energy = 2.8
+	luz.omni_range = 2.6
+	root.add_child(luz)
+
+	if incluir_particulas:
+		var part := CPUParticles3D.new()
+		part.emitting = true
+		part.amount = 14
+		part.lifetime = 0.65
+		part.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+		part.emission_sphere_radius = 0.07
+		part.gravity = Vector3(0, 0.5, 0)
+		part.color = Color(1.0, 0.6, 0.1, 0.95)
+		part.position = Vector3(0, 0.55, 0)
+		root.add_child(part)
+	return {"nodo": root, "luz": luz}
+
+static func _crear_guantelete_avatar() -> Node3D:
+	var root := Node3D.new()
+	root.name = "GuanteleteAvatar"
+	var mat_oro := _mat_simple(Color(1.0, 0.85, 0.28), 0.95, 0.20)
+	var mat_energia := _mat_simple(Color(0.25, 0.95, 0.85), 0.0, 0.1, Color(0.20, 0.95, 0.85), 4.2)
+
+	var brazal := MeshInstance3D.new()
+	var box_b := BoxMesh.new()
+	box_b.size = Vector3(0.045, 0.045, 0.14)
+	brazal.mesh = box_b
+	brazal.position = Vector3(0, 0, -0.04)
+	brazal.material_override = mat_oro
+	root.add_child(brazal)
+
+	var hoja := MeshInstance3D.new()
+	var box_h := BoxMesh.new()
+	box_h.size = Vector3(0.038, 0.012, 0.42)
+	hoja.mesh = box_h
+	hoja.position = Vector3(0, 0, 0.22)
+	hoja.material_override = mat_energia
+	root.add_child(hoja)
+	return root
+
+static func _crear_prisma_avatar(incluir_particulas: bool = true) -> Node3D:
+	var root := Node3D.new()
+	root.name = "PrismaAvatar"
+	var mat_prisma := _mat_simple(Color(0.25, 0.95, 0.85), 0.2, 0.1, Color(0.30, 0.95, 0.90), 3.8)
+
+	var prisma := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = Vector3(0.09, 0.09, 0.09)
+	prisma.mesh = box
+	prisma.rotation_degrees = Vector3(45.0, 45.0, 45.0)
+	prisma.material_override = mat_prisma
+	root.add_child(prisma)
+
+	var luz := OmniLight3D.new()
+	luz.light_color = Color(0.25, 0.95, 0.88)
+	luz.light_energy = 1.8
+	luz.omni_range = 1.6
+	root.add_child(luz)
+
+	if incluir_particulas:
+		var part := CPUParticles3D.new()
+		part.emitting = true
+		part.amount = 8
+		part.lifetime = 0.6
+		part.color = Color(0.3, 0.95, 0.9, 0.85)
+		root.add_child(part)
+	return root
 
 
 ## Fusiona sub-mallas esqueléticas redundantes por material en un solo ArrayMesh cacheado por archivo .glb.

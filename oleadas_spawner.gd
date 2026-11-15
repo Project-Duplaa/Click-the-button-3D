@@ -1,8 +1,9 @@
 extends Node3D
 
-## OleadasSpawner — Orquestador de Hordas, Jefes y Enemigos Interactivos con el Cursor
-## Elimina el castigo injusto de invocar la Parca Roja a los 70 clics (reemplazado por el Heraldo del Clic
-## en Overdrive x5 con botín legendario) e integra los 4 nuevos arquetipos interactivos con el ratón.
+## OleadasSpawner — Orquestador de Hordas, Jefes y Modo Abismo Infinito
+## Genera oleadas progresivas y progresión cronológica de Jefes.
+## En Modo Abismo Infinito: escala la tasa de spawn, vida y daño cada minuto past 15:00
+## e invoca 2 Jefes simultáneos cada 120s.
 
 const AudioManager = preload("res://audio_manager.gd")
 const ParasitoCursorScript = preload("res://parasito_cursor.gd")
@@ -40,6 +41,12 @@ var _parca_spawned: bool = false
 var clicks_totales: int = 0
 var partida_iniciada: bool = false
 
+# Modo Abismo Infinito
+var modo_abismo: bool = false
+var nivel_abismo: int = 0
+var _reloj_abismo_minuto: float = 60.0
+var _reloj_abismo_dupla_jefes: float = 120.0
+
 func _ready():
 	add_to_group("spawner")
 	add_to_group("oleadas_spawner")
@@ -69,18 +76,14 @@ func _on_click_boton_presionado(total_clicks: int):
 		_generar_oleada(1)
 		return
 
-	# 1. Acelerar el reloj de la próxima oleada de forma controlada
 	_reloj_oleada = maxf(_reloj_oleada - 0.55, 2.0)
 
-	# 2. A los 35 clics: invocar un Gólem de Tesoro como premio de riesgo/recompensa
 	if clicks_totales == 35 or (clicks_totales > 35 and clicks_totales % 45 == 0):
 		_spawn_enemigo_especial("golem_tesoro")
 
-	# 3. Cada 50 clics: invocar al Heraldo del Clic (Élite de Fiebre con botín masivo, NO la Parca Roja)
 	if clicks_totales >= 50 and clicks_totales % 50 == 0:
 		invocar_heraldo_clic()
 
-	# 4. Incursión de Asalto Inmediata cada 12 clics
 	if clicks_totales % 12 == 0:
 		_disparar_incursion_asalto(clicks_totales)
 
@@ -110,6 +113,13 @@ func _disparar_incursion_asalto(clicks: int):
 		for i in range(2): _spawn_enemigo(berserker_escena, extra_vida)
 		for i in range(3): _spawn_enemigo(espectro_escena, extra_vida)
 
+func activar_modo_abismo() -> void:
+	modo_abismo = true
+	intervalo_oleada = 10.0
+	_reloj_abismo_minuto = 60.0
+	_reloj_abismo_dupla_jefes = 120.0
+	print("🔥 [OleadasSpawner] Modo Abismo Infinito activado en OleadasSpawner.")
+
 func _process(delta):
 	if not partida_iniciada:
 		return
@@ -117,62 +127,79 @@ func _process(delta):
 	_tiempo_transcurrido += delta
 	_reloj_oleada -= delta
 
-	# Progresión cronológica de Jefes (Cada 3 minutos / 180s)
-	if _tiempo_transcurrido >= 180.0 and not _centurion_spawned:
-		spawn_centurion()
-	if _tiempo_transcurrido >= 360.0 and not _mini_jefe_spawned:
-		spawn_mini_jefe()
-	if _tiempo_transcurrido >= 540.0 and not _maestra_spawned:
-		spawn_maestra_sanguinaria()
-	if _tiempo_transcurrido >= 720.0 and not _coloso_spawned:
-		spawn_coloso_bronce()
-	if _tiempo_transcurrido >= 900.0 and not _parca_spawned:
-		spawn_parca_roja()
+	if modo_abismo:
+		_reloj_abismo_minuto -= delta
+		if _reloj_abismo_minuto <= 0.0:
+			_reloj_abismo_minuto = 60.0
+			nivel_abismo += 1
+			intervalo_oleada = maxf(6.0, intervalo_oleada - 0.5)
+			print("🔥 [OleadasSpawner] Abismo Nivel %d: Incremento de dificultad." % nivel_abismo)
+
+		_reloj_abismo_dupla_jefes -= delta
+		if _reloj_abismo_dupla_jefes <= 0.0:
+			_reloj_abismo_dupla_jefes = 120.0
+			_spawn_dupla_jefes_abismo()
+	else:
+		# Progresión estándar cronológica de Jefes
+		if _tiempo_transcurrido >= 180.0 and not _centurion_spawned:
+			spawn_centurion()
+		if _tiempo_transcurrido >= 360.0 and not _mini_jefe_spawned:
+			spawn_mini_jefe()
+		if _tiempo_transcurrido >= 540.0 and not _maestra_spawned:
+			spawn_maestra_sanguinaria()
+		if _tiempo_transcurrido >= 720.0 and not _coloso_spawned:
+			spawn_coloso_bronce()
+		if _tiempo_transcurrido >= 900.0 and not _parca_spawned:
+			spawn_parca_roja()
 
 	if _reloj_oleada <= 0.0:
 		_reloj_oleada = intervalo_oleada
 		oleada_actual += 1
-		if hud != null:
+		if hud != null and "oleada" in hud:
 			hud.oleada = oleada_actual
 		_generar_oleada(oleada_actual)
 
+func _spawn_dupla_jefes_abismo() -> void:
+	AudioManager.play("jefe_alerta", 1.25, 4.0)
+	var pool_jefes := [centurion_escena, mini_jefe_escena, maestra_escena, coloso_escena, parca_roja_escena]
+	pool_jefes.shuffle()
+	var j1 = pool_jefes[0]
+	var j2 = pool_jefes[1]
+	var extra_hp = float(nivel_abismo) * 85.0
+	_spawn_enemigo(j1, extra_hp, 0.0, true)
+	_spawn_enemigo(j2, extra_hp, 0.45, true)
+
+	var pool = get_tree().get_first_node_in_group("damage_numbers")
+	var pj = get_tree().get_first_node_in_group("jugador")
+	if pool != null and pj != null:
+		pool.mostrar_texto(pj.global_position + Vector3(0, 3.0, 0), "💀💀 ¡DUPLA DE JEFES DEL ABISMO! 💀💀", Color(1.0, 0.15, 0.2), 1.6)
+
 func spawn_centurion():
-	if _centurion_spawned:
-		return
+	if _centurion_spawned: return
 	_centurion_spawned = true
-	print(">>> [OleadasSpawner] ¡JEFE 1: CENTURIÓN CORRUPTO INVOCADO (W3)! <<<")
 	_spawn_enemigo(centurion_escena, 0.0, 0.0, true)
 
 func spawn_mini_jefe():
-	if _mini_jefe_spawned:
-		return
+	if _mini_jefe_spawned: return
 	_mini_jefe_spawned = true
-	print(">>> [OleadasSpawner] ¡JEFE 2: GLADIADOR DE ÉLITE INVOCADO (W6)! <<<")
 	_spawn_enemigo(mini_jefe_escena, 0.0, 0.0, true)
 
 func spawn_maestra_sanguinaria():
-	if _maestra_spawned:
-		return
+	if _maestra_spawned: return
 	_maestra_spawned = true
-	print(">>> [OleadasSpawner] ¡JEFE 3: MAESTRA SANGUINARIA INVOCADA (W9)! <<<")
 	_spawn_enemigo(maestra_escena, 0.0, 0.0, true)
 
 func spawn_coloso_bronce():
-	if _coloso_spawned:
-		return
+	if _coloso_spawned: return
 	_coloso_spawned = true
-	print(">>> [OleadasSpawner] ¡JEFE 4: COLOSO DE BRONCE INVOCADO (W12)! <<<")
 	_spawn_enemigo(coloso_escena, 0.0, 0.0, true)
 
 func spawn_parca_roja():
-	if _parca_spawned:
-		return
+	if _parca_spawned: return
 	_parca_spawned = true
-	print(">>> [OleadasSpawner] ¡JEFE FINAL: LA PARCA ROJA HA SIDO INVOCADA (W15)! <<<")
 	_spawn_enemigo(parca_roja_escena, 0.0, 0.0, true)
 
 func _generar_oleada(num: int):
-	print("--- INICIANDO OLEADA ", num, " EN ARENA 60x60 ---")
 	AudioManager.play("alerta_oleada")
 
 	if num > 1:
@@ -180,85 +207,48 @@ func _generar_oleada(num: int):
 		if jugador != null and jugador.has_method("aplicar_interes_oleada"):
 			jugador.aplicar_interes_oleada()
 
-	# Generación de Jefes por número de oleada
-	if num == 3 and not _centurion_spawned:
-		spawn_centurion()
-	elif num == 6 and not _mini_jefe_spawned:
-		spawn_mini_jefe()
-	elif num == 9 and not _maestra_spawned:
-		spawn_maestra_sanguinaria()
-	elif num == 12 and not _coloso_spawned:
-		spawn_coloso_bronce()
-	elif num >= 15 and not _parca_spawned:
-		spawn_parca_roja()
+	if not modo_abismo:
+		if num == 3 and not _centurion_spawned: spawn_centurion()
+		elif num == 6 and not _mini_jefe_spawned: spawn_mini_jefe()
+		elif num == 9 and not _maestra_spawned: spawn_maestra_sanguinaria()
+		elif num == 12 and not _coloso_spawned: spawn_coloso_bronce()
+		elif num >= 15 and not _parca_spawned: spawn_parca_roja()
 
-	# Enemigos interactivos con el cursor a partir de la oleada 2
-	if num >= 2 and num % 2 == 0:
-		_spawn_enemigo_especial("parasito_cursor")
-	if num >= 4 and num % 3 == 0:
-		_spawn_enemigo_especial("canalizador_vacio")
-	if num >= 5 and num % 4 == 0:
-		_spawn_enemigo_especial("golem_tesoro")
+	if num >= 2 and num % 2 == 0: _spawn_enemigo_especial("parasito_cursor")
+	if num >= 4 and num % 3 == 0: _spawn_enemigo_especial("canalizador_vacio")
+	if num >= 5 and num % 4 == 0: _spawn_enemigo_especial("golem_tesoro")
+
+	var extra_abismo = float(nivel_abismo) * 35.0 if modo_abismo else 0.0
 
 	if num == 1:
-		for i in range(2):
-			_spawn_enemigo(espectro_escena, 0.0, i * 0.25)
+		for i in range(2): _spawn_enemigo(espectro_escena, extra_abismo, i * 0.25)
 	elif num == 2:
-		for i in range(3):
-			_spawn_enemigo(espectro_escena, 0.0, i * 0.2)
-		_spawn_enemigo(guardia_escena, 0.0, 0.6)
+		for i in range(3): _spawn_enemigo(espectro_escena, extra_abismo, i * 0.2)
+		_spawn_enemigo(guardia_escena, extra_abismo, 0.6)
 	elif num == 3:
-		_spawn_enemigo(arquero_escena, 0.0, 0.2)
-		_spawn_enemigo(kamikaze_escena, 0.0, 0.4)
-		for i in range(2):
-			_spawn_enemigo(guardia_escena, 2.0, 0.6)
-		for i in range(4):
-			_spawn_enemigo(espectro_escena, 0.0, 0.8)
+		_spawn_enemigo(arquero_escena, extra_abismo, 0.2)
+		_spawn_enemigo(kamikaze_escena, extra_abismo, 0.4)
+		for i in range(2): _spawn_enemigo(guardia_escena, 2.0 + extra_abismo, 0.6)
+		for i in range(4): _spawn_enemigo(espectro_escena, extra_abismo, 0.8)
 	elif num == 4:
-		_spawn_enemigo(berserker_escena, 0.0, 0.0)
-		for i in range(3):
-			_spawn_enemigo(arquero_escena, 4.0, 0.2 + i * 0.15)
-		for i in range(2):
-			_spawn_enemigo(kamikaze_escena, 0.0, 0.4 + i * 0.2)
-		for i in range(4):
-			_spawn_enemigo(guardia_escena, 6.0, 0.6 + i * 0.15)
-		for i in range(6):
-			_spawn_enemigo(espectro_escena, 4.0, 0.8 + i * 0.12)
+		_spawn_enemigo(berserker_escena, extra_abismo, 0.0)
+		for i in range(3): _spawn_enemigo(arquero_escena, 4.0 + extra_abismo, 0.2 + i * 0.15)
+		for i in range(2): _spawn_enemigo(kamikaze_escena, extra_abismo, 0.4 + i * 0.2)
+		for i in range(4): _spawn_enemigo(guardia_escena, 6.0 + extra_abismo, 0.6 + i * 0.15)
+		for i in range(6): _spawn_enemigo(espectro_escena, 4.0 + extra_abismo, 0.8 + i * 0.12)
 	elif num == 5:
-		_spawn_enemigo(bruto_escena, 0.0, 0.0)
-		for i in range(2):
-			_spawn_enemigo(berserker_escena, 5.0, 0.2 + i * 0.2)
-		for i in range(2):
-			_spawn_enemigo(arquero_escena, 5.0, 0.4 + i * 0.2)
-		for i in range(6):
-			_spawn_enemigo(espectro_escena, 5.0, 0.6 + i * 0.12)
-	elif num <= 9:
-		var extra = (num - 5) * 5.0
-		_spawn_enemigo(bruto_escena, extra * 1.5, 0.0)
-		for i in range(2):
-			_spawn_enemigo(berserker_escena, extra, 0.15 + i * 0.15)
-		for i in range(3):
-			_spawn_enemigo(arquero_escena, extra * 0.7, 0.3 + i * 0.15)
-		for i in range(3):
-			_spawn_enemigo(kamikaze_escena, extra * 0.5, 0.45 + i * 0.15)
-		for i in range(5):
-			_spawn_enemigo(guardia_escena, extra, 0.6 + i * 0.12)
-		for i in range(8):
-			_spawn_enemigo(espectro_escena, extra * 0.4, 0.8 + i * 0.1)
+		_spawn_enemigo(bruto_escena, extra_abismo, 0.0)
+		for i in range(2): _spawn_enemigo(berserker_escena, 5.0 + extra_abismo, 0.2 + i * 0.2)
+		for i in range(2): _spawn_enemigo(arquero_escena, 5.0 + extra_abismo, 0.4 + i * 0.2)
+		for i in range(6): _spawn_enemigo(espectro_escena, 5.0 + extra_abismo, 0.6 + i * 0.12)
 	else:
-		var extra = (num - 9) * 8.0
-		for i in range(2):
-			_spawn_enemigo(bruto_escena, extra * 1.8, i * 0.2)
-		for i in range(3):
-			_spawn_enemigo(berserker_escena, extra, 0.2 + i * 0.15)
-		for i in range(4):
-			_spawn_enemigo(arquero_escena, extra * 0.8, 0.4 + i * 0.12)
-		for i in range(4):
-			_spawn_enemigo(kamikaze_escena, extra * 0.6, 0.5 + i * 0.12)
-		for i in range(6):
-			_spawn_enemigo(guardia_escena, extra, 0.65 + i * 0.1)
-		for i in range(10):
-			_spawn_enemigo(espectro_escena, extra * 0.4, 0.8 + i * 0.08)
+		var extra = (num - 5) * 6.0 + extra_abismo
+		for i in range(2): _spawn_enemigo(bruto_escena, extra * 1.5, i * 0.2)
+		for i in range(3): _spawn_enemigo(berserker_escena, extra, 0.2 + i * 0.15)
+		for i in range(4): _spawn_enemigo(arquero_escena, extra * 0.8, 0.4 + i * 0.12)
+		for i in range(4): _spawn_enemigo(kamikaze_escena, extra * 0.6, 0.5 + i * 0.12)
+		for i in range(6): _spawn_enemigo(guardia_escena, extra, 0.65 + i * 0.1)
+		for i in range(10): _spawn_enemigo(espectro_escena, extra * 0.4, 0.8 + i * 0.08)
 
 func _spawn_enemigo_especial(tipo: String):
 	var enemigos_activos = get_tree().get_nodes_in_group("enemigos").size()
@@ -267,14 +257,10 @@ func _spawn_enemigo_especial(tipo: String):
 
 	var nodo: CharacterBody3D = CharacterBody3D.new()
 	match tipo:
-		"parasito_cursor":
-			nodo.set_script(ParasitoCursorScript)
-		"canalizador_vacio":
-			nodo.set_script(CanalizadorVacioScript)
-		"golem_tesoro":
-			nodo.set_script(GolemTesoroScript)
-		"heraldo_clic":
-			nodo.set_script(HeraldoClicScript)
+		"parasito_cursor": nodo.set_script(ParasitoCursorScript)
+		"canalizador_vacio": nodo.set_script(CanalizadorVacioScript)
+		"golem_tesoro": nodo.set_script(GolemTesoroScript)
+		"heraldo_clic": nodo.set_script(HeraldoClicScript)
 		_:
 			nodo.queue_free()
 			return
@@ -285,6 +271,7 @@ func _spawn_enemigo_especial(tipo: String):
 	pos.z = clampf(pos.z, -24.0, 24.0)
 	get_parent().add_child(nodo)
 	nodo.global_position = pos
+	_aplicar_escalado_dificultad(nodo, float(nivel_abismo) * 25.0 if modo_abismo else 0.0)
 
 func _spawn_enemigo(escena: PackedScene, vida_extra: float, retraso: float = 0.0, es_jefe: bool = false):
 	if escena == null:
@@ -318,6 +305,29 @@ func _spawn_enemigo(escena: PackedScene, vida_extra: float, retraso: float = 0.0
 		var enemigo = escena.instantiate()
 		get_parent().add_child(enemigo)
 		enemigo.global_position = pos
-		if "vida_maxima" in enemigo:
-			enemigo.vida_maxima += vida_total
-			enemigo.vida = enemigo.vida_maxima
+		_aplicar_escalado_dificultad(enemigo, vida_total)
+
+func _aplicar_escalado_dificultad(enemigo: Node, vida_extra_base: float = 0.0) -> void:
+	if enemigo == null or not is_instance_valid(enemigo):
+		return
+	var mult_hp := 1.0
+	var mult_dmg := 1.0
+	var mult_vel := 1.0
+	var lm = get_tree().get_first_node_in_group("logros_manager")
+	if lm != null and lm.has_method("obtener_multiplicadores_tormento"):
+		var m = lm.obtener_multiplicadores_tormento()
+		mult_hp = float(m.get("vida_enemigos", 1.0))
+		mult_dmg = float(m.get("dano_enemigos", 1.0))
+		mult_vel = float(m.get("velocidad_enemigos", 1.0))
+	if modo_abismo:
+		mult_dmg *= (1.0 + float(nivel_abismo) * 0.12)
+		mult_vel *= minf(1.85, 1.0 + float(nivel_abismo) * 0.04)
+	if "vida_maxima" in enemigo:
+		enemigo.vida_maxima = (float(enemigo.vida_maxima) + vida_extra_base) * mult_hp
+		enemigo.vida = enemigo.vida_maxima
+	for prop in ["dano_ataque", "dano_contacto", "dano_disparo", "dano_guadana", "dano_carga", "dano_golpe", "dano_pisada"]:
+		if prop in enemigo:
+			enemigo.set(prop, float(enemigo.get(prop)) * mult_dmg)
+	for vprop in ["rapidez", "rapidez_caminar", "rapidez_huir"]:
+		if vprop in enemigo:
+			enemigo.set(vprop, float(enemigo.get(vprop)) * mult_vel)

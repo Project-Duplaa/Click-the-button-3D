@@ -325,8 +325,9 @@ func _crear_panel_style(borde: Color, fondo: Color = Color(0.06, 0.07, 0.11, 0.9
 
 func _aplicar_estilo_boton_modal(boton: Button, color_borde: Color) -> void:
 	for estado in ["normal", "hover", "pressed", "focus"]:
-		var fondo := Color(0.09, 0.11, 0.17, 0.96) if estado != "hover" else Color(0.16, 0.19, 0.28, 0.98)
-		boton.add_theme_stylebox_override(estado, _crear_panel_style(color_borde, fondo, 3, 10))
+		var estado_str: String = str(estado)
+		var fondo: Color = Color(0.09, 0.11, 0.17, 0.96) if estado_str != "hover" else Color(0.16, 0.19, 0.28, 0.98)
+		boton.add_theme_stylebox_override(estado_str, _crear_panel_style(color_borde, fondo, 3, 10))
 	boton.add_theme_color_override("font_color", color_borde.lerp(Color.WHITE, 0.55))
 	boton.add_theme_color_override("font_hover_color", Color.WHITE)
 

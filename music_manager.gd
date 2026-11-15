@@ -112,13 +112,14 @@ func _configurar_bus_musica() -> void:
 func _cargar_stems() -> void:
 	_stems.clear()
 	for ruta in RUTAS_STEMS:
+		var ruta_s: String = str(ruta)
 		var wav: AudioStreamWAV = null
-		if ResourceLoader.exists(ruta):
-			var res := load(ruta)
+		if ResourceLoader.exists(ruta_s):
+			var res: Resource = load(ruta_s)
 			if res is AudioStreamWAV:
 				wav = res
-		if wav == null and FileAccess.file_exists(ruta):
-			var bytes := FileAccess.get_file_as_bytes(ruta)
+		if wav == null and FileAccess.file_exists(ruta_s):
+			var bytes: PackedByteArray = FileAccess.get_file_as_bytes(ruta_s)
 			if not bytes.is_empty():
 				wav = AudioStreamWAV.load_from_buffer(bytes)
 		if wav != null:

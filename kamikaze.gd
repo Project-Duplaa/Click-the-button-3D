@@ -40,7 +40,7 @@ func _ready():
 		_anim_ctrl.vincular_modelo(modelo)
 	jugador = get_tree().get_first_node_in_group("jugador")
 
-func aplicar_knockback(impulso: Vector3):
+func aplicar_knockback(impulso: Vector3, _duracion_stun: float = 0.08):
 	var kb = impulso
 	kb.y = 0.0
 	_knockback_velocity += kb
@@ -120,20 +120,21 @@ func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 		es_critico = fuente
 	else:
 		fuente_str = str(fuente)
-	vida -= cantidad
+	var cantidad_final: float = cantidad * (1.0 + MetaprogresoManager.obtener_bono_bestiario("kamikaze"))
+	vida -= cantidad_final
 	_anim_ctrl.disparar_golpe()
 
 	var pool = get_tree().get_first_node_in_group("damage_numbers")
 	var pos_num = global_position + Vector3(randf_range(-0.2, 0.2), 1.5, randf_range(-0.2, 0.2))
 	if pool != null and pool.has_method("mostrar_dano"):
-		pool.mostrar_dano(pos_num, int(round(cantidad)), es_critico, fuente_str)
+		pool.mostrar_dano(pos_num, int(round(cantidad_final)), es_critico, fuente_str)
 	else:
 		var escena_num = load("res://damage_number_3d.tscn")
 		if escena_num != null and get_parent() != null:
 			var n = escena_num.instantiate()
 			get_parent().add_child(n)
 			n.global_position = pos_num
-			n.iniciar(cantidad, es_critico, false)
+			n.iniciar(cantidad_final, es_critico, false)
 
 	if vida <= 0.0:
 		detonar(false)
@@ -177,7 +178,9 @@ func detonar(danar_jugador: bool = true):
 			if drop.has_method("iniciar"):
 				drop.iniciar(1, 14)
 
-	if jugador != null and jugador.has_method("registrar_baja"):
+	if not danar_jugador:
+		MetaprogresoManager.procesar_baja_completa(self, jugador, "kamikaze", false)
+	elif jugador != null and is_instance_valid(jugador) and jugador.has_method("registrar_baja"):
 		jugador.registrar_baja()
 
 	_crear_onda_explosion()

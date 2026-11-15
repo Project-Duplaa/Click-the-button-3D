@@ -63,7 +63,7 @@ func _ready():
 	if hud != null and hud.has_method("mostrar_barra_jefe"):
 		hud.mostrar_barra_jefe("🏹 MAESTRA SANGUINARIA", vida_maxima, vida)
 
-func aplicar_knockback(impulso: Vector3):
+func aplicar_knockback(impulso: Vector3, _duracion_stun: float = 0.08):
 	var kb = impulso * 0.5
 	kb.y = 0.0
 	_knockback_velocity += kb
@@ -340,7 +340,7 @@ func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 	else:
 		fuente_str = str(fuente)
 	var mult = 1.6 if _aturdida else (0.25 if not _cristales_activos.is_empty() else 1.0)
-	var dano_final = cantidad * mult
+	var dano_final = cantidad * mult * (1.0 + MetaprogresoManager.obtener_bono_bestiario("maestra"))
 	vida = maxf(vida - dano_final, 0.0)
 	_anim_ctrl.disparar_golpe()
 
@@ -377,9 +377,8 @@ func morir():
 	_sacudir_camara(0.4)
 
 	var pj = get_tree().get_first_node_in_group("jugador")
+	MetaprogresoManager.procesar_baja_completa(self, pj, "maestra", true)
 	if pj != null:
-		if pj.has_method("registrar_baja"):
-			pj.registrar_baja()
 		if pj.has_method("recoger_drop"):
 			pj.recoger_drop(0, 60)
 			pj.recoger_drop(1, 75)

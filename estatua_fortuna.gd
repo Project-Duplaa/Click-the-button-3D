@@ -206,7 +206,7 @@ func _process(delta: float) -> void:
 		return
 
 	var dist := _distancia_a_jugador(pj)
-	var ring_mat := _anillo_externo.material_override as ShaderMaterial if _anillo_externo != null else null
+	var ring_mat: ShaderMaterial = (_anillo_externo.material_override as ShaderMaterial) if _anillo_externo != null else null
 	if dist <= RADIO_CARGA:
 		_progreso = minf(_progreso + delta, TIEMPO_CARGA)
 		var frac := clampf(_progreso / TIEMPO_CARGA, 0.02, 1.0)

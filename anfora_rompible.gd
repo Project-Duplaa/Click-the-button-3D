@@ -203,7 +203,7 @@ func _construir_brasero() -> void:
 	nucleo.position = Vector3(0.0, 1.18, 0.0)
 	visual_root.add_child(nucleo)
 
-func recibir_dano(_cantidad: float, _es_critico: bool = false) -> void:
+func recibir_dano(_cantidad: float, _fuente = "normal", _es_critico: bool = false) -> void:
 	romper()
 
 func _activar(_pj: Node3D) -> bool:
