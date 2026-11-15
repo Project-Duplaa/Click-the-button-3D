@@ -5,10 +5,17 @@ class_name ForjaVulcano
 ## Si el héroe no tiene reliquias, no cobra ni se consume. Si tiene >1, abre un modal
 ## para elegir cuál duplicar (cancelar deja la forja intacta).
 
+const SELLO_GRACIA_INICIAL_MS: int = 750
+const SELLO_REBOTE_SPAM_MS: int = 340
+const SELLO_MAX_TOTAL_MS: int = 1800
+
 var _modal_layer: CanvasLayer = null
 var _nucleo_brasa: MeshInstance3D = null
 var _mordaza_superior: MeshInstance3D = null
 var _aro_magnetico: MeshInstance3D = null
+var _modal_apertura_msec: int = 0
+var _modal_bloqueado_hasta_msec: int = 0
+var _subtitulo_forja: Label = null
 
 func _configurar_santuario() -> void:
 	nombre_santuario = "Forja de Vulcano"
@@ -257,11 +264,19 @@ func _abrir_modal_forja(pj: Node3D, reliquias: Dictionary) -> void:
 	vbox.add_child(titulo)
 
 	var subtitulo := Label.new()
-	subtitulo.text = "Elige qué reliquia deseas duplicar (+1 acumulación)"
+	subtitulo.text = "🛡 Protección anti-clic activa · Espera un instante..."
 	subtitulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	subtitulo.add_theme_font_size_override("font_size", 14)
-	subtitulo.add_theme_color_override("font_color", Color(0.84, 0.80, 0.78))
+	subtitulo.add_theme_color_override("font_color", Color(1.0, 0.85, 0.42))
 	vbox.add_child(subtitulo)
+	_subtitulo_forja = subtitulo
+
+	_modal_apertura_msec = Time.get_ticks_msec()
+	_modal_bloqueado_hasta_msec = _modal_apertura_msec + SELLO_GRACIA_INICIAL_MS
+	fondo.gui_input.connect(func(ev: InputEvent):
+		if Time.get_ticks_msec() < _modal_bloqueado_hasta_msec and ev is InputEventMouseButton and ev.pressed:
+			_registrar_clic_sello_forja()
+	)
 
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -300,9 +315,39 @@ func _abrir_modal_forja(pj: Node3D, reliquias: Dictionary) -> void:
 	btn_cancelar.pressed.connect(_cerrar_modal)
 	vbox.add_child(btn_cancelar)
 
+	var tw_sello := _modal_layer.create_tween()
+	tw_sello.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tw_sello.tween_interval(float(SELLO_GRACIA_INICIAL_MS) * 0.001)
+	tw_sello.tween_callback(_actualizar_texto_desbloqueo_forja)
+
 	_pausar_por_modal()
 
+func _registrar_clic_sello_forja() -> void:
+	var ahora := Time.get_ticks_msec()
+	if ahora >= _modal_apertura_msec + 140:
+		var tope := _modal_apertura_msec + SELLO_MAX_TOTAL_MS
+		_modal_bloqueado_hasta_msec = mini(tope, maxi(_modal_bloqueado_hasta_msec, ahora + SELLO_REBOTE_SPAM_MS))
+	if _subtitulo_forja != null and is_instance_valid(_subtitulo_forja):
+		var restante := maxf(0.05, float(_modal_bloqueado_hasta_msec - ahora) * 0.001)
+		_subtitulo_forja.text = "⚡ Clic bloqueado por seguridad (%.2fs)..." % restante
+		_subtitulo_forja.add_theme_color_override("font_color", Color(1.0, 0.65, 0.42))
+	if _modal_layer != null and is_instance_valid(_modal_layer):
+		var tw_recheck := _modal_layer.create_tween()
+		tw_recheck.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+		tw_recheck.tween_interval(maxf(0.05, float(_modal_bloqueado_hasta_msec - Time.get_ticks_msec()) * 0.001 + 0.02))
+		tw_recheck.tween_callback(_actualizar_texto_desbloqueo_forja)
+
+func _actualizar_texto_desbloqueo_forja() -> void:
+	if _subtitulo_forja == null or not is_instance_valid(_subtitulo_forja):
+		return
+	if Time.get_ticks_msec() >= _modal_bloqueado_hasta_msec:
+		_subtitulo_forja.text = "✦ Listo — Elige qué reliquia deseas duplicar (+1 acumulación)"
+		_subtitulo_forja.add_theme_color_override("font_color", Color(0.84, 0.88, 0.92))
+
 func _confirmar_forja(pj: Node3D, id_reliquia: String) -> void:
+	if Time.get_ticks_msec() < _modal_bloqueado_hasta_msec:
+		_registrar_clic_sello_forja()
+		return
 	_cerrar_modal()
 	if pj == null or not is_instance_valid(pj):
 		return
@@ -317,6 +362,9 @@ func _confirmar_forja(pj: Node3D, id_reliquia: String) -> void:
 	_consumir()
 
 func _cerrar_modal() -> void:
+	if Time.get_ticks_msec() < _modal_bloqueado_hasta_msec:
+		_registrar_clic_sello_forja()
+		return
 	if _modal_layer != null and is_instance_valid(_modal_layer):
 		_modal_layer.visible = false
 		_modal_layer.remove_from_group("modales_santuario")

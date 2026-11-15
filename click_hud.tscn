@@ -1316,12 +1316,12 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -468.0
-offset_top = -226.0
+offset_top = -238.0
 offset_right = 468.0
-offset_bottom = 226.0
+offset_bottom = 238.0
 grow_horizontal = 2
 grow_vertical = 2
-pivot_offset = Vector2(468, 226)
+pivot_offset = Vector2(468, 238)
 theme_override_styles/panel = SubResource("StyleBox_ModalMejora")
 
 [node name="ModalEsquinaTL" type="TextureRect" parent="Control/ModalMejora"]
@@ -1397,12 +1397,12 @@ anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 24.0
-offset_top = 18.0
+offset_top = 16.0
 offset_right = -24.0
-offset_bottom = -20.0
+offset_bottom = -18.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 14
+theme_override_constants/separation = 10
 
 [node name="HeaderModal" type="HBoxContainer" parent="Control/ModalMejora/VBox"]
 layout_mode = 2

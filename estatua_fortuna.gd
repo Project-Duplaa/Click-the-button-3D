@@ -7,6 +7,9 @@ class_name EstatuaFortuna
 
 const RADIO_CARGA: float = 3.0
 const TIEMPO_CARGA: float = 4.0
+const SELLO_GRACIA_INICIAL_MS: int = 850
+const SELLO_REBOTE_SPAM_MS: int = 360
+const SELLO_MAX_TOTAL_MS: int = 2000
 
 const OPCIONES_STAT := [
 	{"id": "dano", "titulo": "⚔️ Filo Mortal", "desc": "+%s%% Daño de Ataque", "base": 22.0, "dec": 0},
@@ -26,6 +29,9 @@ var _cristal_superior: MeshInstance3D = null
 var _giro_anillo_a: MeshInstance3D = null
 var _giro_anillo_b: MeshInstance3D = null
 var _modal_layer: CanvasLayer = null
+var _modal_apertura_msec: int = 0
+var _modal_bloqueado_hasta_msec: int = 0
+var _subtitulo_modal: Label = null
 
 func _configurar_santuario() -> void:
 	nombre_santuario = "Estatua de Fortuna"
@@ -286,11 +292,19 @@ func _abrir_modal_bendiciones(pj: Node3D) -> void:
 	vbox.add_child(titulo)
 
 	var subtitulo := Label.new()
-	subtitulo.text = "Elige una gracia del Coliseo (escalada por tu Suerte)"
+	subtitulo.text = "🛡 Protección anti-clic activa · Espera un instante..."
 	subtitulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	subtitulo.add_theme_font_size_override("font_size", 14)
-	subtitulo.add_theme_color_override("font_color", Color(0.78, 0.82, 0.90))
+	subtitulo.add_theme_color_override("font_color", Color(1.0, 0.85, 0.42))
 	vbox.add_child(subtitulo)
+	_subtitulo_modal = subtitulo
+
+	_modal_apertura_msec = Time.get_ticks_msec()
+	_modal_bloqueado_hasta_msec = _modal_apertura_msec + SELLO_GRACIA_INICIAL_MS
+	fondo.gui_input.connect(func(ev: InputEvent):
+		if Time.get_ticks_msec() < _modal_bloqueado_hasta_msec and ev is InputEventMouseButton and ev.pressed:
+			_registrar_clic_sello_fortuna()
+	)
 
 	var hbox := HBoxContainer.new()
 	hbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -329,9 +343,39 @@ func _abrir_modal_bendiciones(pj: Node3D) -> void:
 	if hay_legendaria:
 		AudioManager.play("legendario", 1.0)
 
+	var tw_sello := _modal_layer.create_tween()
+	tw_sello.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tw_sello.tween_interval(float(SELLO_GRACIA_INICIAL_MS) * 0.001)
+	tw_sello.tween_callback(_actualizar_texto_desbloqueo_fortuna)
+
 	_pausar_por_modal()
 
+func _registrar_clic_sello_fortuna() -> void:
+	var ahora := Time.get_ticks_msec()
+	if ahora >= _modal_apertura_msec + 140:
+		var tope := _modal_apertura_msec + SELLO_MAX_TOTAL_MS
+		_modal_bloqueado_hasta_msec = mini(tope, maxi(_modal_bloqueado_hasta_msec, ahora + SELLO_REBOTE_SPAM_MS))
+	if _subtitulo_modal != null and is_instance_valid(_subtitulo_modal):
+		var restante := maxf(0.05, float(_modal_bloqueado_hasta_msec - ahora) * 0.001)
+		_subtitulo_modal.text = "⚡ Clic bloqueado por seguridad (%.2fs)..." % restante
+		_subtitulo_modal.add_theme_color_override("font_color", Color(1.0, 0.65, 0.42))
+	if _modal_layer != null and is_instance_valid(_modal_layer):
+		var tw_recheck := _modal_layer.create_tween()
+		tw_recheck.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+		tw_recheck.tween_interval(maxf(0.05, float(_modal_bloqueado_hasta_msec - Time.get_ticks_msec()) * 0.001 + 0.02))
+		tw_recheck.tween_callback(_actualizar_texto_desbloqueo_fortuna)
+
+func _actualizar_texto_desbloqueo_fortuna() -> void:
+	if _subtitulo_modal == null or not is_instance_valid(_subtitulo_modal):
+		return
+	if Time.get_ticks_msec() >= _modal_bloqueado_hasta_msec:
+		_subtitulo_modal.text = "✦ Listo — Elige una gracia del Coliseo (escalada por tu Suerte)"
+		_subtitulo_modal.add_theme_color_override("font_color", Color(0.76, 0.96, 0.86))
+
 func _elegir_bendicion(pj: Node3D, id_stat: String, titulo_stat: String, mult: float, rareza: int) -> void:
+	if Time.get_ticks_msec() < _modal_bloqueado_hasta_msec:
+		_registrar_clic_sello_fortuna()
+		return
 	if _modal_layer != null and is_instance_valid(_modal_layer):
 		_modal_layer.visible = false
 		_modal_layer.remove_from_group("modales_santuario")

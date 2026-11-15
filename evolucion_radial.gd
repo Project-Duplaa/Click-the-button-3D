@@ -22,7 +22,9 @@ const MALLAS_CLASE_PREVIEW = {
 @export var altura_suelo_offset: float = 0.03
 @export var escala_abierto: Vector3 = Vector3(1.0, 1.0, 1.0)
 
-const COOLDOWN_CONFIRMACION: float = 0.40
+const COOLDOWN_CONFIRMACION: float = 0.85
+const REBOTE_SPAM_RADIAL: float = 0.35
+const TOPE_COOLDOWN_RADIAL: float = 1.90
 
 @onready var sprite_radial: Sprite3D = $Sprite3D
 @onready var subviewport: SubViewport = $SubViewport
@@ -45,6 +47,8 @@ var personaje_padre: CharacterBody3D = null
 var camara_3d: Camera3D = null
 
 var _tiempo_abierto: float = 0.0
+var _tiempo_desbloqueo_confirmacion: float = COOLDOWN_CONFIRMACION
+var _accion_base_tooltip: String = ""
 var _cursor_sobre_anillo: bool = false
 var _pos_pantalla_sector: Vector2 = Vector2.ZERO
 
@@ -283,6 +287,7 @@ func abrir():
 	visible = true
 	scale = Vector3.ZERO
 	_tiempo_abierto = 0.0
+	_tiempo_desbloqueo_confirmacion = COOLDOWN_CONFIRMACION
 	_cursor_sobre_anillo = false
 
 	if personaje_padre == null or not is_instance_valid(personaje_padre):
@@ -337,6 +342,11 @@ func _process(delta: float):
 	_animar_elementos_3d_rueda_y_burbuja(delta)
 	_procesar_input_mouse()
 	_actualizar_posicion_tooltip_2d()
+	if label_accion != null and tooltip_flotante != null and tooltip_flotante.visible:
+		if _tiempo_abierto < _tiempo_desbloqueo_confirmacion:
+			label_accion.text = "🛡 PROTECCIÓN ANTI-CLIC · %.1fs" % maxf(0.1, _tiempo_desbloqueo_confirmacion - _tiempo_abierto)
+		elif _accion_base_tooltip != "":
+			label_accion.text = _accion_base_tooltip
 
 func _animar_elementos_3d_rueda_y_burbuja(delta: float):
 	var clase_sel = control_radial.clase_seleccionada if control_radial != null else ""
@@ -374,7 +384,10 @@ func _animar_elementos_3d_rueda_y_burbuja(delta: float):
 func _input(event: InputEvent):
 	if not activo:
 		return
-	if _tiempo_abierto < COOLDOWN_CONFIRMACION:
+	if _tiempo_abierto < _tiempo_desbloqueo_confirmacion:
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			if _tiempo_abierto >= 0.14:
+				_tiempo_desbloqueo_confirmacion = minf(TOPE_COOLDOWN_RADIAL, maxf(_tiempo_desbloqueo_confirmacion, _tiempo_abierto + REBOTE_SPAM_RADIAL))
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		if _cursor_sobre_anillo and control_radial != null and control_radial.clase_seleccionada != "":
@@ -382,7 +395,10 @@ func _input(event: InputEvent):
 			get_viewport().set_input_as_handled()
 
 func _on_tooltip_gui_input(event: InputEvent):
-	if not activo or _tiempo_abierto < COOLDOWN_CONFIRMACION:
+	if not activo or _tiempo_abierto < _tiempo_desbloqueo_confirmacion:
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			if _tiempo_abierto >= 0.14:
+				_tiempo_desbloqueo_confirmacion = minf(TOPE_COOLDOWN_RADIAL, maxf(_tiempo_desbloqueo_confirmacion, _tiempo_abierto + REBOTE_SPAM_RADIAL))
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		if control_radial != null and control_radial.clase_seleccionada != "":
@@ -449,8 +465,12 @@ func _mostrar_tooltip_para_clase(nombre_clase: String):
 		label_titulo.add_theme_color_override("font_color", col_clase.lerp(Color.WHITE, 0.28))
 	if rich_texto_stats != null:
 		rich_texto_stats.text = str(config.get("stats_bbcode", ""))
+	_accion_base_tooltip = str(config.get("accion", "[Clic para evolucionar]"))
 	if label_accion != null:
-		label_accion.text = str(config.get("accion", "[Clic para evolucionar]"))
+		if _tiempo_abierto < _tiempo_desbloqueo_confirmacion:
+			label_accion.text = "🛡 PROTECCIÓN ANTI-CLIC · %.1fs" % maxf(0.1, _tiempo_desbloqueo_confirmacion - _tiempo_abierto)
+		else:
+			label_accion.text = _accion_base_tooltip
 
 	# Actualizar el borde de la burbuja emergente con el color de la clase
 	var sb_tip = StyleBoxFlat.new()

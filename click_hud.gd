@@ -66,6 +66,10 @@ const RESOLUCIONES_DISPONIBLES := [
 	{"label": "2560 × 1440 (QHD 2K)", "size": Vector2i(2560, 1440)},
 ]
 
+const SELLO_GRACIA_INICIAL_MS: int = 850
+const SELLO_REBOTE_SPAM_MS: int = 380
+const SELLO_MAX_TOTAL_MS: int = 2200
+
 const ArbolMejorasPoEEscena := preload("res://arbol_mejoras_poe.tscn")
 const CatalogoBendiciones := preload("res://catalogo_bendiciones.gd")
 const AnimadorEntidad := preload("res://animador_entidad.gd")
@@ -199,6 +203,16 @@ var _ultimo_hash_reliquias: int = -999999
 var _ultimo_escudo_txt: String = ""
 var _ultimo_escudo_vis: int = -1
 var _ultimo_ready_gl: int = -1
+
+var _modal_apertura_msec: int = 0
+var _modal_bloqueado_hasta_msec: int = 0
+var _modal_duracion_sello_actual_ms: int = SELLO_GRACIA_INICIAL_MS
+var _modal_sello_desbloqueado_visual: bool = false
+var _modal_clic_bloqueado_flash_hasta_msec: int = 0
+var _banner_sello_tarot: PanelContainer = null
+var _sello_fill_rect: ColorRect = null
+var _lbl_sello_tarot: Label = null
+var _sb_banner_sello: StyleBoxFlat = null
 
 
 func _ready() -> void:
@@ -375,6 +389,9 @@ func _on_click_boton_presionado(total: int) -> void:
 func _process(delta: float) -> void:
 	if not get_tree().paused and clicks_boton > 0:
 		tiempo_total += delta
+
+	if modal_mejora != null and modal_mejora.visible:
+		_actualizar_visual_sello_tarot()
 
 	_actualizar_timer_y_oleada()
 	_actualizar_telemetria_nucleo_y_fiebre(delta)
@@ -863,6 +880,8 @@ func _configurar_tarot_hover() -> void:
 		if btn == null:
 			continue
 		btn.mouse_entered.connect(func():
+			if _esta_modal_bendiciones_sellado():
+				return
 			btn.pivot_offset = btn.size * 0.5
 			var tw := create_tween()
 			tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
@@ -885,6 +904,174 @@ func _on_nivel_subido(nuevo_nivel: int) -> void:
 	mostrar_selector_bendiciones(nuevo_nivel)
 
 
+func _asegurar_banner_sello_tarot() -> void:
+	if modal_mejora == null:
+		return
+	var vbox := modal_mejora.get_node_or_null("VBox") as VBoxContainer
+	if vbox == null:
+		return
+	if _banner_sello_tarot != null and is_instance_valid(_banner_sello_tarot):
+		return
+
+	_banner_sello_tarot = PanelContainer.new()
+	_banner_sello_tarot.name = "SelloAntiClicBar"
+	_banner_sello_tarot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_banner_sello_tarot.custom_minimum_size = Vector2(0.0, 24.0)
+
+	_sb_banner_sello = StyleBoxFlat.new()
+	_sb_banner_sello.bg_color = Color(0.05, 0.04, 0.08, 0.94)
+	_sb_banner_sello.border_color = Color(0.95, 0.68, 0.22, 0.90)
+	_sb_banner_sello.set_border_width_all(1)
+	_sb_banner_sello.set_corner_radius_all(6)
+	_sb_banner_sello.content_margin_left = 2.0
+	_sb_banner_sello.content_margin_right = 2.0
+	_sb_banner_sello.content_margin_top = 2.0
+	_sb_banner_sello.content_margin_bottom = 2.0
+	_banner_sello_tarot.add_theme_stylebox_override("panel", _sb_banner_sello)
+
+	var track := Control.new()
+	track.name = "SelloTrack"
+	track.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	track.clip_contents = true
+	track.custom_minimum_size = Vector2(0.0, 20.0)
+	_banner_sello_tarot.add_child(track)
+
+	var bg_track := ColorRect.new()
+	bg_track.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg_track.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg_track.color = Color(0.03, 0.03, 0.06, 0.72)
+	track.add_child(bg_track)
+
+	_sello_fill_rect = ColorRect.new()
+	_sello_fill_rect.name = "SelloFill"
+	_sello_fill_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_sello_fill_rect.anchor_left = 0.0
+	_sello_fill_rect.anchor_top = 0.0
+	_sello_fill_rect.anchor_right = 0.0
+	_sello_fill_rect.anchor_bottom = 1.0
+	_sello_fill_rect.color = Color(0.94, 0.66, 0.18, 0.34)
+	track.add_child(_sello_fill_rect)
+
+	_lbl_sello_tarot = Label.new()
+	_lbl_sello_tarot.name = "SelloLabel"
+	_lbl_sello_tarot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_lbl_sello_tarot.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_lbl_sello_tarot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_lbl_sello_tarot.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_lbl_sello_tarot.add_theme_font_size_override("font_size", 11)
+	_lbl_sello_tarot.add_theme_color_override("font_color", Color(1.0, 0.88, 0.48))
+	track.add_child(_lbl_sello_tarot)
+
+	vbox.add_child(_banner_sello_tarot)
+	vbox.move_child(_banner_sello_tarot, 1)
+
+
+func _esta_modal_bendiciones_sellado() -> bool:
+	return modal_mejora != null and modal_mejora.visible and Time.get_ticks_msec() < _modal_bloqueado_hasta_msec
+
+
+func _registrar_clic_durante_sello(con_feedback: bool = true) -> void:
+	var ahora := Time.get_ticks_msec()
+	if ahora >= _modal_apertura_msec + 140:
+		var tope := _modal_apertura_msec + SELLO_MAX_TOTAL_MS
+		_modal_bloqueado_hasta_msec = mini(tope, maxi(_modal_bloqueado_hasta_msec, ahora + SELLO_REBOTE_SPAM_MS))
+		_modal_duracion_sello_actual_ms = maxi(SELLO_GRACIA_INICIAL_MS, _modal_bloqueado_hasta_msec - _modal_apertura_msec)
+	if con_feedback:
+		_modal_clic_bloqueado_flash_hasta_msec = ahora + 380
+		_animar_pulso_sello_tarot()
+
+
+func _animar_pulso_sello_tarot() -> void:
+	if _banner_sello_tarot != null and is_instance_valid(_banner_sello_tarot):
+		_banner_sello_tarot.pivot_offset = _banner_sello_tarot.size * 0.5
+		var tw := create_tween()
+		tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+		tw.tween_property(_banner_sello_tarot, "scale", Vector2(1.025, 1.08), 0.07).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.tween_property(_banner_sello_tarot, "scale", Vector2.ONE, 0.14).set_trans(Tween.TRANS_CUBIC)
+
+
+func _animar_desbloqueo_tarot() -> void:
+	if _banner_sello_tarot != null and is_instance_valid(_banner_sello_tarot):
+		_banner_sello_tarot.pivot_offset = _banner_sello_tarot.size * 0.5
+		var tw_b := create_tween()
+		tw_b.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+		tw_b.tween_property(_banner_sello_tarot, "scale", Vector2(1.015, 1.04), 0.10).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw_b.tween_property(_banner_sello_tarot, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_CUBIC)
+	var botones_tarot: Array[Button] = [btn_opc1, btn_opc2, btn_opc3]
+	for btn: Button in botones_tarot:
+		if btn == null or not btn.visible:
+			continue
+		btn.pivot_offset = btn.size * 0.5
+		var hovering: bool = btn.get_global_rect().has_point(btn.get_global_mouse_position())
+		var objetivo: Vector2 = Vector2(1.035, 1.035) if hovering else Vector2.ONE
+		var tw := create_tween()
+		tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+		tw.tween_property(btn, "scale", objetivo * 1.02, 0.09).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.tween_property(btn, "scale", objetivo, 0.14).set_trans(Tween.TRANS_CUBIC)
+
+
+func _actualizar_visual_sello_tarot() -> void:
+	if modal_mejora == null or not modal_mejora.visible:
+		return
+	var ahora := Time.get_ticks_msec()
+	var restante_ms := maxi(0, _modal_bloqueado_hasta_msec - ahora)
+	var sellado := restante_ms > 0
+	var progreso := clampf(float(ahora - _modal_apertura_msec) / float(maxi(1, _modal_duracion_sello_actual_ms)), 0.0, 1.0)
+	if not sellado:
+		progreso = 1.0
+
+	if _sello_fill_rect != null and is_instance_valid(_sello_fill_rect):
+		_sello_fill_rect.anchor_right = progreso
+		if sellado:
+			if ahora < _modal_clic_bloqueado_flash_hasta_msec:
+				_sello_fill_rect.color = Color(0.98, 0.42, 0.24, 0.46)
+			else:
+				_sello_fill_rect.color = Color(0.95, 0.68, 0.20, 0.34)
+		else:
+			_sello_fill_rect.color = Color(0.28, 0.80, 0.64, 0.22)
+
+	if _sb_banner_sello != null:
+		if sellado:
+			_sb_banner_sello.border_color = Color(0.98, 0.48, 0.28, 0.96) if ahora < _modal_clic_bloqueado_flash_hasta_msec else Color(0.95, 0.70, 0.24, 0.88)
+		else:
+			_sb_banner_sello.border_color = Color(0.34, 0.88, 0.72, 0.78)
+
+	if _lbl_sello_tarot != null and is_instance_valid(_lbl_sello_tarot):
+		if sellado:
+			var segs := float(restante_ms) * 0.001
+			if ahora < _modal_clic_bloqueado_flash_hasta_msec:
+				_lbl_sello_tarot.text = "⚡ CLIC BLOQUEADO POR SEGURIDAD · ESPERA %.2fs" % segs
+				_lbl_sello_tarot.add_theme_color_override("font_color", Color(1.0, 0.76, 0.56))
+			else:
+				_lbl_sello_tarot.text = "🛡 PROTECCIÓN ANTI-CLIC ACTIVA · DESSELLANDO EN %.2fs" % segs
+				_lbl_sello_tarot.add_theme_color_override("font_color", Color(1.0, 0.90, 0.55))
+		else:
+			_lbl_sello_tarot.text = "✦ LISTO — HAZ CLIC EN UNA CARTA O PULSA [1] [2] [3]"
+			_lbl_sello_tarot.add_theme_color_override("font_color", Color(0.76, 0.98, 0.88))
+
+	var botones_tarot: Array[Button] = [btn_opc1, btn_opc2, btn_opc3]
+	for btn: Button in botones_tarot:
+		if btn == null or not btn.visible:
+			continue
+		btn.mouse_default_cursor_shape = Control.CURSOR_WAIT if sellado else Control.CURSOR_POINTING_HAND
+		var cta_bar := btn.find_child("TarotCTABar", true, false) as Control
+		var cta_lbl := btn.find_child("TarotCTALabel", true, false) as Label
+		if sellado:
+			if cta_bar != null:
+				cta_bar.modulate = Color(0.72, 0.68, 0.74, 0.76)
+			if cta_lbl != null:
+				cta_lbl.text = "PROTEGIDA · %.1fs" % (float(restante_ms) * 0.001)
+		else:
+			if cta_bar != null:
+				cta_bar.modulate = Color.WHITE
+			if cta_lbl != null and btn.has_meta("cta_texto_desbloqueado"):
+				cta_lbl.text = String(btn.get_meta("cta_texto_desbloqueado"))
+
+	if not sellado and not _modal_sello_desbloqueado_visual:
+		_modal_sello_desbloqueado_visual = true
+		_animar_desbloqueo_tarot()
+
+
 func mostrar_selector_bendiciones(nivel_evento: int = 0, cartas_forzadas: Array = []) -> void:
 	if modal_mejora == null:
 		return
@@ -901,11 +1088,13 @@ func mostrar_selector_bendiciones(nivel_evento: int = 0, cartas_forzadas: Array 
 	if _panel_test_jefes != null:
 		_panel_test_jefes.visible = false
 
+	_asegurar_banner_sello_tarot()
+
 	modal_mejora.offset_left = -468.0
-	modal_mejora.offset_top = -226.0
+	modal_mejora.offset_top = -238.0
 	modal_mejora.offset_right = 468.0
-	modal_mejora.offset_bottom = 226.0
-	modal_mejora.pivot_offset = Vector2(468.0, 226.0)
+	modal_mejora.offset_bottom = 238.0
+	modal_mejora.pivot_offset = Vector2(468.0, 238.0)
 
 	var lbl_tit := modal_mejora.get_node_or_null("VBox/HeaderModal/LabelTitulo") as Label
 	if lbl_tit != null:
@@ -926,6 +1115,13 @@ func mostrar_selector_bendiciones(nivel_evento: int = 0, cartas_forzadas: Array 
 		_opciones_bendicion_actuales = cartas_forzadas
 	else:
 		_opciones_bendicion_actuales = CatalogoBendiciones.obtener_3_opciones(actuales, suerte_actual)
+
+	_modal_apertura_msec = Time.get_ticks_msec()
+	_modal_bloqueado_hasta_msec = _modal_apertura_msec + SELLO_GRACIA_INICIAL_MS
+	_modal_duracion_sello_actual_ms = SELLO_GRACIA_INICIAL_MS
+	_modal_sello_desbloqueado_visual = false
+	_modal_clic_bloqueado_flash_hasta_msec = 0
+
 	var botones := [btn_opc1, btn_opc2, btn_opc3]
 	for i in range(botones.size()):
 		var btn: Button = botones[i]
@@ -935,7 +1131,7 @@ func mostrar_selector_bendiciones(nivel_evento: int = 0, cartas_forzadas: Array 
 			var b: Dictionary = _opciones_bendicion_actuales[i]
 			btn.text = ""
 			btn.scale = Vector2.ONE
-			btn.custom_minimum_size = Vector2(280.0, 356.0)
+			btn.custom_minimum_size = Vector2(280.0, 352.0)
 			btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			btn.size_flags_vertical = Control.SIZE_EXPAND_FILL
 			_poblar_contenido_carta_tarot(btn, b, i)
@@ -953,6 +1149,7 @@ func mostrar_selector_bendiciones(nivel_evento: int = 0, cartas_forzadas: Array 
 
 	var escala_objetivo := _calcular_escala_modal_mejora()
 	modal_mejora.visible = true
+	_actualizar_visual_sello_tarot()
 	modal_mejora.scale = escala_objetivo * 0.88
 	var tw := create_tween()
 	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
@@ -1401,6 +1598,7 @@ func _poblar_contenido_carta_tarot(btn: Button, b: Dictionary, indice_carta: int
 
 	# 7. Barra de Acción Forjada con Atajo de Teclado [1] [2] [3]
 	var cta_bar := PanelContainer.new()
+	cta_bar.name = "TarotCTABar"
 	cta_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sb_cta := StyleBoxFlat.new()
 	sb_cta.bg_color = Color(col_borde.r * 0.22 + 0.05, col_borde.g * 0.18 + 0.05, col_borde.b * 0.22 + 0.08, 0.96)
@@ -1441,9 +1639,13 @@ func _poblar_contenido_carta_tarot(btn: Button, b: Dictionary, indice_carta: int
 	lbl_key.add_theme_color_override("font_color", Color(1.0, 0.88, 0.50))
 	key_badge.add_child(lbl_key)
 
+	var texto_cta := "CONSAGRAR FUSIÓN" if es_sinergia else ("MEJORAR RANGO" if niv_act > 0 else "CONSAGRAR BENDICIÓN")
+	btn.set_meta("cta_texto_desbloqueado", texto_cta)
+
 	var lbl_cta := Label.new()
+	lbl_cta.name = "TarotCTALabel"
 	lbl_cta.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	lbl_cta.text = "CONSAGRAR FUSIÓN" if es_sinergia else ("MEJORAR RANGO" if niv_act > 0 else "CONSAGRAR BENDICIÓN")
+	lbl_cta.text = texto_cta
 	lbl_cta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl_cta.add_theme_font_size_override("font_size", 11)
 	lbl_cta.add_theme_color_override("font_color", Color(0.98, 0.92, 0.74))
@@ -1507,6 +1709,9 @@ func _aplicar_estilo_carta_bendicion(btn: Button, b: Dictionary) -> void:
 
 
 func _seleccionar_carta_bendicion(indice: int) -> void:
+	if _esta_modal_bendiciones_sellado():
+		_registrar_clic_durante_sello(true)
+		return
 	if modal_mejora != null:
 		modal_mejora.visible = false
 	if modal_dimmer != null:
@@ -1642,6 +1847,24 @@ func _sincronizar_jefe_prioritario() -> void:
 			mostrar_barra_jefe(str(j.name), max_hp, hp)
 
 
+func _input(event: InputEvent) -> void:
+	if modal_mejora == null or not modal_mejora.visible:
+		return
+	if not _esta_modal_bendiciones_sellado():
+		return
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_LEFT or mb.button_index == MOUSE_BUTTON_RIGHT:
+			if mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
+				_registrar_clic_durante_sello(true)
+			get_viewport().set_input_as_handled()
+			return
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode in [KEY_1, KEY_KP_1, KEY_2, KEY_KP_2, KEY_3, KEY_KP_3, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]:
+			_registrar_clic_durante_sello(true)
+			get_viewport().set_input_as_handled()
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if modal_mejora != null and modal_mejora.visible:
@@ -1695,8 +1918,8 @@ func _calcular_escala_modal_mejora() -> Vector2:
 	if rect_vis.x <= 1.0 or rect_vis.y <= 1.0:
 		return Vector2.ONE
 	var max_w := rect_vis.x - 44.0
-	var max_h := rect_vis.y - 126.0
-	var factor := minf(1.0, minf(max_w / 936.0, max_h / 452.0))
+	var max_h := rect_vis.y - 118.0
+	var factor := minf(1.0, minf(max_w / 936.0, max_h / 476.0))
 	factor = clampf(factor, 0.72, 1.08)
 	return Vector2(factor, factor)
 
@@ -1864,6 +2087,8 @@ func _crear_boton_test_parca() -> void:
 
 	cont.add_child(hbox_botones)
 	$Control.add_child(cont)
+	if modal_dimmer != null:
+		$Control.move_child(cont, modal_dimmer.get_index())
 	_actualizar_texto_boton_resolucion()
 
 
