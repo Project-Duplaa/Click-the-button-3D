@@ -614,7 +614,7 @@ func _spawn_jefe_espejo_sombrio(pos: Vector3) -> void:
 	jefe.set_meta("vida", 850.0)
 
 	# Instanciar modelo .glb idéntico al jugador con sombreado de obsidiana
-	var escena_modelo = load("res://personaje/character-male-a.glb")
+	var escena_modelo = load("res://personaje/player_rookie.glb")
 	if escena_modelo != null:
 		var mod = escena_modelo.instantiate() as Node3D
 		jefe.add_child(mod)

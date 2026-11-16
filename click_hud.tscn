@@ -1,7 +1,7 @@
 [gd_scene load_steps=43 format=3 uid="uid://bclickhud3d"]
 
 [ext_resource type="Script" path="res://click_hud.gd" id="1_hud"]
-[ext_resource type="PackedScene" path="res://personaje/character-male-a.glb" id="2_avatar_mesh"]
+[ext_resource type="PackedScene" uid="uid://bdbdp0rbndglo" path="res://personaje/player_rookie.glb" id="2_avatar_mesh"]
 [ext_resource type="Texture2D" path="res://ui_assets/hud_corner_gothic.png" id="3_corner"]
 [ext_resource type="Texture2D" path="res://ui_assets/hud_divider_needle.png" id="4_needle"]
 [ext_resource type="Texture2D" path="res://ui_assets/hud_gem_heart.png" id="5_heart"]
@@ -495,7 +495,7 @@ fov = 30.0
 [node name="LuzFrontal" type="DirectionalLight3D" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/AvatarSocket/AvatarFrame/SubViewportContainer/SubViewport"]
 transform = Transform3D(0.866025, -0.25, 0.433013, 0, 0.866025, 0.5, -0.5, -0.433013, 0.75, 0.5, 1.5, 1)
 light_color = Color(1, 0.94, 0.85, 1)
-light_energy = 1.95
+light_energy = 1.15
 
 [node name="LuzRelleno" type="DirectionalLight3D" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/AvatarSocket/AvatarFrame/SubViewportContainer/SubViewport"]
 transform = Transform3D(0.866025, 0.17101, -0.469846, 0, 0.939693, 0.34202, 0.5, -0.296198, 0.813798, -0.8, 0.8, 0.8)

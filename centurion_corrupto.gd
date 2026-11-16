@@ -150,8 +150,12 @@ func _invocar_cristales_escudo():
 		prism.size = Vector3(0.6, 0.9, 0.6)
 		mesh_i.mesh = prism
 		var mat = StandardMaterial3D.new()
-		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		mat.albedo_color = Color(0.2, 0.95, 1.0)
+		mat.albedo_color = Color(0.95, 0.45, 0.08)
+		mat.emission_enabled = true
+		mat.emission = Color(1.0, 0.35, 0.05)
+		mat.emission_energy_multiplier = 1.4
+		mat.metallic = 0.5
+		mat.roughness = 0.25
 		mesh_i.material_override = mat
 		area.add_child(mesh_i)
 

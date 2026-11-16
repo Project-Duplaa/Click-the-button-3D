@@ -11,16 +11,18 @@ signal evolucion_seleccionada(nombre_clase: String)
 signal clase_preview_cambiada(nombre_clase: String)
 
 const MALLAS_CLASE_PREVIEW = {
-	"Guerrero": preload("res://personaje/character-male-d.glb"),
-	"Cazador": preload("res://personaje/character-female-e.glb"),
-	"Mago": preload("res://personaje/character-female-b.glb"),
-	"Paladín Solar": preload("res://personaje/character-male-d.glb"),
-	"Berserker Sangriento": preload("res://personaje/character-male-d.glb"),
-	"Francotirador Astral": preload("res://personaje/character-female-e.glb"),
-	"Maestro de Sombras": preload("res://personaje/character-female-e.glb"),
-	"Archimago del Vacío": preload("res://personaje/character-female-b.glb"),
-	"Piromante Cataclísmico": preload("res://personaje/character-female-b.glb"),
-	"Avatar del Núcleo": preload("res://personaje/character-male-d.glb")
+	"Novato": preload("res://personaje/player_rookie.glb"),
+	"Guerrero": preload("res://personaje/player_warrior.glb"),
+	"Cazador": preload("res://personaje/player_archer.glb"),
+	"Arquero": preload("res://personaje/player_archer.glb"),
+	"Mago": preload("res://personaje/player_mage.glb"),
+	"Paladín Solar": preload("res://personaje/player_warrior.glb"),
+	"Berserker Sangriento": preload("res://personaje/player_warrior.glb"),
+	"Francotirador Astral": preload("res://personaje/player_archer.glb"),
+	"Maestro de Sombras": preload("res://personaje/player_archer.glb"),
+	"Archimago del Vacío": preload("res://personaje/player_mage.glb"),
+	"Piromante Cataclísmico": preload("res://personaje/player_mage.glb"),
+	"Avatar del Núcleo": preload("res://personaje/player_warrior.glb")
 }
 
 @export var radio_activacion_min: float = 0.72

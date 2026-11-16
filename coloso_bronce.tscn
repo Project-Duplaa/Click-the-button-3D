@@ -35,5 +35,5 @@ mesh = SubResource("MeshTelegraph")
 [node name="LuzColoso" type="OmniLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.2, 0)
 light_color = Color(1, 0.5, 0.1, 1)
-light_energy = 3.5
-omni_range = 7.5
+light_energy = 1.2
+omni_range = 6.0

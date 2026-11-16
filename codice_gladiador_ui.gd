@@ -179,7 +179,7 @@ const DATOS_BESTIARIO: Dictionary = {
 		"tier": "Jefe Secreto",
 		"icono": "🪞💀",
 		"lore": "Reflejo corrupto liberado al destruir el Monolito del Campeón Caído. Otorga Esquirla Astral.",
-		"escena": "res://personaje/character-male-a.glb",
+		"escena": "res://personaje/player_rookie.glb",
 		"color": Color(0.75, 0.20, 0.95)
 	}
 }

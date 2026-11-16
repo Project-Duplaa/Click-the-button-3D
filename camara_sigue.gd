@@ -1,7 +1,7 @@
 extends Camera3D
 
 @export var objetivo: Node3D
-@export var distancia = Vector3(0, 12.0, 9.5)
+@export var distancia = Vector3(0, 10.5, 8.2)
 @export var suavizado = 4.0
 @export var limite_min = Vector2(-22.5, -22.5)
 @export var limite_max = Vector2(22.5, 22.5)

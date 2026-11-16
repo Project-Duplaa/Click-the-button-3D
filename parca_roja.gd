@@ -44,7 +44,11 @@ var _esta_cargando: bool = false
 var _dir_carga: Vector3 = Vector3.ZERO
 var _telegraph_carga: MeshInstance3D = null
 
-var _escudo_mesh: MeshInstance3D = null
+var _escudo_mesh: Node3D = null
+var _escudo_burbuja: MeshInstance3D = null
+var _escudo_anillo1: MeshInstance3D = null
+var _escudo_anillo2: MeshInstance3D = null
+var _escudo_anillo_suelo: MeshInstance3D = null
 var _luz_escudo: OmniLight3D = null
 
 var _escala_base: Vector3 = Vector3.ONE
@@ -99,27 +103,84 @@ func _calcular_clics_necesarios() -> int:
 	return clics_base_escudo + int(pct_perdido * 3.99)
 
 func _crear_escudo_visual():
-	_escudo_mesh = MeshInstance3D.new()
-	var esfera = SphereMesh.new()
-	esfera.radius = 2.4
-	esfera.height = 4.8
-	_escudo_mesh.mesh = esfera
-	_escudo_mesh.position = Vector3(0, 2.4, 0)
+	_escudo_mesh = Node3D.new()
+	_escudo_mesh.name = "EscudoParcaVisual"
 
-	var mat = StandardMaterial3D.new()
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.albedo_color = Color(0.2, 0.65, 1.0, 0.35)
-	mat.emission_enabled = true
-	mat.emission = Color(0.15, 0.75, 1.0)
-	mat.emission_energy_multiplier = 3.0
-	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	_escudo_mesh.material_override = mat
+	# 1. Burbuja espectral cristalina de alta transparencia (deja ver 100% el modelo)
+	_escudo_burbuja = MeshInstance3D.new()
+	var esfera = SphereMesh.new()
+	esfera.radius = 2.5
+	esfera.height = 5.0
+	_escudo_burbuja.mesh = esfera
+	_escudo_burbuja.position = Vector3(0, 2.4, 0)
+
+	var mat_burbuja = StandardMaterial3D.new()
+	mat_burbuja.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat_burbuja.albedo_color = Color(0.18, 0.85, 1.0, 0.08)
+	mat_burbuja.roughness = 0.08
+	mat_burbuja.metallic = 0.85
+	mat_burbuja.rim_enabled = true
+	mat_burbuja.rim = 1.0
+	mat_burbuja.rim_tint = 0.6
+	mat_burbuja.emission_enabled = true
+	mat_burbuja.emission = Color(0.15, 0.80, 1.0)
+	mat_burbuja.emission_energy_multiplier = 0.32
+	mat_burbuja.cull_mode = BaseMaterial3D.CULL_BACK
+	_escudo_burbuja.material_override = mat_burbuja
+	_escudo_mesh.add_child(_escudo_burbuja)
+
+	# 2. Anillo orbital horizontal de energía espectral
+	_escudo_anillo1 = MeshInstance3D.new()
+	var t1 = TorusMesh.new()
+	t1.outer_radius = 2.45
+	t1.inner_radius = 2.33
+	t1.rings = 36
+	t1.ring_segments = 8
+	_escudo_anillo1.mesh = t1
+	_escudo_anillo1.position = Vector3(0, 2.4, 0)
+	var mat_anillo1 = StandardMaterial3D.new()
+	mat_anillo1.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat_anillo1.albedo_color = Color(0.25, 0.90, 1.0, 0.85)
+	mat_anillo1.emission_enabled = true
+	mat_anillo1.emission = Color(0.20, 0.85, 1.0)
+	mat_anillo1.emission_energy_multiplier = 1.25
+	_escudo_anillo1.material_override = mat_anillo1
+	_escudo_mesh.add_child(_escudo_anillo1)
+
+	# 3. Segundo anillo orbital inclinado
+	_escudo_anillo2 = MeshInstance3D.new()
+	var t2 = TorusMesh.new()
+	t2.outer_radius = 2.35
+	t2.inner_radius = 2.23
+	t2.rings = 36
+	t2.ring_segments = 8
+	_escudo_anillo2.mesh = t2
+	_escudo_anillo2.position = Vector3(0, 2.0, 0)
+	_escudo_anillo2.rotation_degrees = Vector3(28.0, 0.0, -18.0)
+	var mat_anillo2 = mat_anillo1.duplicate() as StandardMaterial3D
+	_escudo_anillo2.material_override = mat_anillo2
+	_escudo_mesh.add_child(_escudo_anillo2)
+
+	# 4. Anillo rúnico a ras de suelo
+	_escudo_anillo_suelo = MeshInstance3D.new()
+	var t_suelo = TorusMesh.new()
+	t_suelo.outer_radius = 2.75
+	t_suelo.inner_radius = 2.62
+	t_suelo.rings = 40
+	t_suelo.ring_segments = 8
+	_escudo_anillo_suelo.mesh = t_suelo
+	_escudo_anillo_suelo.position = Vector3(0, 0.08, 0)
+	var mat_suelo = mat_anillo1.duplicate() as StandardMaterial3D
+	mat_suelo.albedo_color = Color(0.25, 0.90, 1.0, 0.70)
+	_escudo_anillo_suelo.material_override = mat_suelo
+	_escudo_mesh.add_child(_escudo_anillo_suelo)
+
 	add_child(_escudo_mesh)
 
 	_luz_escudo = OmniLight3D.new()
-	_luz_escudo.light_color = Color(0.2, 0.8, 1.0)
-	_luz_escudo.light_energy = 3.2
-	_luz_escudo.omni_range = 6.0
+	_luz_escudo.light_color = Color(0.2, 0.85, 1.0)
+	_luz_escudo.light_energy = 0.85
+	_luz_escudo.omni_range = 5.0
 	_luz_escudo.position = Vector3(0, 2.4, 0)
 	add_child(_luz_escudo)
 
@@ -152,7 +213,12 @@ func _physics_process(delta):
 	if aura_roja != null:
 		aura_roja.rotate_y(delta * 2.5)
 	if _escudo_mesh != null and _escudo_mesh.visible:
-		_escudo_mesh.rotate_y(delta * 1.8)
+		if _escudo_anillo1 != null:
+			_escudo_anillo1.rotate_y(delta * 2.0)
+		if _escudo_anillo2 != null:
+			_escudo_anillo2.rotate_y(-delta * 2.4)
+		if _escudo_anillo_suelo != null:
+			_escudo_anillo_suelo.rotate_y(delta * 1.0)
 
 	if _boton_movil == null or not is_instance_valid(_boton_movil):
 		_boton_movil = get_tree().get_first_node_in_group("boton_movil")
@@ -389,10 +455,23 @@ func _restaurar_escudo():
 	if _escudo_mesh != null:
 		_escudo_mesh.visible = true
 		var pct_perdido = 1.0 - (vida / vida_maxima)
-		var mat = _escudo_mesh.material_override as StandardMaterial3D
-		if mat != null:
-			mat.albedo_color = Color(0.2, 0.65, 1.0, 0.35).lerp(Color(0.9, 0.1, 0.25, 0.55), pct_perdido)
-			mat.emission = Color(0.15, 0.75, 1.0).lerp(Color(1.0, 0.15, 0.2), pct_perdido)
+		var col_base := Color(0.2, 0.85, 1.0).lerp(Color(1.0, 0.15, 0.25), pct_perdido)
+		if _escudo_burbuja != null and _escudo_burbuja.material_override is StandardMaterial3D:
+			var mb := _escudo_burbuja.material_override as StandardMaterial3D
+			mb.albedo_color = Color(col_base.r, col_base.g, col_base.b, 0.08)
+			mb.emission = col_base
+		if _escudo_anillo1 != null and _escudo_anillo1.material_override is StandardMaterial3D:
+			var m1 := _escudo_anillo1.material_override as StandardMaterial3D
+			m1.albedo_color = Color(col_base.r, col_base.g, col_base.b, 0.85)
+			m1.emission = col_base
+		if _escudo_anillo2 != null and _escudo_anillo2.material_override is StandardMaterial3D:
+			var m2 := _escudo_anillo2.material_override as StandardMaterial3D
+			m2.albedo_color = Color(col_base.r, col_base.g, col_base.b, 0.85)
+			m2.emission = col_base
+		if _escudo_anillo_suelo != null and _escudo_anillo_suelo.material_override is StandardMaterial3D:
+			var ms := _escudo_anillo_suelo.material_override as StandardMaterial3D
+			ms.albedo_color = Color(col_base.r, col_base.g, col_base.b, 0.70)
+			ms.emission = col_base
 
 	if _luz_escudo != null:
 		_luz_escudo.visible = true

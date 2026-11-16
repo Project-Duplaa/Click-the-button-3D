@@ -38,17 +38,18 @@ const HITO_NIVEL_TIER2: int = 8
 const HITO_CLICS_TIER2: int = 45
 
 const MALLAS_CLASE = {
-	"Novato": "res://personaje/character-male-a.glb",
-	"Guerrero": "res://personaje/character-male-d.glb",
-	"Cazador": "res://personaje/character-female-e.glb",
-	"Mago": "res://personaje/character-female-b.glb",
-	"Paladín Solar": "res://personaje/character-male-d.glb",
-	"Berserker Sangriento": "res://personaje/character-male-d.glb",
-	"Francotirador Astral": "res://personaje/character-female-e.glb",
-	"Maestro de Sombras": "res://personaje/character-female-e.glb",
-	"Archimago del Vacío": "res://personaje/character-female-b.glb",
-	"Piromante Cataclísmico": "res://personaje/character-female-b.glb",
-	"Avatar del Núcleo": "res://personaje/character-male-d.glb"
+	"Novato": "res://personaje/player_rookie.glb",
+	"Guerrero": "res://personaje/player_warrior.glb",
+	"Cazador": "res://personaje/player_archer.glb",
+	"Arquero": "res://personaje/player_archer.glb",
+	"Mago": "res://personaje/player_mage.glb",
+	"Paladín Solar": "res://personaje/player_warrior.glb",
+	"Berserker Sangriento": "res://personaje/player_warrior.glb",
+	"Francotirador Astral": "res://personaje/player_archer.glb",
+	"Maestro de Sombras": "res://personaje/player_archer.glb",
+	"Archimago del Vacío": "res://personaje/player_mage.glb",
+	"Piromante Cataclísmico": "res://personaje/player_mage.glb",
+	"Avatar del Núcleo": "res://personaje/player_warrior.glb"
 }
 
 const STATS_CLASE = {
@@ -492,7 +493,7 @@ func cambiar_malla_3d(personaje: CharacterBody3D, ruta_malla: String) -> Animati
 		return null
 	
 	var modelo_actual = personaje.get_node_or_null("Modelo")
-	var transform_base = Transform3D(Basis(Vector3(-2.6, 0.0, 0.0), Vector3(0.0, 2.6, 0.0), Vector3(0.0, 0.0, -2.6)), Vector3.ZERO)
+	var transform_base = Transform3D(Basis(Vector3(-5.5, 0.0, 0.0), Vector3(0.0, 5.5, 0.0), Vector3(0.0, 0.0, -5.5)), Vector3.ZERO)
 	
 	if modelo_actual != null:
 		transform_base = modelo_actual.transform

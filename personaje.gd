@@ -31,6 +31,7 @@ signal corrupta_aplicada(id_corrupta: String)
 @onready var anim = $Modelo/AnimationPlayer if has_node("Modelo/AnimationPlayer") else null
 
 # Estadísticas RPG / Autobattler (Balanceado estilo Vampire Survivors: ágil y escalable)
+@export var clase_inicial: String = "Novato"
 var clase: String = "Novato"
 var clase_base: String = "Novato"
 var subclase_tier2: String = ""
@@ -223,7 +224,7 @@ var _preview_arco: Node3D = null
 var _anim_ctrl: AnimadorEntidad = null
 var _modelo_pos_base: Vector3 = Vector3.ZERO
 var _modelo_rot_base: Vector3 = Vector3.ZERO
-var _modelo_escala_base: Vector3 = Vector3(-2.6, 2.6, -2.6)
+var _modelo_escala_base: Vector3 = Vector3(-5.5, 5.5, -5.5)
 var _tween_modelo_ataque: Tween = null
 var _turno_ataque_novato: bool = false
 var _arma_der_ref: Node3D = null
@@ -259,7 +260,7 @@ func _ready():
 	if not evolucion_manager.malla_cambiada.is_connected(_on_malla_cambiada):
 		evolucion_manager.malla_cambiada.connect(_on_malla_cambiada)
 	_crear_escudo_visual()
-	aplicar_clase("Novato")
+	aplicar_clase(clase_inicial if not clase_inicial.is_empty() else "Novato")
 	MetaprogresoManager.aplicar_a_personaje(self)
 	reapariciones = max(0, obtener_vidas_maximas() - 1)
 	vida = vida_maxima
@@ -289,7 +290,7 @@ func equipar_armas_clase(nombre_clase: String) -> void:
 	_luz_orbe_ref = armas.get("luz_orbe", null)
 	_preview_baston = _arma_der_ref if nombre_clase in ["Mago", "Archimago del Vacío", "Piromante Cataclísmico"] else null
 	_preview_espada = _arma_der_ref if nombre_clase in ["Guerrero", "Paladín Solar", "Berserker Sangriento"] else null
-	_preview_arco = _arma_izq_ref if nombre_clase in ["Cazador", "Francotirador Astral", "Maestro de Sombras"] else null
+	_preview_arco = _arma_izq_ref if nombre_clase in ["Cazador", "Arquero", "Francotirador Astral", "Maestro de Sombras"] else null
 
 func _bootstrap_core_systems():
 	var tree = _obtener_tree()
@@ -1293,6 +1294,8 @@ func obtener_arquetipo_clase() -> String:
 	return clase_base if clase_base != "Novato" and clase_base != "" else clase
 
 func es_arquetipo(arq: String) -> bool:
+	if arq in ["Cazador", "Arquero"]:
+		return clase in ["Cazador", "Arquero"] or clase_base in ["Cazador", "Arquero"]
 	return clase == arq or clase_base == arq
 
 func aplicar_subclase_tier2(nombre_subclase: String):
@@ -1321,7 +1324,7 @@ func aplicar_clase(nombre: String):
 			base_cadencia_ataque = 0.70
 			base_speed_caminar = 3.2
 			base_speed_correr = 5.6
-		"Cazador":
+		"Cazador", "Arquero":
 			clase_base = "Cazador"
 			subclase_tier2 = ""
 			base_vida_maxima = 100.0

@@ -37,13 +37,13 @@ const CONFIG_CLASES = {
 		"accion": "⚡ [ CLIC PARA EVOLUCIONAR ] ⚡"
 	},
 	"Cazador": {
-		"color": Color(0.18, 0.88, 0.76, 1.0),
+		"color": Color(0.95, 0.44, 0.08, 1.0),
 		"angulo_centro_deg": 30.0,
 		"icono_tex": TEX_ARCO,
-		"titulo": "🏹 CAZADOR",
-		"rol_badge": "🎯 RANGER / LLUVIA DE FLECHAS",
-		"subtitulo": "Tirador Silvestre",
-		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Arco Élfico Multidisparo\n• [color=#56E39F]Ráfaga en Abanico Perforante[/color]\n• [color=#56E39F]Alcance: 7.5m (Máximo)[/color]\n• [color=#72EFDD]Velocidad Carrera:[/color] 6.4 m/s",
+		"titulo": "🏹 ARQUERO",
+		"rol_badge": "🎯 TIRADOR TÁCTICO / FLECHAS DE PLASMA",
+		"subtitulo": "Superviviente Táctico Sci-Fi",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Arco Tecnológico de Plasma\n• [color=#56E39F]Ráfaga en Abanico Perforante[/color]\n• [color=#56E39F]Alcance: 7.5m (Máximo)[/color]\n• [color=#72EFDD]Velocidad Carrera:[/color] 6.4 m/s",
 		"accion": "⚡ [ CLIC PARA EVOLUCIONAR ] ⚡"
 	},
 	"Mago": {

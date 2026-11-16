@@ -716,11 +716,13 @@ func _crear_zona_voltaica_suelo() -> void:
 
 	var mat = StandardMaterial3D.new()
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.albedo_color = Color(0.18, 0.95, 0.92, 0.45)
+	mat.albedo_color = Color(0.04, 0.55, 0.75, 0.22)
 	mat.emission_enabled = true
-	mat.emission = Color(0.20, 0.95, 0.92)
-	mat.emission_energy_multiplier = 3.2
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.emission = Color(0.10, 0.70, 0.90)
+	mat.emission_energy_multiplier = 0.85
+	mat.metallic = 0.3
+	mat.roughness = 0.2
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	mesh_inst.material_override = mat
 	zona.add_child(mesh_inst)
 

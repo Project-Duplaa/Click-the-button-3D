@@ -35,7 +35,11 @@ var _fase1_muralla_usada: bool = false
 var _fase2_muralla_usada: bool = false
 var _aturdido: bool = false
 
-var _escudo_hierro_mesh: MeshInstance3D = null
+var _escudo_hierro_mesh: Node3D = null
+var _escudo_burbuja: MeshInstance3D = null
+var _escudo_anillo1: MeshInstance3D = null
+var _escudo_anillo2: MeshInstance3D = null
+var _escudo_anillo_suelo: MeshInstance3D = null
 
 var _escala_base: Vector3 = Vector3.ONE
 var _anim_ctrl: AnimadorEntidad = AnimadorEntidad.new()
@@ -75,21 +79,78 @@ func aplicar_knockback(impulso: Vector3, _duracion_stun: float = 0.08):
 		_knockback_velocity = _knockback_velocity.normalized() * 12.0
 
 func _crear_escudo_hierro_visual():
-	_escudo_hierro_mesh = MeshInstance3D.new()
-	var esfera = SphereMesh.new()
-	esfera.radius = 2.0
-	esfera.height = 3.8
-	_escudo_hierro_mesh.mesh = esfera
-	_escudo_hierro_mesh.position = Vector3(0, 1.9, 0)
+	_escudo_hierro_mesh = Node3D.new()
+	_escudo_hierro_mesh.name = "EscudoHierroVisual"
 
-	var mat = StandardMaterial3D.new()
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.albedo_color = Color(0.85, 0.55, 0.15, 0.4)
-	mat.emission_enabled = true
-	mat.emission = Color(1.0, 0.45, 0.05)
-	mat.emission_energy_multiplier = 2.4
-	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	_escudo_hierro_mesh.material_override = mat
+	# 1. Burbuja cristalina de alta transparencia (deja ver 100% el modelo)
+	_escudo_burbuja = MeshInstance3D.new()
+	var esfera = SphereMesh.new()
+	esfera.radius = 2.1
+	esfera.height = 4.0
+	_escudo_burbuja.mesh = esfera
+	_escudo_burbuja.position = Vector3(0, 1.9, 0)
+
+	var mat_burbuja = StandardMaterial3D.new()
+	mat_burbuja.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat_burbuja.albedo_color = Color(1.0, 0.75, 0.2, 0.08)
+	mat_burbuja.roughness = 0.08
+	mat_burbuja.metallic = 0.85
+	mat_burbuja.rim_enabled = true
+	mat_burbuja.rim = 1.0
+	mat_burbuja.rim_tint = 0.6
+	mat_burbuja.emission_enabled = true
+	mat_burbuja.emission = Color(1.0, 0.65, 0.15)
+	mat_burbuja.emission_energy_multiplier = 0.30
+	mat_burbuja.cull_mode = BaseMaterial3D.CULL_BACK
+	_escudo_burbuja.material_override = mat_burbuja
+	_escudo_hierro_mesh.add_child(_escudo_burbuja)
+
+	# 2. Anillo orbital horizontal de energía rúnica
+	_escudo_anillo1 = MeshInstance3D.new()
+	var t1 = TorusMesh.new()
+	t1.outer_radius = 2.15
+	t1.inner_radius = 2.03
+	t1.rings = 36
+	t1.ring_segments = 8
+	_escudo_anillo1.mesh = t1
+	_escudo_anillo1.position = Vector3(0, 1.9, 0)
+	var mat_anillo1 = StandardMaterial3D.new()
+	mat_anillo1.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat_anillo1.albedo_color = Color(1.0, 0.80, 0.25, 0.85)
+	mat_anillo1.emission_enabled = true
+	mat_anillo1.emission = Color(1.0, 0.70, 0.15)
+	mat_anillo1.emission_energy_multiplier = 1.2
+	_escudo_anillo1.material_override = mat_anillo1
+	_escudo_hierro_mesh.add_child(_escudo_anillo1)
+
+	# 3. Segundo anillo orbital inclinado
+	_escudo_anillo2 = MeshInstance3D.new()
+	var t2 = TorusMesh.new()
+	t2.outer_radius = 2.05
+	t2.inner_radius = 1.94
+	t2.rings = 36
+	t2.ring_segments = 8
+	_escudo_anillo2.mesh = t2
+	_escudo_anillo2.position = Vector3(0, 1.6, 0)
+	_escudo_anillo2.rotation_degrees = Vector3(25.0, 0.0, 18.0)
+	var mat_anillo2 = mat_anillo1.duplicate() as StandardMaterial3D
+	_escudo_anillo2.material_override = mat_anillo2
+	_escudo_hierro_mesh.add_child(_escudo_anillo2)
+
+	# 4. Anillo rúnico a ras de suelo
+	_escudo_anillo_suelo = MeshInstance3D.new()
+	var t_suelo = TorusMesh.new()
+	t_suelo.outer_radius = 2.4
+	t_suelo.inner_radius = 2.28
+	t_suelo.rings = 40
+	t_suelo.ring_segments = 8
+	_escudo_anillo_suelo.mesh = t_suelo
+	_escudo_anillo_suelo.position = Vector3(0, 0.08, 0)
+	var mat_suelo = mat_anillo1.duplicate() as StandardMaterial3D
+	mat_suelo.albedo_color = Color(1.0, 0.75, 0.2, 0.70)
+	_escudo_anillo_suelo.material_override = mat_suelo
+	_escudo_hierro_mesh.add_child(_escudo_anillo_suelo)
+
 	_escudo_hierro_mesh.visible = false
 	add_child(_escudo_hierro_mesh)
 
@@ -109,7 +170,12 @@ func _physics_process(delta):
 	_anim_ctrl.actualizar(delta)
 	_knockback_velocity = _knockback_velocity.move_toward(Vector3.ZERO, 16.0 * delta)
 	if _escudo_hierro_mesh != null and _escudo_hierro_mesh.visible:
-		_escudo_hierro_mesh.rotate_y(delta * 2.0)
+		if _escudo_anillo1 != null:
+			_escudo_anillo1.rotate_y(delta * 2.0)
+		if _escudo_anillo2 != null:
+			_escudo_anillo2.rotate_y(-delta * 2.3)
+		if _escudo_anillo_suelo != null:
+			_escudo_anillo_suelo.rotate_y(delta * 1.0)
 
 	if _aturdido or _esta_telegrafando:
 		velocity.x = move_toward(velocity.x, 0.0, 12.0 * delta) + _knockback_velocity.x
@@ -337,6 +403,8 @@ func _crear_rayo_hacia_jefe(desde_pos: Vector3):
 		)
 
 func _crear_texto_flotante(texto: String, es_crit: bool = false):
+	if get_tree() == null:
+		return
 	var pool = get_tree().get_first_node_in_group("damage_numbers")
 	if pool != null and pool.has_method("mostrar_texto"):
 		pool.mostrar_texto(global_position + Vector3(0, 3.2, 0), texto, Color(1.0, 0.85, 0.2), 1.2)

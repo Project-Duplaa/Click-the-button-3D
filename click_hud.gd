@@ -6,23 +6,25 @@ extends CanvasLayer
 # dock contextual (Presagio, Reliquias, Pacto de Marte, [U] Ascensión) y Cartas Tarot de Bendición.
 
 const MALLAS_AVATAR := {
-	"Novato": preload("res://personaje/character-male-a.glb"),
-	"Guerrero": preload("res://personaje/character-male-d.glb"),
-	"Cazador": preload("res://personaje/character-female-e.glb"),
-	"Mago": preload("res://personaje/character-female-b.glb"),
-	"Paladín Solar": preload("res://personaje/character-male-d.glb"),
-	"Berserker Sangriento": preload("res://personaje/character-male-d.glb"),
-	"Francotirador Astral": preload("res://personaje/character-female-e.glb"),
-	"Maestro de Sombras": preload("res://personaje/character-female-e.glb"),
-	"Archimago del Vacío": preload("res://personaje/character-female-b.glb"),
-	"Piromante Cataclísmico": preload("res://personaje/character-female-b.glb"),
-	"Avatar del Núcleo": preload("res://personaje/character-male-a.glb"),
+	"Novato": preload("res://personaje/player_rookie.glb"),
+	"Guerrero": preload("res://personaje/player_warrior.glb"),
+	"Cazador": preload("res://personaje/player_archer.glb"),
+	"Arquero": preload("res://personaje/player_archer.glb"),
+	"Mago": preload("res://personaje/player_mage.glb"),
+	"Paladín Solar": preload("res://personaje/player_warrior.glb"),
+	"Berserker Sangriento": preload("res://personaje/player_warrior.glb"),
+	"Francotirador Astral": preload("res://personaje/player_archer.glb"),
+	"Maestro de Sombras": preload("res://personaje/player_archer.glb"),
+	"Archimago del Vacío": preload("res://personaje/player_mage.glb"),
+	"Piromante Cataclísmico": preload("res://personaje/player_mage.glb"),
+	"Avatar del Núcleo": preload("res://personaje/player_warrior.glb"),
 }
 
 const WEAPON_KEYS := {
 	"Novato": "Novato",
 	"Guerrero": "Guerrero",
 	"Cazador": "Cazador",
+	"Arquero": "Cazador",
 	"Mago": "Mago",
 	"Paladín Solar": "Guerrero",
 	"Berserker Sangriento": "Guerrero",
@@ -36,7 +38,8 @@ const WEAPON_KEYS := {
 const CLASS_ACCENTS := {
 	"Novato": Color(0.88, 0.74, 0.38),
 	"Guerrero": Color(0.95, 0.25, 0.22),
-	"Cazador": Color(0.20, 0.85, 0.50),
+	"Cazador": Color(0.95, 0.44, 0.08),
+	"Arquero": Color(0.95, 0.44, 0.08),
 	"Mago": Color(0.55, 0.35, 1.00),
 	"Paladín Solar": Color(1.00, 0.82, 0.20),
 	"Berserker Sangriento": Color(0.95, 0.15, 0.15),
@@ -340,8 +343,8 @@ func _conectar_fortuna() -> void:
 
 func _calibrar_avatar() -> void:
 	if camara_avatar != null:
-		camara_avatar.fov = 30.0
-		camara_avatar.look_at_from_position(Vector3(0.04, 0.52, 1.10), Vector3(0.0, 0.48, 0.0), Vector3.UP)
+		camara_avatar.fov = 32.0
+		camara_avatar.look_at_from_position(Vector3(0.02, 0.36, 0.52), Vector3(0.0, 0.33, 0.0), Vector3.UP)
 	if modelo_avatar_nodo != null:
 		_clase_actual_avatar = "Novato"
 		modelo_avatar_nodo.rotation_degrees.y = 20.0
@@ -368,7 +371,7 @@ func _preparar_modelo_retrato(modelo: Node3D, nombre_clase: String) -> void:
 	var accent: Color = CLASS_ACCENTS.get(nombre_clase, Color(0.88, 0.74, 0.38))
 	if luz_contorno != null:
 		luz_contorno.light_color = accent
-		luz_contorno.light_energy = 2.6 if nombre_clase != "Novato" else 2.2
+		luz_contorno.light_energy = 1.0 if nombre_clase != "Novato" else 0.85
 	if subviewport_container != null and subviewport_container.material is ShaderMaterial:
 		var mat := subviewport_container.material as ShaderMaterial
 		mat.set_shader_parameter("class_aura", accent)
