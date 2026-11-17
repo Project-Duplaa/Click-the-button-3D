@@ -1,34 +1,35 @@
 extends CharacterBody3D
 
-# Jefe 1: Centurión Corrupto (Oleada 3 / Minuto 3)
-# Comandante de la guardia caída. 420 HP.
+# Jefe 1: Centurión Corrupto (Minuto 3:00)
+# Comandante de la guardia caída. 850 HP.
 # Incluye Cristales de Escudo Clicables al 50% HP, interrupción de Sentencia de Muerte con Botón Móvil y Knockback real.
 
 signal jefe_derrotado
 
 const AudioManager = preload("res://audio_manager.gd")
 
-@export var rapidez: float = 3.2
-@export var vida_maxima: float = 420.0
-@export var dano_golpe: float = 24.0
-@export var dano_sentencia: float = 52.0
+@export var rapidez: float = 3.65
+@export var vida_maxima: float = 1750.0
+@export var dano_golpe: float = 45.0
+@export var dano_sentencia: float = 95.0
 @export var rango_ataque: float = 3.0
-@export var tiempo_telegraph: float = 0.70
+@export var tiempo_telegraph: float = 0.60
 
-var vida: float = 420.0
+var vida: float = 1750.0
 var muerto: bool = false
 var jugador: Node3D = null
 var hud: Node = null
 var _boton_movil: Node = null
 
 var _reloj_ataque: float = 0.0
-var _reloj_grito: float = 7.0
+var _reloj_grito: float = 5.5
 var _reloj_sentencia: float = 11.0
 var _esta_telegrafando: bool = false
 var _canalizando_sentencia: bool = false
 var _grito_activo: bool = false
 var _aturdido: bool = false
 var _knockback_velocity: Vector3 = Vector3.ZERO
+var _i_frame_timer: float = 0.0
 
 # Cristales de Escudo Clicables al 50% HP
 var _cristales_invocados: bool = false
@@ -81,6 +82,9 @@ func _conectar_boton_movil():
 func _physics_process(delta):
 	if not is_on_floor():
 		velocity += get_gravity() * delta
+
+	if _i_frame_timer > 0.0:
+		_i_frame_timer = maxf(_i_frame_timer - delta, 0.0)
 
 	_anim_ctrl.actualizar(delta)
 	_knockback_velocity = _knockback_velocity.move_toward(Vector3.ZERO, 16.0 * delta)
@@ -336,17 +340,26 @@ func _ejecutar_golpe_telegrafiado():
 func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 	if muerto:
 		return
+	if _i_frame_timer > 0.0 and str(fuente) != "ejecucion":
+		return
+	_i_frame_timer = 0.14
 	var fuente_str := "normal"
 	if typeof(fuente) == TYPE_BOOL:
 		es_critico = fuente
 	else:
 		fuente_str = str(fuente)
-	var mult = 2.0 if _aturdido else (0.25 if not _cristales_activos.is_empty() else 1.0)
+	var mult = 2.0 if _aturdido else (0.20 if not _cristales_activos.is_empty() else 1.0)
 	var dano_final = cantidad * mult * (1.0 + MetaprogresoManager.obtener_bono_bestiario("centurion"))
+
+	# TOPE DE DAÑO POR GOLPE: Ningún impacto supera el 8% de la vida máxima
+	var max_dano_por_golpe = vida_maxima * 0.08
+	dano_final = minf(dano_final, max_dano_por_golpe)
+
 	vida = maxf(vida - dano_final, 0.0)
 	_anim_ctrl.disparar_golpe()
 
 	if not _cristales_invocados and vida <= vida_maxima * 0.5:
+		_i_frame_timer = 0.6
 		_invocar_cristales_escudo()
 
 	var pool = get_tree().get_first_node_in_group("damage_numbers")

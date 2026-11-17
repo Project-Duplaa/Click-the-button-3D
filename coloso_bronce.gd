@@ -1,20 +1,20 @@
 extends CharacterBody3D
 
-# Jefe 4: Coloso de Bronce (Oleada 12 / Minuto 12)
-# Titán colosal acorazado. 3200 HP.
-# Incluye Coraza de Bronce/Magma rompible con el Núcleo o Cristales, interrupción de Pisada Sísmica y Knockback físico real.
+# Jefe 4: Coloso de Bronce (Minuto 13:30)
+# Titán colosal acorazado. 9500 HP.
+# Incluye Coraza de Bronce/Magma rompible con el Núcleo (3 y 4 clics), interrupción de Pisada Sísmica y Knockback físico real.
 
 signal jefe_derrotado
 
 const AudioManager = preload("res://audio_manager.gd")
 
-@export var rapidez: float = 2.4
-@export var vida_maxima: float = 3200.0
-@export var dano_pisada: float = 48.0
-@export var radio_pisada: float = 4.8
-@export var tiempo_telegraph: float = 0.90
+@export var rapidez: float = 3.2
+@export var vida_maxima: float = 22000.0
+@export var dano_pisada: float = 115.0
+@export var radio_pisada: float = 5.8
+@export var tiempo_telegraph: float = 0.70
 
-var vida: float = 3200.0
+var vida: float = 22000.0
 var muerto: bool = false
 var jugador: Node3D = null
 var hud: Node = null
@@ -26,9 +26,10 @@ var _coraza_activa: bool = false
 var _fase1_usada: bool = false
 var _fase2_usada: bool = false
 var _clics_coraza: int = 0
-var _clics_necesarios_coraza: int = 2
+var _clics_necesarios_coraza: int = 3
 var _aturdido: bool = false
 var _knockback_velocity: Vector3 = Vector3.ZERO
+var _i_frame_timer: float = 0.0
 
 var _escudo_bronce_mesh: Node3D = null
 var _escudo_burbuja: MeshInstance3D = null
@@ -159,6 +160,9 @@ func _conectar_boton_movil():
 func _physics_process(delta):
 	if not is_on_floor():
 		velocity += get_gravity() * delta
+
+	if _i_frame_timer > 0.0:
+		_i_frame_timer = maxf(_i_frame_timer - delta, 0.0)
 
 	if _boton_movil == null or not is_instance_valid(_boton_movil):
 		_conectar_boton_movil()
@@ -310,16 +314,27 @@ func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 		_crear_texto_flotante("🛡️ ¡CORAZA! (%d Clics al Núcleo)" % (_clics_necesarios_coraza - _clics_coraza), false)
 		return
 
+	if _i_frame_timer > 0.0 and str(fuente) != "ejecucion":
+		return
+	_i_frame_timer = 0.14
+
 	var dano_final = cantidad * (1.5 if _aturdido else 1.0) * (1.0 + MetaprogresoManager.obtener_bono_bestiario("coloso"))
+
+	# TOPE DE DAÑO POR GOLPE: Ningún impacto supera el 5% de la vida máxima
+	var max_dano_por_golpe = vida_maxima * 0.05
+	dano_final = minf(dano_final, max_dano_por_golpe)
+
 	vida = maxf(vida - dano_final, 0.0)
 	_anim_ctrl.disparar_golpe()
 
 	if not _fase1_usada and vida <= (vida_maxima * 0.70):
 		_fase1_usada = true
-		_activar_coraza(2, "BRONCE")
+		_i_frame_timer = 0.6
+		_activar_coraza(3, "BRONCE")
 	elif not _fase2_usada and vida <= (vida_maxima * 0.35):
 		_fase2_usada = true
-		_activar_coraza(3, "MAGMA")
+		_i_frame_timer = 0.6
+		_activar_coraza(4, "MAGMA")
 
 	var pool = get_tree().get_first_node_in_group("damage_numbers")
 	var pos_num = global_position + Vector3(randf_range(-0.5, 0.5), 3.4, randf_range(-0.5, 0.5))

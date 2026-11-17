@@ -41,6 +41,12 @@ var _parca_spawned: bool = false
 var clicks_totales: int = 0
 var partida_iniciada: bool = false
 
+# Sistema de Protagonismo y Esbirros de Jefes
+const TIEMPO_MINIMO_ENTRE_JEFES: float = 120.0
+var _jefe_activo: Node3D = null
+var _reloj_esbirros_jefe: float = 12.0
+var _tiempo_ultimo_jefe: float = -999.0
+
 # Modo Abismo Infinito
 var modo_abismo: bool = false
 var nivel_abismo: int = 0
@@ -84,6 +90,9 @@ func _on_click_boton_presionado(total_clicks: int):
 	if clicks_totales >= 50 and clicks_totales % 50 == 0:
 		invocar_heraldo_clic()
 
+	if _hay_jefe_activo():
+		return
+
 	if clicks_totales % 12 == 0:
 		_disparar_incursion_asalto(clicks_totales)
 
@@ -125,7 +134,18 @@ func _process(delta):
 		return
 
 	_tiempo_transcurrido += delta
-	_reloj_oleada -= delta
+
+	# Si hay un combate de jefe activo, gestionar la reaparición gradual de esbirros y pausar oleadas estándar
+	if _hay_jefe_activo():
+		_procesar_esbirros_jefe(delta)
+	else:
+		_reloj_oleada -= delta
+		if _reloj_oleada <= 0.0:
+			_reloj_oleada = intervalo_oleada
+			oleada_actual += 1
+			if hud != null and "oleada" in hud:
+				hud.oleada = oleada_actual
+			_generar_oleada(oleada_actual)
 
 	if modo_abismo:
 		_reloj_abismo_minuto -= delta
@@ -140,24 +160,19 @@ func _process(delta):
 			_reloj_abismo_dupla_jefes = 120.0
 			_spawn_dupla_jefes_abismo()
 	else:
-		# Progresión estándar cronológica de Jefes
-		if _tiempo_transcurrido >= 180.0 and not _centurion_spawned:
-			spawn_centurion()
-		if _tiempo_transcurrido >= 360.0 and not _mini_jefe_spawned:
-			spawn_mini_jefe()
-		if _tiempo_transcurrido >= 540.0 and not _maestra_spawned:
-			spawn_maestra_sanguinaria()
-		if _tiempo_transcurrido >= 720.0 and not _coloso_spawned:
-			spawn_coloso_bronce()
-		if _tiempo_transcurrido >= 900.0 and not _parca_spawned:
-			spawn_parca_roja()
-
-	if _reloj_oleada <= 0.0:
-		_reloj_oleada = intervalo_oleada
-		oleada_actual += 1
-		if hud != null and "oleada" in hud:
-			hud.oleada = oleada_actual
-		_generar_oleada(oleada_actual)
+		# Progresión cronológica espaciada de Jefes (cada jefe aparece una sola vez y no se solapan)
+		if not _hay_jefe_activo():
+			var tiempo_desde_ultimo = _tiempo_transcurrido - _tiempo_ultimo_jefe
+			if _tiempo_transcurrido >= 180.0 and not _centurion_spawned:
+				spawn_centurion()
+			elif _tiempo_transcurrido >= 405.0 and not _mini_jefe_spawned and tiempo_desde_ultimo >= TIEMPO_MINIMO_ENTRE_JEFES:
+				spawn_mini_jefe()
+			elif _tiempo_transcurrido >= 630.0 and not _maestra_spawned and tiempo_desde_ultimo >= TIEMPO_MINIMO_ENTRE_JEFES:
+				spawn_maestra_sanguinaria()
+			elif _tiempo_transcurrido >= 810.0 and not _coloso_spawned and tiempo_desde_ultimo >= 90.0:
+				spawn_coloso_bronce()
+			elif _tiempo_transcurrido >= 900.0 and not _parca_spawned:
+				spawn_parca_roja()
 
 func _spawn_dupla_jefes_abismo() -> void:
 	AudioManager.play("jefe_alerta", 1.25, 4.0)
@@ -206,13 +221,6 @@ func _generar_oleada(num: int):
 		var jugador = get_tree().get_first_node_in_group("jugador")
 		if jugador != null and jugador.has_method("aplicar_interes_oleada"):
 			jugador.aplicar_interes_oleada()
-
-	if not modo_abismo:
-		if num == 3 and not _centurion_spawned: spawn_centurion()
-		elif num == 6 and not _mini_jefe_spawned: spawn_mini_jefe()
-		elif num == 9 and not _maestra_spawned: spawn_maestra_sanguinaria()
-		elif num == 12 and not _coloso_spawned: spawn_coloso_bronce()
-		elif num >= 15 and not _parca_spawned: spawn_parca_roja()
 
 	if num >= 2 and num % 2 == 0: _spawn_enemigo_especial("parasito_cursor")
 	if num >= 4 and num % 3 == 0: _spawn_enemigo_especial("canalizador_vacio")
@@ -295,29 +303,48 @@ func _spawn_enemigo(escena: PackedScene, vida_extra: float, retraso: float = 0.0
 	pos.z = clampf(pos.z, -26.0, 26.0)
 
 	var extra_por_clicks = minf(float(clicks_totales) * 0.85, 160.0)
-	var vida_total = vida_extra + extra_por_clicks
+	var vida_total = vida_extra + (0.0 if es_jefe else extra_por_clicks)
+
+	if es_jefe:
+		_despejar_arena_para_jefe()
+
 	if portal_spawn_escena != null:
 		var portal = portal_spawn_escena.instantiate()
 		get_parent().add_child(portal)
 		portal.global_position = pos
+		if es_jefe:
+			portal.enemigo_spawneado.connect(func(enemigo_creado):
+				_registrar_jefe_activo(enemigo_creado)
+			)
 		portal.preparar_spawn(escena, vida_total, es_jefe)
 	else:
 		var enemigo = escena.instantiate()
 		get_parent().add_child(enemigo)
 		enemigo.global_position = pos
 		_aplicar_escalado_dificultad(enemigo, vida_total)
+		if es_jefe:
+			_registrar_jefe_activo(enemigo)
+
+## Calcula el escalado continuo de daño según la oleada alcanzada y los minutos transcurridos
+func calcular_multiplicador_dano_incremental() -> float:
+	var factor_oleada = 1.0 + float(maxi(0, oleada_actual - 1)) * 0.075
+	var factor_tiempo = 1.0 + (_tiempo_transcurrido / 60.0) * 0.08
+	return factor_oleada * factor_tiempo
+
+func aplicar_escalado_dificultad(enemigo: Node, vida_extra_base: float = 0.0) -> void:
+	_aplicar_escalado_dificultad(enemigo, vida_extra_base)
 
 func _aplicar_escalado_dificultad(enemigo: Node, vida_extra_base: float = 0.0) -> void:
 	if enemigo == null or not is_instance_valid(enemigo):
 		return
 	var mult_hp := 1.0
-	var mult_dmg := 1.0
+	var mult_dmg := 1.0 * calcular_multiplicador_dano_incremental()
 	var mult_vel := 1.0
 	var lm = get_tree().get_first_node_in_group("logros_manager")
 	if lm != null and lm.has_method("obtener_multiplicadores_tormento"):
 		var m = lm.obtener_multiplicadores_tormento()
 		mult_hp = float(m.get("vida_enemigos", 1.0))
-		mult_dmg = float(m.get("dano_enemigos", 1.0))
+		mult_dmg *= float(m.get("dano_enemigos", 1.0))
 		mult_vel = float(m.get("velocidad_enemigos", 1.0))
 	if modo_abismo:
 		mult_dmg *= (1.0 + float(nivel_abismo) * 0.12)
@@ -325,9 +352,177 @@ func _aplicar_escalado_dificultad(enemigo: Node, vida_extra_base: float = 0.0) -
 	if "vida_maxima" in enemigo:
 		enemigo.vida_maxima = (float(enemigo.vida_maxima) + vida_extra_base) * mult_hp
 		enemigo.vida = enemigo.vida_maxima
-	for prop in ["dano_ataque", "dano_contacto", "dano_disparo", "dano_guadana", "dano_carga", "dano_golpe", "dano_pisada"]:
+	for prop in ["dano_ataque", "dano_contacto", "dano_disparo", "dano_guadana", "dano_carga", "dano_golpe", "dano_pisada", "dano_a_jugador", "dano_flecha", "dano_lluvia", "dano_sentencia"]:
 		if prop in enemigo:
 			enemigo.set(prop, float(enemigo.get(prop)) * mult_dmg)
 	for vprop in ["rapidez", "rapidez_caminar", "rapidez_huir"]:
 		if vprop in enemigo:
 			enemigo.set(vprop, float(enemigo.get(vprop)) * mult_vel)
+
+# ==============================================================================
+# GESTIÓN DE PROTAGONISMO, DESPEJE Y ESBIRROS DINÁMICOS DE JEFES
+# ==============================================================================
+
+func _hay_jefe_activo() -> bool:
+	if _jefe_activo != null and is_instance_valid(_jefe_activo) and not ("muerto" in _jefe_activo and _jefe_activo.muerto):
+		return true
+	for j in get_tree().get_nodes_in_group("jefes"):
+		if is_instance_valid(j) and not ("muerto" in j and j.muerto) and ("vida" in j and float(j.vida) > 0.0):
+			_jefe_activo = j
+			return true
+	for b in get_tree().get_nodes_in_group("bosses"):
+		if is_instance_valid(b) and not ("muerto" in b and b.muerto) and ("vida" in b and float(b.vida) > 0.0):
+			_jefe_activo = b
+			return true
+	return false
+
+func _despejar_arena_para_jefe() -> void:
+	# 1. Cancelar portales de spawn normales pendientes
+	for p in get_tree().get_nodes_in_group("portal_spawn"):
+		if is_instance_valid(p) and ("es_jefe" in p and not p.es_jefe):
+			p.queue_free()
+	if get_parent() != null:
+		for child in get_parent().get_children():
+			if child is PortalSpawn and not child.es_jefe:
+				child.queue_free()
+
+	# 2. Desvanecer y retirar inmediatamente todos los enemigos comunes
+	var enemigos = get_tree().get_nodes_in_group("enemigos")
+	for e in enemigos:
+		if is_instance_valid(e) and not e.is_in_group("jefes") and not e.is_in_group("bosses"):
+			_desvanecer_enemigo(e)
+
+	# 3. Alerta audiovisual e impacto cinematográfico
+	AudioManager.play("jefe_alerta", 1.2, 3.5)
+	AudioManager.play("rugido_jefe", 1.25, 2.5)
+	_sacudir_camara(0.45)
+
+	var pool = get_tree().get_first_node_in_group("damage_numbers")
+	var pj = get_tree().get_first_node_in_group("jugador")
+	if pool != null and pj != null:
+		pool.mostrar_texto(pj.global_position + Vector3(0, 3.2, 0), "👑 ¡DESAFÍO DE JEFE! ¡LA ARENA SE DESPEJA! 👑", Color(1.0, 0.85, 0.2), 2.2)
+
+func _desvanecer_enemigo(e: Node) -> void:
+	if not is_instance_valid(e):
+		return
+	if e is CollisionObject3D:
+		e.collision_layer = 0
+		e.collision_mask = 0
+	e.set_physics_process(false)
+	e.set_process(false)
+	if "muerto" in e:
+		e.muerto = true
+	if e is Node3D:
+		var tw = e.create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(e, "scale", Vector3(0.01, 1.8, 0.01), 0.24).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+		tw.chain().tween_callback(e.queue_free)
+	else:
+		e.queue_free()
+
+func _sacudir_camara(intensidad: float = 0.35) -> void:
+	var cam = get_viewport().get_camera_3d()
+	if cam != null and cam.has_method("sacudir"):
+		cam.sacudir(intensidad)
+	else:
+		var c = get_tree().get_first_node_in_group("camara")
+		if c != null and c.has_method("sacudir"):
+			c.sacudir(intensidad)
+
+func _procesar_esbirros_jefe(delta: float) -> void:
+	if _jefe_activo == null or not is_instance_valid(_jefe_activo) or ("muerto" in _jefe_activo and _jefe_activo.muerto):
+		_on_jefe_derrotado()
+		return
+
+	var hp: float = float(_jefe_activo.vida) if "vida" in _jefe_activo else 100.0
+	var max_hp: float = maxf(float(_jefe_activo.vida_maxima) if "vida_maxima" in _jefe_activo else 100.0, 1.0)
+	var pct_hp: float = clampf(hp / max_hp, 0.0, 1.0)
+	var pct_perdida: float = 1.0 - pct_hp
+
+	# Entre 100% y 80% de vida: Duelo 1-vs-1 absoluto (0 esbirros en arena)
+	if pct_perdida < 0.20:
+		_reloj_esbirros_jefe = 10.0
+		return
+
+	# A partir del 80% de vida, los esbirros reaparecen poco a poco (cada vez más conforme baja la vida)
+	var factor_perdida: float = clampf((pct_perdida - 0.20) / 0.80, 0.0, 1.0)
+	var techo_esbirros: int = _obtener_techo_esbirros_jefe(_jefe_activo)
+	var max_esbirros_actual: int = int(round(lerpf(1.0, float(techo_esbirros), factor_perdida)))
+	var intervalo_spawn: float = lerpf(12.0, 4.5, factor_perdida)
+
+	_reloj_esbirros_jefe -= delta
+	if _reloj_esbirros_jefe <= 0.0:
+		_reloj_esbirros_jefe = intervalo_spawn
+		var esbirros_vivos: int = _contar_enemigos_comunes()
+		if esbirros_vivos < max_esbirros_actual:
+			var cantidad: int = 1
+			if factor_perdida >= 0.55 and (max_esbirros_actual - esbirros_vivos) >= 2:
+				cantidad = 2
+			for i in range(cantidad):
+				_spawn_esbirro_tematico(_jefe_activo)
+
+func _obtener_techo_esbirros_jefe(jefe: Node) -> int:
+	var j_nombre = jefe.name.to_lower()
+	if "centurion" in j_nombre:
+		return 4
+	elif "mini_jefe" in j_nombre or "gladiador" in j_nombre:
+		return 6
+	elif "maestra" in j_nombre:
+		return 8
+	elif "coloso" in j_nombre:
+		return 10
+	elif "parca" in j_nombre:
+		return 12
+	return 6
+
+func _contar_enemigos_comunes() -> int:
+	var cuenta: int = 0
+	for e in get_tree().get_nodes_in_group("enemigos"):
+		if is_instance_valid(e) and not e.is_in_group("jefes") and not e.is_in_group("bosses") and not ("muerto" in e and e.muerto):
+			cuenta += 1
+	return cuenta
+
+func _spawn_esbirro_tematico(jefe: Node) -> void:
+	var j_nombre = jefe.name.to_lower()
+	var esc: PackedScene = espectro_escena
+	if "centurion" in j_nombre:
+		esc = [espectro_escena, guardia_escena].pick_random()
+	elif "mini_jefe" in j_nombre or "gladiador" in j_nombre:
+		esc = [guardia_escena, berserker_escena].pick_random()
+	elif "maestra" in j_nombre:
+		esc = [arquero_escena, espectro_escena, kamikaze_escena].pick_random()
+	elif "coloso" in j_nombre:
+		esc = [bruto_escena, berserker_escena, kamikaze_escena].pick_random()
+	elif "parca" in j_nombre:
+		esc = [bruto_escena, arquero_escena, berserker_escena, kamikaze_escena].pick_random()
+
+	var extra_hp = float(oleada_actual) * 4.0
+	_spawn_enemigo(esc, extra_hp, 0.0, false)
+
+func _registrar_jefe_activo(jefe: Node) -> void:
+	if jefe == null or not is_instance_valid(jefe):
+		return
+	_jefe_activo = jefe as Node3D
+	_reloj_esbirros_jefe = 12.0
+	if not jefe.is_in_group("jefes"):
+		jefe.add_to_group("jefes")
+	if not jefe.is_in_group("bosses"):
+		jefe.add_to_group("bosses")
+
+	var on_derrota = func():
+		_on_jefe_derrotado()
+	if jefe.has_signal("jefe_derrotado"):
+		if not jefe.jefe_derrotado.is_connected(on_derrota):
+			jefe.jefe_derrotado.connect(on_derrota)
+	if jefe.has_signal("parca_derrotada"):
+		if not jefe.parca_derrotada.is_connected(on_derrota):
+			jefe.parca_derrotada.connect(on_derrota)
+	if not jefe.tree_exited.is_connected(on_derrota):
+		jefe.tree_exited.connect(on_derrota)
+
+func _on_jefe_derrotado() -> void:
+	if _jefe_activo != null:
+		_jefe_activo = null
+		_tiempo_ultimo_jefe = _tiempo_transcurrido
+		_reloj_oleada = 8.0 # Pausa de celebración antes de reanudar oleadas normales
+		print("🏆 [OleadasSpawner] Combate de Jefe finalizado con éxito. Tiempo: %.1fs" % _tiempo_ultimo_jefe)

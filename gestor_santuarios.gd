@@ -33,14 +33,11 @@ const PUNTOS_SPAWN_VERIFICADOS: Array[Vector3] = [
 	Vector3(9.0, 0.0, -19.0),
 ]
 
-@export var debug_atajo_f8: bool = false
-
 var _presagio_actual: Dictionary = {}
 var _banner_mostrado: bool = false
 var _ultima_oleada: int = 1
 var _reloj_pity_santuario: float = 0.0
 var _spawner_ref: Node = null
-var _debug_ciclo_idx: int = 0
 
 func _ready() -> void:
 	add_to_group("gestor_santuarios")
@@ -94,11 +91,6 @@ func _process(delta: float) -> void:
 		_reloj_pity_santuario = 0.0
 		_forzar_santuario_pity()
 
-func _unhandled_input(event: InputEvent) -> void:
-	if not debug_atajo_f8:
-		return
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F8:
-		_ejecutar_debug_f8()
 
 func _poblar_arena_inicial() -> void:
 	var arena := get_parent()
@@ -289,15 +281,4 @@ func _mostrar_banner_presagio(presagio: Dictionary) -> void:
 	tw.tween_property(marco, "modulate:a", 0.0, 0.4)
 	tw.finished.connect(capa.queue_free)
 
-func _ejecutar_debug_f8() -> void:
-	var pj: Node = get_tree().get_first_node_in_group("jugador") if get_tree() != null else null
-	if pj == null or not (pj is Node3D):
-		return
-	if pj.has_method("ganar_denarios"):
-		pj.ganar_denarios(15)
-	var ciclo := [EstatuaScript, ForjaScript, FuenteScript, CofreScript, PactoScript, AnforaScript]
-	var scr = ciclo[_debug_ciclo_idx % ciclo.size()]
-	_debug_ciclo_idx += 1
-	var pos: Vector3 = (pj as Node3D).global_position + Vector3(2.8, 0.0, 0.0)
-	pos.y = 0.0
-	_instanciar_interactuable(scr, pos)
+

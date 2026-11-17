@@ -7,10 +7,34 @@ extends CanvasLayer
 
 const MALLAS_AVATAR := {
 	"Novato": preload("res://personaje/player_rookie.glb"),
+	"Recluta del Coliseo": preload("res://personaje/player_rookie.glb"),
 	"Guerrero": preload("res://personaje/player_warrior.glb"),
+	"Murmillo": preload("res://personaje/player_warrior.glb"),
 	"Cazador": preload("res://personaje/player_archer.glb"),
 	"Arquero": preload("res://personaje/player_archer.glb"),
+	"Sagittario": preload("res://personaje/player_archer.glb"),
 	"Mago": preload("res://personaje/player_mage.glb"),
+	"Arúspice": preload("res://personaje/player_mage.glb"),
+
+	# Tier 2 - Mejora 1
+	"Secutor Radiante": preload("res://personaje/player_warrior.glb"),
+	"Provocator Sangriento": preload("res://personaje/player_warrior.glb"),
+	"Velites Balístico": preload("res://personaje/player_archer.glb"),
+	"Dimachaerus Espectral": preload("res://personaje/player_archer.glb"),
+	"Taumaturgo del Vacío": preload("res://personaje/player_mage.glb"),
+	"Flamen Volcánico": preload("res://personaje/player_mage.glb"),
+	"Custodio del Núcleo": preload("res://personaje/player_warrior.glb"),
+
+	# Tier 3 - Mejora 2
+	"Paladín del Sol Invictus": preload("res://personaje/player_warrior.glb"),
+	"Campeón Augusto de Sangre": preload("res://personaje/player_warrior.glb"),
+	"Centurión Balístico Astral": preload("res://personaje/player_archer.glb"),
+	"Sombra del Anfiteatro": preload("res://personaje/player_archer.glb"),
+	"Pontífice del Vacío Estelar": preload("res://personaje/player_mage.glb"),
+	"Señor del Magma Imperial": preload("res://personaje/player_mage.glb"),
+	"Titán Supremo del Núcleo": preload("res://personaje/player_warrior.glb"),
+
+	# Retrocompatibilidad
 	"Paladín Solar": preload("res://personaje/player_warrior.glb"),
 	"Berserker Sangriento": preload("res://personaje/player_warrior.glb"),
 	"Francotirador Astral": preload("res://personaje/player_archer.glb"),
@@ -22,10 +46,28 @@ const MALLAS_AVATAR := {
 
 const WEAPON_KEYS := {
 	"Novato": "Novato",
+	"Recluta del Coliseo": "Novato",
 	"Guerrero": "Guerrero",
+	"Murmillo": "Guerrero",
 	"Cazador": "Cazador",
 	"Arquero": "Cazador",
+	"Sagittario": "Cazador",
 	"Mago": "Mago",
+	"Arúspice": "Mago",
+	"Secutor Radiante": "Guerrero",
+	"Provocator Sangriento": "Guerrero",
+	"Velites Balístico": "Cazador",
+	"Dimachaerus Espectral": "Cazador",
+	"Taumaturgo del Vacío": "Mago",
+	"Flamen Volcánico": "Mago",
+	"Custodio del Núcleo": "Novato",
+	"Paladín del Sol Invictus": "Guerrero",
+	"Campeón Augusto de Sangre": "Guerrero",
+	"Centurión Balístico Astral": "Cazador",
+	"Sombra del Anfiteatro": "Cazador",
+	"Pontífice del Vacío Estelar": "Mago",
+	"Señor del Magma Imperial": "Mago",
+	"Titán Supremo del Núcleo": "Novato",
 	"Paladín Solar": "Guerrero",
 	"Berserker Sangriento": "Guerrero",
 	"Francotirador Astral": "Cazador",
@@ -37,10 +79,28 @@ const WEAPON_KEYS := {
 
 const CLASS_ACCENTS := {
 	"Novato": Color(0.88, 0.74, 0.38),
+	"Recluta del Coliseo": Color(0.88, 0.74, 0.38),
 	"Guerrero": Color(0.95, 0.25, 0.22),
-	"Cazador": Color(0.95, 0.44, 0.08),
+	"Murmillo": Color(0.95, 0.25, 0.22),
+	"Cazador": Color(0.20, 0.85, 0.50),
 	"Arquero": Color(0.95, 0.44, 0.08),
+	"Sagittario": Color(0.18, 0.88, 0.76),
 	"Mago": Color(0.55, 0.35, 1.00),
+	"Arúspice": Color(0.28, 0.58, 1.00),
+	"Secutor Radiante": Color(1.00, 0.82, 0.20),
+	"Provocator Sangriento": Color(0.92, 0.12, 0.18),
+	"Velites Balístico": Color(0.15, 0.92, 1.00),
+	"Dimachaerus Espectral": Color(0.72, 0.25, 1.00),
+	"Taumaturgo del Vacío": Color(0.55, 0.18, 0.95),
+	"Flamen Volcánico": Color(1.00, 0.45, 0.10),
+	"Custodio del Núcleo": Color(0.22, 0.95, 0.85),
+	"Paladín del Sol Invictus": Color(1.00, 0.88, 0.25),
+	"Campeón Augusto de Sangre": Color(0.95, 0.10, 0.15),
+	"Centurión Balístico Astral": Color(0.20, 0.95, 1.00),
+	"Sombra del Anfiteatro": Color(0.78, 0.25, 1.00),
+	"Pontífice del Vacío Estelar": Color(0.60, 0.20, 1.00),
+	"Señor del Magma Imperial": Color(1.00, 0.40, 0.05),
+	"Titán Supremo del Núcleo": Color(0.25, 0.98, 0.90),
 	"Paladín Solar": Color(1.00, 0.82, 0.20),
 	"Berserker Sangriento": Color(0.95, 0.15, 0.15),
 	"Francotirador Astral": Color(0.22, 0.78, 1.00),
@@ -201,7 +261,6 @@ var _sb_btn_arbol_normal: StyleBoxFlat = null
 var _ultimo_txt_tiempo: String = ""
 var _ultimo_txt_oleada: String = ""
 var _ultimo_txt_nucleo: String = ""
-var _panel_test_jefes: VBoxContainer = null
 var _panel_resoluciones: VBoxContainer = null
 var _btn_resolucion_ref: Button = null
 var _avatar_reloj_idle: float = 0.0
@@ -265,7 +324,7 @@ func _ready() -> void:
 	_conectar_fortuna()
 	_conectar_boton_movil()
 	call_deferred("_conectar_boton_movil")
-	_crear_boton_test_parca()
+	_crear_selector_resolucion()
 	_crear_boton_codice_en_status_rail()
 	_crear_strip_favor_y_contrato()
 	_crear_panel_f3_telemetria()
@@ -1116,8 +1175,6 @@ func mostrar_selector_bendiciones(nivel_evento: int = 0, cartas_forzadas: Array 
 
 	if _panel_resoluciones != null:
 		_panel_resoluciones.visible = false
-	if _panel_test_jefes != null:
-		_panel_test_jefes.visible = false
 
 	_asegurar_banner_sello_tarot()
 
@@ -2031,18 +2088,19 @@ func _actualizar_texto_boton_resolucion() -> void:
 
 
 # ==============================================================================
-# DRAWER PLEGABLE DE JEFES DE PRUEBA Y SELECTOR DE RESOLUCIÓN
+# ==============================================================================
+# SELECTOR DE RESOLUCIÓN Y PANTALLA COMPLETA
 # ==============================================================================
 
-func _crear_boton_test_parca() -> void:
+func _crear_selector_resolucion() -> void:
 	var cont := VBoxContainer.new()
-	cont.name = "ContenedorTestJefes"
+	cont.name = "ContenedorResolucion"
 	cont.anchor_left = 1.0
 	cont.anchor_top = 1.0
 	cont.anchor_right = 1.0
 	cont.anchor_bottom = 1.0
-	cont.offset_left = -280.0
-	cont.offset_top = -275.0
+	cont.offset_left = -220.0
+	cont.offset_top = -240.0
 	cont.offset_right = -18.0
 	cont.offset_bottom = -14.0
 	cont.alignment = BoxContainer.ALIGNMENT_END
@@ -2073,30 +2131,6 @@ func _crear_boton_test_parca() -> void:
 
 	cont.add_child(_panel_resoluciones)
 
-	_panel_test_jefes = VBoxContainer.new()
-	_panel_test_jefes.name = "ListaJefesTest"
-	_panel_test_jefes.visible = false
-	_panel_test_jefes.add_theme_constant_override("separation", 4)
-
-	var jefes := [
-		{"id": "centurion", "label": "W3 · Centurión (420 HP)", "color": Color(0.82, 0.52, 0.20)},
-		{"id": "gladiador", "label": "W6 · Gladiador (950 HP)", "color": Color(0.90, 0.58, 0.22)},
-		{"id": "maestra", "label": "W9 · Maestra (1800 HP)", "color": Color(0.85, 0.25, 0.62)},
-		{"id": "coloso", "label": "W12 · Coloso (3200 HP)", "color": Color(0.95, 0.35, 0.14)},
-		{"id": "parca", "label": "FINAL · La Parca Roja", "color": Color(0.92, 0.18, 0.26)},
-	]
-
-	for j in jefes:
-		var b_jefe := Button.new()
-		b_jefe.text = j["label"]
-		b_jefe.focus_mode = Control.FOCUS_NONE
-		_aplicar_estilo_boton(b_jefe, j["color"])
-		var j_id: String = j["id"]
-		b_jefe.pressed.connect(func(): _invocar_jefe_test(j_id))
-		_panel_test_jefes.add_child(b_jefe)
-
-	cont.add_child(_panel_test_jefes)
-
 	var hbox_botones := HBoxContainer.new()
 	hbox_botones.alignment = BoxContainer.ALIGNMENT_END
 	hbox_botones.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2110,25 +2144,9 @@ func _crear_boton_test_parca() -> void:
 	_aplicar_estilo_boton(btn_res, Color(0.45, 0.72, 0.94))
 	btn_res.pressed.connect(func():
 		_panel_resoluciones.visible = not _panel_resoluciones.visible
-		if _panel_resoluciones.visible and _panel_test_jefes != null:
-			_panel_test_jefes.visible = false
 	)
 	_btn_resolucion_ref = btn_res
 	hbox_botones.add_child(btn_res)
-
-	var btn_toggle := Button.new()
-	btn_toggle.name = "BtnToggleJefes"
-	btn_toggle.text = "Arena Sandbox +"
-	btn_toggle.icon = TEX_ICO_SKULL
-	btn_toggle.focus_mode = Control.FOCUS_NONE
-	_aplicar_estilo_boton(btn_toggle, Color(0.75, 0.58, 0.28))
-	btn_toggle.pressed.connect(func():
-		_panel_test_jefes.visible = not _panel_test_jefes.visible
-		if _panel_test_jefes.visible and _panel_resoluciones != null:
-			_panel_resoluciones.visible = false
-		btn_toggle.text = "Arena Sandbox -" if _panel_test_jefes.visible else "Arena Sandbox +"
-	)
-	hbox_botones.add_child(btn_toggle)
 
 	cont.add_child(hbox_botones)
 	$Control.add_child(cont)
@@ -2158,44 +2176,6 @@ func _aplicar_estilo_boton(btn: Button, color_acento: Color) -> void:
 	btn.add_theme_color_override("font_color", Color(0.95, 0.92, 0.85))
 	btn.add_theme_font_size_override("font_size", 11)
 
-
-func _invocar_jefe_test(tipo: String) -> void:
-	print(">>> [HUD] Invocando Jefe de Prueba: ", tipo, " <<<")
-
-	if jugador == null or not is_instance_valid(jugador):
-		jugador = get_tree().get_first_node_in_group("jugador")
-
-	if jugador != null and jugador.has_method("equipar_build_test_parca"):
-		jugador.equipar_build_test_parca()
-
-	for e in get_tree().get_nodes_in_group("enemigos"):
-		if is_instance_valid(e) and not e.is_in_group("jefes"):
-			e.queue_free()
-
-	var escena_path := ""
-	match tipo:
-		"centurion":
-			escena_path = "res://centurion_corrupto.tscn"
-		"gladiador":
-			escena_path = "res://mini_jefe.tscn"
-		"maestra":
-			escena_path = "res://maestra_sanguinaria.tscn"
-		"coloso":
-			escena_path = "res://coloso_bronce.tscn"
-		"parca":
-			escena_path = "res://parca_roja.tscn"
-
-	if escena_path != "":
-		var scn := load(escena_path) as PackedScene
-		if scn != null:
-			var inst: Node = scn.instantiate()
-			var padre: Node = get_tree().current_scene if get_tree().current_scene != null else get_tree().root
-			padre.add_child(inst)
-			if inst is Node3D and jugador != null:
-				inst.global_position = jugador.global_position + Vector3(0.0, 0.0, -7.0)
-				if inst.has_method("look_at") and inst.global_position.distance_squared_to(jugador.global_position) > 0.01:
-					inst.look_at(jugador.global_position, Vector3.UP)
-			print(">>> [HUD] Jefe invocado con éxito en arena: ", tipo)
 
 
 # ==============================================================================
@@ -2585,54 +2565,6 @@ func _crear_panel_f3_telemetria() -> void:
 	lbl_f3_estado.add_theme_color_override("font_color", Color(0.95, 0.85, 0.65))
 	vbox.add_child(lbl_f3_estado)
 
-	var grid := GridContainer.new()
-	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 6)
-	grid.add_theme_constant_override("v_separation", 4)
-	vbox.add_child(grid)
-
-	_crear_btn_debug(grid, "+1 Nivel", func():
-		if jugador != null and jugador.has_method("ganar_xp") and "xp_siguiente_nivel" in jugador:
-			jugador.ganar_xp(maxi(1, int(jugador.xp_siguiente_nivel) - int(jugador.xp)))
-	)
-	_crear_btn_debug(grid, "+500 Oro", func():
-		if jugador != null and "oro" in jugador:
-			jugador.oro += 500
-			if jugador.has_signal("economia_actualizada"):
-				jugador.economia_actualizada.emit(jugador.oro, jugador.clics_disponibles, jugador.clics_totales)
-	)
-	_crear_btn_debug(grid, "Rueda T2", func():
-		var ev = get_tree().get_first_node_in_group("evolucion_manager")
-		if ev != null:
-			if ev.has_method("forzar_rueda_tier2"):
-				ev.forzar_rueda_tier2()
-			elif ev.has_method("mostrar_modal_ascension_tier2"):
-				ev.mostrar_modal_ascension_tier2()
-	)
-	_crear_btn_debug(grid, "Mercader", func():
-		var ev_col = get_tree().get_first_node_in_group("eventos_coliseo_manager")
-		if ev_col != null and ev_col.has_method("invocar_mercader_vacio"):
-			ev_col.invocar_mercader_vacio(true)
-	)
-	_crear_btn_debug(grid, "Monolito", func():
-		var ev_col = get_tree().get_first_node_in_group("eventos_coliseo_manager")
-		if ev_col != null and ev_col.has_method("activar_monolito_evento"):
-			ev_col.activar_monolito_evento()
-	)
-	_crear_btn_debug(grid, "Mutador", func():
-		var ev_col = get_tree().get_first_node_in_group("eventos_coliseo_manager")
-		if ev_col != null and ev_col.has_method("cambiar_clima_aleatorio"):
-			ev_col.cambiar_clima_aleatorio()
-	)
-
-func _crear_btn_debug(padre: Control, txt: String, cb: Callable) -> void:
-	var btn := Button.new()
-	btn.text = txt
-	btn.custom_minimum_size = Vector2(124, 22)
-	btn.focus_mode = Control.FOCUS_NONE
-	btn.add_theme_font_size_override("font_size", 9)
-	btn.pressed.connect(cb)
-	padre.add_child(btn)
 
 func _toggle_panel_f3() -> void:
 	if panel_f3 != null:

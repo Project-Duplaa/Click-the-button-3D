@@ -107,33 +107,13 @@ func _ejecutar_spawn_enemigo():
 		get_parent().add_child(enemigo)
 		enemigo.global_position = global_position
 		
-		if "vida_maxima" in enemigo:
-			enemigo.vida_maxima += vida_extra
-			var lm = get_tree().get_first_node_in_group("logros_manager")
-			if lm != null and lm.has_method("obtener_multiplicadores_tormento"):
-				var mults = lm.obtener_multiplicadores_tormento()
-				var m_hp = float(mults.get("vida_enemigos", 1.0))
-				var m_dmg = float(mults.get("dano_enemigos", 1.0))
-				var m_vel = float(mults.get("velocidad_enemigos", 1.0))
-				enemigo.vida_maxima *= m_hp
-				for prop in ["dano_ataque", "dano_contacto", "dano_disparo", "dano_guadana", "dano_carga", "dano_golpe", "dano_pisada"]:
-					if prop in enemigo:
-						enemigo.set(prop, float(enemigo.get(prop)) * m_dmg)
-				for vprop in ["rapidez", "rapidez_caminar", "rapidez_huir"]:
-					if vprop in enemigo:
-						enemigo.set(vprop, float(enemigo.get(vprop)) * m_vel)
-			var spawner = get_tree().get_first_node_in_group("oleadas_spawner")
-			if spawner != null and "modo_abismo" in spawner and spawner.modo_abismo:
-				var n_ab = maxi(0, int(spawner.get("nivel_abismo")))
-				var ab_dmg = 1.0 + float(n_ab) * 0.12
-				var ab_vel = minf(1.85, 1.0 + float(n_ab) * 0.04)
-				for prop in ["dano_ataque", "dano_contacto", "dano_disparo", "dano_guadana", "dano_carga", "dano_golpe", "dano_pisada"]:
-					if prop in enemigo:
-						enemigo.set(prop, float(enemigo.get(prop)) * ab_dmg)
-				for vprop in ["rapidez", "rapidez_caminar", "rapidez_huir"]:
-					if vprop in enemigo:
-						enemigo.set(vprop, float(enemigo.get(vprop)) * ab_vel)
-			enemigo.vida = enemigo.vida_maxima
+		var spawner = get_tree().get_first_node_in_group("oleadas_spawner")
+		if spawner != null and spawner.has_method("aplicar_escalado_dificultad"):
+			spawner.aplicar_escalado_dificultad(enemigo, vida_extra)
+		else:
+			if "vida_maxima" in enemigo:
+				enemigo.vida_maxima += vida_extra
+				enemigo.vida = enemigo.vida_maxima
 			
 		# Animación de emergencia suave para que emerja de la grieta
 		enemigo.scale = Vector3(0.05, 0.05, 0.05)

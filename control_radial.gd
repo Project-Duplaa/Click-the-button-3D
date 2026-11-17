@@ -25,114 +25,300 @@ const TEX_ARCO = preload("res://ui_assets/icono_arco.png")
 const TEX_BASTON = preload("res://ui_assets/icono_baston.png")
 
 const CONFIG_CLASES = {
-	# ================= TIER 1 =================
+	# ================= TIER 1: CLASES DE LA ARENA =================
+	"Murmillo": {
+		"color": Color(0.95, 0.24, 0.28, 1.0),
+		"angulo_centro_deg": 150.0,
+		"icono_tex": TEX_ESPADA,
+		"titulo": "⚔️ MURMILLO",
+		"rol_badge": "🛡️ COLOSO DE ACERO / BALUARTE MELEE",
+		"subtitulo": "Gladiador Pesado de la Arena",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Gran Espada + Escudo Real\n• [color=#56E39F]160 HP (+60% Salud Máxima)[/color]\n• [color=#56E39F]Torbellino 360°: 16 DMG · Cadencia: 0.65s[/color]\n• [color=#72EFDD]Clic Derecho / F / Q:[/color] Bloqueo Activo (-75% Daño)",
+		"accion": "⚡ [ CLIC PARA EVOLUCIONAR ] ⚡"
+	},
 	"Guerrero": {
 		"color": Color(0.95, 0.24, 0.28, 1.0),
 		"angulo_centro_deg": 150.0,
 		"icono_tex": TEX_ESPADA,
-		"titulo": "⚔️ GUERRERO",
-		"rol_badge": "🛡️ TANQUE / TORBELLINO MELEE",
-		"subtitulo": "Coloso de Acero",
-		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Gran Espada + Escudo Real\n• [color=#56E39F]+60% Salud Máxima (160 HP)[/color]\n• [color=#56E39F]+83% Daño Corte 360°[/color]\n• [color=#72EFDD]Clic Derecho / F:[/color] Bloqueo (-75% Daño)",
+		"titulo": "⚔️ MURMILLO",
+		"rol_badge": "🛡️ COLOSO DE ACERO / BALUARTE MELEE",
+		"subtitulo": "Gladiador Pesado de la Arena",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Gran Espada + Escudo Real\n• [color=#56E39F]160 HP (+60% Salud Máxima)[/color]\n• [color=#56E39F]Torbellino 360°: 16 DMG · Cadencia: 0.65s[/color]\n• [color=#72EFDD]Clic Derecho / F / Q:[/color] Bloqueo Activo (-75% Daño)",
+		"accion": "⚡ [ CLIC PARA EVOLUCIONAR ] ⚡"
+	},
+	"Sagittario": {
+		"color": Color(0.18, 0.88, 0.76, 1.0),
+		"angulo_centro_deg": 30.0,
+		"icono_tex": TEX_ARCO,
+		"titulo": "🏹 SAGITTARIO",
+		"rol_badge": "🎯 ARQUERO IMPERIAL / RÁFAGA BALÍSTICA",
+		"subtitulo": "Tirador de Élite del Coliseo",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Arco Élfico Balístico\n• [color=#56E39F]Ráfaga 3 Saetas: 7.2 DMG/saeta[/color]\n• [color=#56E39F]Cadencia: 0.45s · Alcance: 7.5m[/color]\n• [color=#72EFDD]Velocidad Carrera:[/color] 6.4 m/s (Kiteo Ágil)",
 		"accion": "⚡ [ CLIC PARA EVOLUCIONAR ] ⚡"
 	},
 	"Cazador": {
 		"color": Color(0.95, 0.44, 0.08, 1.0),
 		"angulo_centro_deg": 30.0,
 		"icono_tex": TEX_ARCO,
-		"titulo": "🏹 ARQUERO",
-		"rol_badge": "🎯 TIRADOR TÁCTICO / FLECHAS DE PLASMA",
-		"subtitulo": "Superviviente Táctico Sci-Fi",
-		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Arco Tecnológico de Plasma\n• [color=#56E39F]Ráfaga en Abanico Perforante[/color]\n• [color=#56E39F]Alcance: 7.5m (Máximo)[/color]\n• [color=#72EFDD]Velocidad Carrera:[/color] 6.4 m/s",
+		"titulo": "🏹 SAGITTARIO",
+		"rol_badge": "🎯 ARQUERO IMPERIAL / RÁFAGA BALÍSTICA",
+		"subtitulo": "Tirador de Élite del Coliseo",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Arco Élfico Balístico\n• [color=#56E39F]Ráfaga 3 Saetas: 7.2 DMG/saeta[/color]\n• [color=#56E39F]Cadencia: 0.45s · Alcance: 7.5m[/color]\n• [color=#72EFDD]Velocidad Carrera:[/color] 6.4 m/s (Kiteo Ágil)",
+		"accion": "⚡ [ CLIC PARA EVOLUCIONAR ] ⚡"
+	},
+	"Arúspice": {
+		"color": Color(0.28, 0.58, 1.00, 1.0),
+		"angulo_centro_deg": 270.0,
+		"icono_tex": TEX_BASTON,
+		"titulo": "🔮 ARÚSPICE",
+		"rol_badge": "✨ MÍSTICO RÚNICO / TAUMATURGO DEL NÚCLEO",
+		"subtitulo": "Sacerdote del Núcleo Rúnico",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Báculo Imperial y Orbe Astral\n• [color=#56E39F]Orbe Teledirigido AOE: 17 DMG[/color]\n• [color=#56E39F]Cadencia: 0.70s · Rango: 5.5m[/color]\n• [color=#72EFDD]Detonación en Área:[/color] 3.2m de radio explosivo",
 		"accion": "⚡ [ CLIC PARA EVOLUCIONAR ] ⚡"
 	},
 	"Mago": {
 		"color": Color(0.28, 0.58, 1.00, 1.0),
 		"angulo_centro_deg": 270.0,
 		"icono_tex": TEX_BASTON,
-		"titulo": "🔮 MAGO",
-		"rol_badge": "✨ ARCANISTA / ORBES EN ÁREA",
-		"subtitulo": "Señor del Éter",
-		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Bastón y Orbe Astral\n• [color=#56E39F]+133% Daño Mágico en Área[/color]\n• [color=#56E39F]Proyectiles Teledirigidos AOE[/color]\n• [color=#72EFDD]Escala con:[/color] Poder de Clic y Crítico",
+		"titulo": "🔮 ARÚSPICE",
+		"rol_badge": "✨ MÍSTICO RÚNICO / TAUMATURGO DEL NÚCLEO",
+		"subtitulo": "Sacerdote del Núcleo Rúnico",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Báculo Imperial y Orbe Astral\n• [color=#56E39F]Orbe Teledirigido AOE: 17 DMG[/color]\n• [color=#56E39F]Cadencia: 0.70s · Rango: 5.5m[/color]\n• [color=#72EFDD]Detonación en Área:[/color] 3.2m de radio explosivo",
 		"accion": "⚡ [ CLIC PARA EVOLUCIONAR ] ⚡"
 	},
-	# ================= TIER 2: GUERRERO =================
+
+	# ================= TIER 2 (MEJORA 1): ESPECIALIZACIONES DE LA ARENA =================
+	# --- Rama Murmillo ---
+	"Secutor Radiante": {
+		"color": Color(1.0, 0.84, 0.22, 1.0),
+		"angulo_centro_deg": 150.0,
+		"icono_tex": TEX_ESPADA,
+		"titulo": "☀️ SECUTOR RADIANTE",
+		"rol_badge": "🛡️ ESCUDO SOLAR / CONTRAGOLPE RADIANTE",
+		"subtitulo": "Gladiador Consagrado al Sol",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Gran Espada Solar + Broquel Sagrado\n• [color=#56E39F]190 HP Máx · +30 Armadura · Onda: 22 DMG[/color]\n• [color=#72EFDD]Bloqueo Radiante:[/color] Nova solar que cura +4 HP y causa 16.5 DMG\n• [color=#FFD166]Cadencia:[/color] 0.60s en 360°",
+		"accion": "⚔️ [ MEJORAR A SECUTOR ] ⚔️"
+	},
+	"Provocator Sangriento": {
+		"color": Color(0.92, 0.12, 0.18, 1.0),
+		"angulo_centro_deg": 30.0,
+		"icono_tex": TEX_ESPADA,
+		"titulo": "🪓 PROVOCATOR SANGRIENTO",
+		"rol_badge": "🩸 FURIA DE LA ARENA / TORBELLINO VORAZ",
+		"subtitulo": "Guerrero Feroz del Coliseo",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Hachas Dobles Voraces\n• [color=#56E39F]165 HP · Torbellino: 19 - 26.6 DMG (Furia)[/color]\n• [color=#72EFDD]Robo de Vida:[/color] +2.0 HP por golpe voraz\n• [color=#FFD166]Cadencia:[/color] 0.48s de tajo ultra rápido",
+		"accion": "⚔️ [ MEJORAR A PROVOCATOR ] ⚔️"
+	},
+
+	# --- Rama Sagittario ---
+	"Velites Balístico": {
+		"color": Color(0.15, 0.92, 1.00, 1.0),
+		"angulo_centro_deg": 150.0,
+		"icono_tex": TEX_ARCO,
+		"titulo": "⚡ VELITES BALÍSTICO",
+		"rol_badge": "🎯 HOSTIGADOR TÁCTICO / SAETAS PERFORANTES",
+		"subtitulo": "Francotirador de la Arena",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Riel Balístico de Alta Cadencia\n• [color=#56E39F]120 HP · Riel Astral: 18.4 DMG (13m)[/color]\n• [color=#72EFDD]Penetración en Línea:[/color] Atraviesa filas de enemigos\n• [color=#FFD166]Cadencia:[/color] 0.38s · Velocidad: 6.6 m/s",
+		"accion": "🏹 [ MEJORAR A VELITES ] 🏹"
+	},
+	"Dimachaerus Espectral": {
+		"color": Color(0.72, 0.25, 1.00, 1.0),
+		"angulo_centro_deg": 30.0,
+		"icono_tex": TEX_ESPADA,
+		"titulo": "🗡️ DIMACHAERUS ESPECTRAL",
+		"rol_badge": "👤 DAGAS GEMELAS / EVASIÓN DE LA ARENA",
+		"subtitulo": "Gladiador de Dos Armas",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Dagas Espectrales Gemelas\n• [color=#56E39F]125 HP · +10% Crítico · Espiral 8 Dagas (6.3 DMG/daga)[/color]\n• [color=#72EFDD]Evasión Ágil:[/color] 6.8 m/s velocidad y señuelo en dash\n• [color=#FFD166]Cadencia:[/color] 0.34s de espiral continua",
+		"accion": "🗡️ [ MEJORAR A DIMACHAERUS ] 🗡️"
+	},
+
+	# --- Rama Arúspice ---
+	"Taumaturgo del Vacío": {
+		"color": Color(0.55, 0.18, 0.95, 1.0),
+		"angulo_centro_deg": 150.0,
+		"icono_tex": TEX_BASTON,
+		"titulo": "🌌 TAUMATURGO DEL VACÍO",
+		"rol_badge": "🪐 SIFÓN GRAVITACIONAL / CONTROL CÓSMICO",
+		"subtitulo": "Señor de la Gravedad de la Arena",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Báculo de Obsidiana Rúnica\n• [color=#56E39F]110 HP · Orbe: 22 DMG · Cadencia: 0.68s[/color]\n• [color=#72EFDD]Sifón Gravitacional:[/color] Vórtice 2.5s (3.5 DMG/tick)\n• [color=#FFD166]Control de Masas:[/color] Succiona enemigos hacia el vórtice",
+		"accion": "🔮 [ MEJORAR A TAUMATURGO ] 🔮"
+	},
+	"Flamen Volcánico": {
+		"color": Color(1.0, 0.45, 0.10, 1.0),
+		"angulo_centro_deg": 30.0,
+		"icono_tex": TEX_BASTON,
+		"titulo": "🌋 FLAMEN VOLCÁNICO",
+		"rol_badge": "🔥 SACERDOTE DEL FUEGO / MAGMA DE LA ARENA",
+		"subtitulo": "Invocador del Fuego Sagrado",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Báculo Ígneo con Núcleo de Magma\n• [color=#56E39F]115 HP · Meteoro: 22 DMG · Cadencia: 0.68s[/color]\n• [color=#72EFDD]Charco de Magma:[/color] 2.8s de fuego continuo (4.2 DMG/tick)\n• [color=#FFD166]Negación de Área:[/color] Calcina hordas concentradas",
+		"accion": "🔮 [ MEJORAR A FLAMEN ] 🔮"
+	},
+
+	# --- Mejora Universal Tier 2 ---
+	"Custodio del Núcleo": {
+		"color": Color(0.22, 0.95, 0.85, 1.0),
+		"angulo_centro_deg": 270.0,
+		"icono_tex": TEX_ESPADA,
+		"titulo": "💎 CUSTODIO DEL NÚCLEO",
+		"rol_badge": "⚡ SINTONÍA RÚNICA / PULSO DEL BOTÓN",
+		"subtitulo": "Guardián de la Runa 3D",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Guantelete Cuchilla + Prisma de Resonancia\n• [color=#56E39F]145 HP · Golpe Resonante: 22 DMG · Cadencia: 0.52s[/color]\n• [color=#72EFDD]Onda de Choque x1.5:[/color] Amplifica onda del clic móvil\n• [color=#FFD166]Sintonía Rúnica:[/color] Daño universal balanceado",
+		"accion": "💎 [ SINTONIZAR CON EL NÚCLEO ] 💎"
+	},
+
+	# ================= TIER 3 (MEJORA 2): ASCENSIÓN DEFINITIVA =================
+	# --- Ascensión Murmillo ---
+	"Paladín del Sol Invictus": {
+		"color": Color(1.0, 0.88, 0.25, 1.0),
+		"angulo_centro_deg": 150.0,
+		"icono_tex": TEX_ESPADA,
+		"titulo": "☀️ PALADÍN DEL SOL INVICTUS",
+		"rol_badge": "🛡️ BALUARTE SUPREMO / NOVA SOLAR ETERNA",
+		"subtitulo": "Campeón Divino de la Arena",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Gran Espada Divina + Baluarte de Oro\n• [color=#56E39F]250 HP Máx · +60 Armadura · Onda Solar: 32 DMG[/color]\n• [color=#72EFDD]Supernova Radiante:[/color] Al bloquear desata 27 DMG (7.5m) y cura +10 HP\n• [color=#FFD166]Cadencia:[/color] 0.52s en 360°",
+		"accion": "👑 [ ASCENSIÓN DEFINITIVA TIER 3 ] 👑"
+	},
+	"Campeón Augusto de Sangre": {
+		"color": Color(0.95, 0.10, 0.15, 1.0),
+		"angulo_centro_deg": 30.0,
+		"icono_tex": TEX_ESPADA,
+		"titulo": "🪓 CAMPEÓN AUGUSTO DE SANGRE",
+		"rol_badge": "🩸 TORBELLINO VORAZ / DIOS DE LA ARENA",
+		"subtitulo": "El Terror Absoluto del Coliseo",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Hachas Dobles de Furia Imperial\n• [color=#56E39F]190 HP · Torbellino: 28 - 43.4 DMG (Furia Sostenida)[/color]\n• [color=#72EFDD]Vampirismo Supremo:[/color] +3.5 HP por golpe en torbellino\n• [color=#FFD166]Cadencia:[/color] 0.40s de tajo torbellino continuo",
+		"accion": "👑 [ ASCENSIÓN DEFINITIVA TIER 3 ] 👑"
+	},
+
+	# --- Ascensión Sagittario ---
+	"Centurión Balístico Astral": {
+		"color": Color(0.20, 0.95, 1.00, 1.0),
+		"angulo_centro_deg": 150.0,
+		"icono_tex": TEX_ARCO,
+		"titulo": "⚡ CENTURIÓN BALÍSTICO ASTRAL",
+		"rol_badge": "🎯 RIEL ASTRAL / SAETAS DE HIPERVELOCIDAD",
+		"subtitulo": "Vanguardia Cósmica del Coliseo",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Cañón de Saetas de Plasma Astral\n• [color=#56E39F]145 HP · Riel Hipercinético: 28.8 DMG (Atraviesa 5)[/color]\n• [color=#72EFDD]Penetración Total:[/color] Perfora filas a 32 m/s en 11.0m\n• [color=#FFD166]Cadencia:[/color] 0.30s · Velocidad: 7.0 m/s",
+		"accion": "👑 [ ASCENSIÓN DEFINITIVA TIER 3 ] 👑"
+	},
+	"Sombra del Anfiteatro": {
+		"color": Color(0.78, 0.25, 1.00, 1.0),
+		"angulo_centro_deg": 30.0,
+		"icono_tex": TEX_ESPADA,
+		"titulo": "🗡️ SOMBRA DEL ANFITEATRO",
+		"rol_badge": "👤 ASESINO ESPECTRAL / FANTASMA DEL COLISEO",
+		"subtitulo": "Espectro Vengador de la Arena",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Dagas Espectrales de Vacío Imperial\n• [color=#56E39F]150 HP · +20% Crítico · Espiral 10 Dagas (7.7 DMG/daga)[/color]\n• [color=#72EFDD]Señuelo Inestable:[/color] Detona al dash con 24 DMG y retroceso\n• [color=#FFD166]Cadencia:[/color] 0.28s · Velocidad: 7.2 m/s",
+		"accion": "👑 [ ASCENSIÓN DEFINITIVA TIER 3 ] 👑"
+	},
+
+	# --- Ascensión Arúspice ---
+	"Pontífice del Vacío Estelar": {
+		"color": Color(0.60, 0.20, 1.00, 1.0),
+		"angulo_centro_deg": 150.0,
+		"icono_tex": TEX_BASTON,
+		"titulo": "🌌 PONTÍFICE DEL VACÍO ESTELAR",
+		"rol_badge": "🪐 AGUJERO NEGRO / COLAPSO GRAVITACIONAL",
+		"subtitulo": "Maestro Cósmico del Éter",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Báculo de Obsidiana con Núcleo Singular\n• [color=#56E39F]140 HP · Orbe: 32 DMG · Cadencia: 0.62s[/color]\n• [color=#72EFDD]Agujero Negro 3.0s:[/color] Succiona ejércitos (4.5 DMG/tick)\n• [color=#FFD166]Colapso Cósmico:[/color] Destrucción continua en área",
+		"accion": "👑 [ ASCENSIÓN DEFINITIVA TIER 3 ] 👑"
+	},
+	"Señor del Magma Imperial": {
+		"color": Color(1.0, 0.40, 0.05, 1.0),
+		"angulo_centro_deg": 30.0,
+		"icono_tex": TEX_BASTON,
+		"titulo": "🌋 SEÑOR DEL MAGMA IMPERIAL",
+		"rol_badge": "🔥 CALAMIDAD VOLCÁNICA / FUEGO PERPETUO",
+		"subtitulo": "El Destructor Ígneo del Coliseo",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Cetro del Núcleo Volcánico Ancestral\n• [color=#56E39F]145 HP · Meteoro: 32 DMG · Cadencia: 0.62s[/color]\n• [color=#72EFDD]Mar de Magma 3.5s:[/color] Quema incesante (5.2 DMG/tick)\n• [color=#FFD166]Calamidad:[/color] Control y calcinación total de la arena",
+		"accion": "👑 [ ASCENSIÓN DEFINITIVA TIER 3 ] 👑"
+	},
+
+	# --- Ascensión Universal Tier 3 ---
+	"Titán Supremo del Núcleo": {
+		"color": Color(0.25, 0.98, 0.90, 1.0),
+		"angulo_centro_deg": 270.0,
+		"icono_tex": TEX_ESPADA,
+		"titulo": "💎 TITÁN SUPREMO DEL NÚCLEO",
+		"rol_badge": "⚡ AVATAR DE LA RESONANCIA / CLIC CATACLÍSMICO",
+		"subtitulo": "Fusión Divina con el Botón 3D",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Guantelete del Núcleo Rúnico Definitivo\n• [color=#56E39F]180 HP · +45 Armadura · Onda Sísmica: 32 DMG[/color]\n• [color=#72EFDD]Onda de Choque x2.2:[/color] Cada clic sacude el Coliseo entero\n• [color=#FFD166]Cadencia:[/color] 0.42s con resonancia rúnica continua",
+		"accion": "👑 [ ASCENSIÓN DEFINITIVA TIER 3 ] 👑"
+	},
+
+	# ================= ALIASES RETROCOMPATIBLES =================
 	"Paladín Solar": {
 		"color": Color(1.0, 0.84, 0.22, 1.0),
 		"angulo_centro_deg": 150.0,
 		"icono_tex": TEX_ESPADA,
-		"titulo": "☀️ PALADÍN SOLAR",
-		"rol_badge": "🛡️ BALUARTE SAGRADO / NOVA SOLAR",
-		"subtitulo": "Coloso Radiante",
-		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Gran Espada Solar + Broquel Solar\n• [color=#56E39F]+100 HP Máxima · +50 Armadura[/color]\n• [color=#72EFDD]Bloqueo Radiante:[/color] Nova Solar que cura +4 HP y calcina\n• [color=#FFD166]Pasiva:[/color] Onda de fuego solar en cada tajo",
-		"accion": "👑 [ CLIC PARA ASCENDER ] 👑"
+		"titulo": "☀️ SECUTOR RADIANTE",
+		"rol_badge": "🛡️ ESCUDO SOLAR / CONTRAGOLPE RADIANTE",
+		"subtitulo": "Gladiador Consagrado al Sol",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Gran Espada Solar + Broquel Sagrado\n• [color=#56E39F]+50 HP Máxima · +30 Armadura[/color]\n• [color=#72EFDD]Bloqueo Radiante:[/color] Nova solar que cura +4 HP y calcina\n• [color=#FFD166]Pasiva:[/color] Tajo imbuido con fuego solar",
+		"accion": "👑 [ CLIC PARA MEJORAR ] 👑"
 	},
 	"Berserker Sangriento": {
 		"color": Color(0.92, 0.12, 0.18, 1.0),
 		"angulo_centro_deg": 30.0,
 		"icono_tex": TEX_ESPADA,
-		"titulo": "🪓 BERSERKER SANGRIENTO",
-		"rol_badge": "🩸 FRENESÍ MELEE / HACHAS DOBLES",
-		"subtitulo": "Torbellino Voraz",
-		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Hachas Dobles Voraces en ambas manos\n• [color=#56E39F]+1.5% Daño y Cadencia por cada 1% HP faltante[/color]\n• [color=#72EFDD]Robo de Vida:[/color] +3% HP Máx por golpe · +3 HP por baja\n• [color=#FFD166]Ataque:[/color] Doble tajo continuo en 360°",
-		"accion": "👑 [ CLIC PARA ASCENDER ] 👑"
+		"titulo": "🪓 PROVOCATOR SANGRIENTO",
+		"rol_badge": "🩸 FURIA DE LA ARENA / TORBELLINO VORAZ",
+		"subtitulo": "Guerrero Feroz del Coliseo",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Hachas Dobles Voraces en ambas manos\n• [color=#56E39F]+1.5% Daño por cada 1% HP faltante[/color]\n• [color=#72EFDD]Robo de Vida:[/color] +3% HP Máx por golpe · Torbellino feroz\n• [color=#FFD166]Cadencia:[/color] +28% velocidad de tajo continuo",
+		"accion": "👑 [ CLIC PARA MEJORAR ] 👑"
 	},
-	# ================= TIER 2: CAZADOR =================
 	"Francotirador Astral": {
 		"color": Color(0.15, 0.92, 1.00, 1.0),
 		"angulo_centro_deg": 150.0,
 		"icono_tex": TEX_ARCO,
-		"titulo": "⚡ FRANCOTIRADOR ASTRAL",
-		"rol_badge": "🎯 RIEL ASTRAL / PERFORACIÓN PURA",
-		"subtitulo": "Vanguardia Cósmica",
-		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Riel Astral de Plasma y Fibra Gravitatoria\n• [color=#56E39F]+145% Daño de Riel Hipercinético[/color]\n• [color=#72EFDD]Penetración Total:[/color] Atraviesa hileras completas de enemigos\n• [color=#FFD166]Alcance:[/color] 10.0m con proyectiles a 32 m/s",
-		"accion": "👑 [ CLIC PARA ASCENDER ] 👑"
+		"titulo": "⚡ VELITES BALÍSTICO",
+		"rol_badge": "🎯 HOSTIGADOR TÁCTICO / SAETAS PERFORANTES",
+		"subtitulo": "Francotirador de la Arena",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Riel Balístico de Alta Cadencia\n• [color=#56E39F]+135% Daño con Saetas Perforantes[/color]\n• [color=#72EFDD]Penetración en Línea:[/color] Atraviesa filas de enemigos\n• [color=#FFD166]Rango:[/color] 9.0m con proyectiles a hipervelocidad",
+		"accion": "👑 [ CLIC PARA MEJORAR ] 👑"
 	},
 	"Maestro de Sombras": {
 		"color": Color(0.72, 0.25, 1.00, 1.0),
 		"angulo_centro_deg": 30.0,
 		"icono_tex": TEX_ESPADA,
-		"titulo": "🗡️ MAESTRO DE SOMBRAS",
-		"rol_badge": "👤 ASESINO EVASIVO / DAGAS ESPECTRALES",
-		"subtitulo": "Fantasma del Coliseo",
-		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Dagas Espectrales Dobles de Vacío\n• [color=#56E39F]+35% Evasión Pasiva Permanente[/color]\n• [color=#72EFDD]Espiral Espectral:[/color] Ráfaga de dagas en 360°\n• [color=#FFD166]Dash Sombrío:[/color] Deja un señuelo explosivo al evadir",
-		"accion": "👑 [ CLIC PARA ASCENDER ] 👑"
+		"titulo": "🗡️ DIMACHAERUS ESPECTRAL",
+		"rol_badge": "👤 DAGAS GEMELAS / EVASIÓN DE LA ARENA",
+		"subtitulo": "Gladiador de Dos Armas",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Dagas Espectrales Gemelas de Vacío\n• [color=#56E39F]+25% Evasión Pasiva Permanente[/color]\n• [color=#72EFDD]Espiral de Dagas:[/color] Ráfaga continua en 360°\n• [color=#FFD166]Dash Táctico:[/color] Deja un señuelo explosivo al evadir",
+		"accion": "👑 [ CLIC PARA MEJORAR ] 👑"
 	},
-	# ================= TIER 2: MAGO =================
 	"Archimago del Vacío": {
 		"color": Color(0.55, 0.18, 0.95, 1.0),
 		"angulo_centro_deg": 150.0,
 		"icono_tex": TEX_BASTON,
-		"titulo": "🌌 ARCHIMAGO DEL VACÍO",
-		"rol_badge": "🪐 CONTROL CÓSMICO / VÓRTICE GRAVITACIONAL",
-		"subtitulo": "Señor de la Gravedad",
-		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Báculo de Obsidiana con Singularidad Viva\n• [color=#56E39F]Vórtice Gravitacional:[/color] Colapso de 2.5s en impacto\n• [color=#72EFDD]Atracción y Daño:[/color] Succiona enemigos cercanos y daña continuo\n• [color=#FFD166]+60% Daño Mágico en Área[/color]",
-		"accion": "👑 [ CLIC PARA ASCENDER ] 👑"
+		"titulo": "🌌 TAUMATURGO DEL VACÍO",
+		"rol_badge": "🪐 SIFÓN GRAVITACIONAL / CONTROL CÓSMICO",
+		"subtitulo": "Señor de la Gravedad de la Arena",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Báculo de Obsidiana Rúnica\n• [color=#56E39F]Vórtice Gravitacional:[/color] Colapso de 2.5s en impacto\n• [color=#72EFDD]Atracción y Daño:[/color] Succiona enemigos hacia el centro\n• [color=#FFD166]+40% Daño Mágico en Área[/color]",
+		"accion": "👑 [ CLIC PARA MEJORAR ] 👑"
 	},
 	"Piromante Cataclísmico": {
 		"color": Color(1.0, 0.45, 0.10, 1.0),
 		"angulo_centro_deg": 30.0,
 		"icono_tex": TEX_BASTON,
-		"titulo": "🌋 PIROMANTE CATACLÍSMICO",
-		"rol_badge": "🔥 CALAMIDAD DE FUEGO / MAGMA SOLAR",
-		"subtitulo": "Portador de Cenizas",
-		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Báculo Ígneo con Núcleo Volcánico\n• [color=#56E39F]Meteoro Ígneo:[/color] Impacta y deja charcos de magma ardiente\n• [color=#72EFDD]Magma Solar:[/color] 2.8s de fuego continuo en el suelo\n• [color=#FFD166]+75% Daño Crítico Elemental[/color]",
-		"accion": "👑 [ CLIC PARA ASCENDER ] 👑"
+		"titulo": "🌋 FLAMEN VOLCÁNICO",
+		"rol_badge": "🔥 SACERDOTE DEL FUEGO / MAGMA DE LA ARENA",
+		"subtitulo": "Invocador del Fuego Sagrado",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Báculo Ígneo con Núcleo de Magma\n• [color=#56E39F]Meteoro Ígneo:[/color] Impacta y deja charcos de lava en la arena\n• [color=#72EFDD]Magma Solar:[/color] 2.8s de daño por fuego continuo\n• [color=#FFD166]+45% Daño Crítico Elemental[/color]",
+		"accion": "👑 [ CLIC PARA MEJORAR ] 👑"
 	},
-	# ================= TIER 2: UNIVERSAL =================
 	"Avatar del Núcleo": {
 		"color": Color(0.22, 0.95, 0.85, 1.0),
 		"angulo_centro_deg": 270.0,
 		"icono_tex": TEX_ESPADA,
-		"titulo": "💎 AVATAR DEL NÚCLEO",
-		"rol_badge": "⚡ RESONANCIA PURA / CLIC SUPREMO",
-		"subtitulo": "Híbrido de la Runa 3D",
-		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Guantelete Cuchilla + Prisma de Resonancia\n• [color=#56E39F]Onda de Choque x2:[/color] Duplica radio de onda del clic móvil\n• [color=#72EFDD]Hilos Gemelos:[/color] Rayos de resonancia continua x2\n• [color=#FFD166]+50% Daño Global y Armadura balanceada[/color]",
-		"accion": "👑 [ CLIC PARA ASCENDER ] 👑"
+		"titulo": "💎 CUSTODIO DEL NÚCLEO",
+		"rol_badge": "⚡ SINTONÍA RÚNICA / PULSO DEL BOTÓN",
+		"subtitulo": "Guardián de la Runa 3D",
+		"stats_bbcode": "• [color=#FFD166]Arma:[/color] Guantelete Cuchilla + Prisma de Resonancia\n• [color=#56E39F]Onda de Choque x1.6:[/color] Amplía radio de onda del clic móvil\n• [color=#72EFDD]Hilos de Resonancia:[/color] Daño balanceado en 360°\n• [color=#FFD166]+25% Daño Global y Armadura aumentada[/color]",
+		"accion": "👑 [ CLIC PARA MEJORAR ] 👑"
 	}
 }
 
-var opciones_activas: Array[String] = ["Guerrero", "Cazador", "Mago"]
+var opciones_activas: Array[String] = ["Murmillo", "Sagittario", "Arúspice"]
 var clase_seleccionada: String = ""
 var _anim_pesos: Dictionary = {}
 var _tiempo_pulso: float = 0.0
@@ -156,15 +342,23 @@ func _obtener_config(nombre_clase: String) -> Dictionary:
 
 func establecer_modo_opciones(tier: int, clase_base: String):
 	if tier == 1:
-		opciones_activas = ["Guerrero", "Cazador", "Mago"]
+		opciones_activas = ["Murmillo", "Sagittario", "Arúspice"]
+	elif tier == 2:
+		match clase_base:
+			"Cazador", "Sagittario":
+				opciones_activas = ["Velites Balístico", "Dimachaerus Espectral", "Custodio del Núcleo"]
+			"Mago", "Arúspice":
+				opciones_activas = ["Taumaturgo del Vacío", "Flamen Volcánico", "Custodio del Núcleo"]
+			_:
+				opciones_activas = ["Secutor Radiante", "Provocator Sangriento", "Custodio del Núcleo"]
 	else:
 		match clase_base:
-			"Cazador":
-				opciones_activas = ["Francotirador Astral", "Maestro de Sombras", "Avatar del Núcleo"]
-			"Mago":
-				opciones_activas = ["Archimago del Vacío", "Piromante Cataclísmico", "Avatar del Núcleo"]
+			"Cazador", "Sagittario":
+				opciones_activas = ["Centurión Balístico Astral", "Sombra del Anfiteatro", "Titán Supremo del Núcleo"]
+			"Mago", "Arúspice":
+				opciones_activas = ["Pontífice del Vacío Estelar", "Señor del Magma Imperial", "Titán Supremo del Núcleo"]
 			_:
-				opciones_activas = ["Paladín Solar", "Berserker Sangriento", "Avatar del Núcleo"]
+				opciones_activas = ["Paladín del Sol Invictus", "Campeón Augusto de Sangre", "Titán Supremo del Núcleo"]
 	_inicializar_pesos()
 	clase_seleccionada = ""
 	queue_redraw()

@@ -1,20 +1,20 @@
 extends CharacterBody3D
 
-# Jefe 3: Maestra Sanguinaria (Oleada 9 / Minuto 9)
-# Comandante arquera de élite. 1800 HP.
-# Incluye Cristales de Escudo Clicables al 50% HP, fijación rúnica, disipación de tormenta y Knockback real.
+# Jefe 3: Maestra Sanguinaria (Minuto 10:30)
+# Comandante arquera de élite. 4800 HP.
+# Incluye Cristales de Escudo Clicables al 50% HP, fijación rúnica, disipación de tormenta (3 clics) y Knockback real.
 
 signal jefe_derrotado
 
 const AudioManager = preload("res://audio_manager.gd")
 
-@export var rapidez: float = 4.2
-@export var vida_maxima: float = 1800.0
-@export var dano_flecha: float = 18.0
-@export var dano_lluvia: float = 38.0
+@export var rapidez: float = 4.85
+@export var vida_maxima: float = 10500.0
+@export var dano_flecha: float = 48.0
+@export var dano_lluvia: float = 85.0
 @export var distancia_kiting: float = 7.0
 
-var vida: float = 1800.0
+var vida: float = 10500.0
 var muerto: bool = false
 var jugador: Node3D = null
 var hud: Node = null
@@ -27,10 +27,11 @@ var _pos_lluvia_objetivo: Vector3 = Vector3.ZERO
 var _telegraph_lluvia: MeshInstance3D = null
 
 var _clics_tormenta: int = 0
-var _clics_necesarios_tormenta: int = 2
+var _clics_necesarios_tormenta: int = 3
 var _reloj_fijacion_luz: float = 0.0
 var _aturdida: bool = false
 var _knockback_velocity: Vector3 = Vector3.ZERO
+var _i_frame_timer: float = 0.0
 
 var _cristales_invocados: bool = false
 var _cristales_activos: Array = []
@@ -94,8 +95,8 @@ func _crear_telegraph_lluvia():
 
 func _invocar_cristales_escudo():
 	_cristales_invocados = true
-	_crear_texto_flotante("💎 ¡CRISTALES SANGUINARIOS! ¡CLIC EN ELLOS!", true)
-	for i in range(3):
+	_crear_texto_flotante("💎 ¡4 CRISTALES SANGUINARIOS! ¡CLIC EN ELLOS!", true)
+	for i in range(4):
 		var area = Area3D.new()
 		area.name = "CristalSanguinario_%d" % i
 		area.add_to_group("cristal_jefe")
@@ -156,6 +157,9 @@ func _destruir_cristal(cristal: Node):
 func _physics_process(delta):
 	if not is_on_floor():
 		velocity += get_gravity() * delta
+
+	if _i_frame_timer > 0.0:
+		_i_frame_timer = maxf(_i_frame_timer - delta, 0.0)
 
 	if _boton_movil == null or not is_instance_valid(_boton_movil):
 		_conectar_boton_movil()
@@ -236,10 +240,10 @@ func _iniciar_lluvia_flechas():
 	_pos_lluvia_objetivo.y = 0.05
 
 	AudioManager.play("alerta_oleada", 1.5, 2.0)
-	_crear_texto_flotante("⚡ ¡PULSA EL NÚCLEO (0/2) PARA DISIPAR!", true)
+	_crear_texto_flotante("⚡ ¡PULSA EL NÚCLEO (0/%d) PARA DISIPAR!" % _clics_necesarios_tormenta, true)
 
 	if hud != null and hud.has_method("actualizar_barra_jefe"):
-		hud.actualizar_barra_jefe(vida, "🏹 MAESTRA [⚡ ¡DISIPA LA TORMENTA: 0/2 CLICS!]")
+		hud.actualizar_barra_jefe(vida, "🏹 MAESTRA [⚡ ¡DISIPA LA TORMENTA: 0/%d CLICS!]" % _clics_necesarios_tormenta)
 
 	if _telegraph_lluvia != null:
 		_telegraph_lluvia.global_position = _pos_lluvia_objetivo
@@ -334,17 +338,26 @@ func _disipar_tormenta():
 func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 	if muerto:
 		return
+	if _i_frame_timer > 0.0 and str(fuente) != "ejecucion":
+		return
+	_i_frame_timer = 0.14
 	var fuente_str := "normal"
 	if typeof(fuente) == TYPE_BOOL:
 		es_critico = fuente
 	else:
 		fuente_str = str(fuente)
-	var mult = 1.6 if _aturdida else (0.25 if not _cristales_activos.is_empty() else 1.0)
+	var mult = 1.6 if _aturdida else (0.15 if not _cristales_activos.is_empty() else 1.0)
 	var dano_final = cantidad * mult * (1.0 + MetaprogresoManager.obtener_bono_bestiario("maestra"))
+
+	# TOPE DE DAÑO POR GOLPE: Ningún impacto supera el 6% de la vida máxima
+	var max_dano_por_golpe = vida_maxima * 0.06
+	dano_final = minf(dano_final, max_dano_por_golpe)
+
 	vida = maxf(vida - dano_final, 0.0)
 	_anim_ctrl.disparar_golpe()
 
 	if not _cristales_invocados and vida <= vida_maxima * 0.5:
+		_i_frame_timer = 0.6
 		_invocar_cristales_escudo()
 
 	var pool = get_tree().get_first_node_in_group("damage_numbers")
