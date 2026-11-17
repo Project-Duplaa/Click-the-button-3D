@@ -1,19 +1,19 @@
 extends CharacterBody3D
 
-# Mini-Jefe: Gladiador de Élite de la Arena (Oleada 6 / Minuto 6)
-# 950 HP, cargas telegrafiadas, Muralla de Hierro con Cristales Clicables y Knockback físico real.
+# Mini-Jefe: Gladiador de Élite de la Arena (Minuto 6:45)
+# 2200 HP, cargas telegrafiadas, Muralla de Hierro (3 clics) y Knockback físico real.
 
 signal jefe_derrotado
 
 const AudioManager = preload("res://audio_manager.gd")
 
-@export var rapidez: float = 3.4
-@export var vida_maxima: float = 950.0
-@export var dano_golpe: float = 34.0
+@export var rapidez: float = 3.95
+@export var vida_maxima: float = 4800.0
+@export var dano_golpe: float = 65.0
 @export var rango_ataque: float = 3.4
-@export var tiempo_telegraph: float = 0.70
+@export var tiempo_telegraph: float = 0.55
 
-var vida: float = 950.0
+var vida: float = 4800.0
 var muerto: bool = false
 var jugador: Node3D = null
 var hud: Node = null
@@ -26,11 +26,12 @@ var _reloj_ataque: float = 0.0
 var _esta_telegrafando: bool = false
 var _posicion_ataque_telegraph: Vector3 = Vector3.ZERO
 var _knockback_velocity: Vector3 = Vector3.ZERO
+var _i_frame_timer: float = 0.0
 
 # Mecánica de Muralla de Hierro
 var _muralla_activa: bool = false
 var _clics_muralla: int = 0
-var _clics_necesarios_muralla: int = 2
+var _clics_necesarios_muralla: int = 4
 var _fase1_muralla_usada: bool = false
 var _fase2_muralla_usada: bool = false
 var _aturdido: bool = false
@@ -102,6 +103,9 @@ func _conectar_boton_movil():
 func _physics_process(delta):
 	if not is_on_floor():
 		velocity += get_gravity() * delta
+
+	if _i_frame_timer > 0.0:
+		_i_frame_timer = maxf(_i_frame_timer - delta, 0.0)
 
 	if _boton_movil == null or not is_instance_valid(_boton_movil):
 		_conectar_boton_movil()
@@ -232,6 +236,9 @@ func desactivar_escudo_runico(_duracion: float = 7.0):
 func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 	if muerto:
 		return
+	if _i_frame_timer > 0.0 and str(fuente) != "ejecucion":
+		return
+	_i_frame_timer = 0.14
 	var fuente_str := "normal"
 	if typeof(fuente) == TYPE_BOOL:
 		es_critico = fuente
@@ -239,18 +246,24 @@ func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 		fuente_str = str(fuente)
 	var dano_final = cantidad * (1.0 + MetaprogresoManager.obtener_bono_bestiario("mini_jefe"))
 	if _muralla_activa:
-		dano_final *= 0.15
+		dano_final *= 0.10
 		AudioManager.play("escudo_bloqueo", 1.0)
-		_crear_texto_flotante("🛡️ ¡MURALLA! (2 Clics al Núcleo)", false)
+		_crear_texto_flotante("🛡️ ¡MURALLA! (%d Clics al Núcleo)" % (_clics_necesarios_muralla - _clics_muralla), false)
 	elif _aturdido:
 		dano_final *= 1.5
+
+	# TOPE DE DAÑO POR GOLPE: Ningún impacto supera el 7% de la vida máxima
+	var max_dano_por_golpe = vida_maxima * 0.07
+	dano_final = minf(dano_final, max_dano_por_golpe)
 
 	vida = maxf(vida - dano_final, 0.0)
 	_anim_ctrl.disparar_golpe()
 
 	if not _fase1_muralla_usada and vida <= (vida_maxima * 0.65):
+		_i_frame_timer = 0.6
 		_activar_muralla(1)
 	elif not _fase2_muralla_usada and vida <= (vida_maxima * 0.30):
+		_i_frame_timer = 0.6
 		_activar_muralla(2)
 
 	var pool = get_tree().get_first_node_in_group("damage_numbers")

@@ -2,7 +2,7 @@ extends CharacterBody3D
 
 @export var rapidez: float = 1.5
 @export var vida_maxima: float = 220.0
-@export var dano_ataque: float = 22.0
+@export var dano_ataque: float = 36.0
 @export var cadencia_ataque: float = 1.8
 @export var rango_ataque: float = 1.8
 

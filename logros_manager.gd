@@ -495,9 +495,9 @@ func verificar_estado_combate(pj: Node) -> void:
 		var c = str(pj.clase)
 		var c_base = str(pj.get("clase_base")) if "clase_base" in pj else c
 		if n >= 10:
-			if c == "Guerrero" or c_base == "Guerrero": desbloquear_logro("maestro_guerrero")
-			elif c == "Cazador" or c_base == "Cazador": desbloquear_logro("maestro_cazador")
-			elif c == "Mago" or c_base == "Mago": desbloquear_logro("maestro_mago")
+			if c in ["Guerrero", "Murmillo"] or c_base in ["Guerrero", "Murmillo"]: desbloquear_logro("maestro_guerrero")
+			elif c in ["Cazador", "Sagittario"] or c_base in ["Cazador", "Sagittario"]: desbloquear_logro("maestro_cazador")
+			elif c in ["Mago", "Arúspice"] or c_base in ["Mago", "Arúspice"]: desbloquear_logro("maestro_mago")
 
 func registrar_baja_nemesis() -> void:
 	desbloquear_logro("cazador_nemesis")

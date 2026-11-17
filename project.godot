@@ -19,20 +19,16 @@ config/icon="res://icon.svg"
 
 FortunaManager="*res://fortuna_manager.gd"
 
+[debug]
+
+settings/stdout/verbose_stdout=true
+
 [display]
 
-window/size/viewport_width=1152
-window/size/viewport_height=648
-window/size/resizable=true
 window/size/window_width_override=1280
 window/size/window_height_override=720
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
-window/stretch/scale_mode="fractional"
-
-[debug]
-
-settings/stdout/verbose_stdout=true
 
 [input]
 

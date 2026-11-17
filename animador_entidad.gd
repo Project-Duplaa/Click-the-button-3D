@@ -238,12 +238,12 @@ static func equipar_armas_en_esqueleto(modelo: Node3D, nombre_clase: String, inc
 	var offset_izq := Vector3(0.23, 0.0, 0.02)
 
 	match nombre_clase:
-		"Novato":
+		"Novato", "Recluta del Coliseo":
 			var espada := _crear_espada_novato()
 			espada.position = offset_der
 			attach_der.add_child(espada)
 			resultado["derecha"] = espada
-		"Guerrero":
+		"Guerrero", "Murmillo":
 			var gran_espada := _crear_gran_espada_guerrero()
 			gran_espada.position = offset_der
 			attach_der.add_child(gran_espada)
@@ -253,14 +253,14 @@ static func equipar_armas_en_esqueleto(modelo: Node3D, nombre_clase: String, inc
 			escudo.position = offset_izq
 			attach_izq.add_child(escudo)
 			resultado["izquierda"] = escudo
-		"Cazador":
+		"Cazador", "Sagittario":
 			var arco := _crear_arco_cazador()
 			arco.position = offset_izq
 			# Rotar +90° Y alinea el arco vertical (+Y) hacia +X del hueso, apuntando al frente al tensar
 			arco.rotation_degrees = Vector3(0.0, 90.0, 0.0)
 			attach_izq.add_child(arco)
 			resultado["izquierda"] = arco
-		"Mago":
+		"Mago", "Arúspice":
 			var baston_data := _crear_baston_mago(incluir_particulas)
 			var baston := baston_data["nodo"] as Node3D
 			baston.position = offset_der
@@ -270,7 +270,7 @@ static func equipar_armas_en_esqueleto(modelo: Node3D, nombre_clase: String, inc
 			resultado["derecha"] = baston
 			if baston_data.has("luz"):
 				resultado["luz_orbe"] = baston_data["luz"]
-		"Paladín Solar":
+		"Secutor Radiante", "Paladín del Sol Invictus", "Paladín Solar":
 			var gran_espada_solar := _crear_gran_espada_paladin()
 			gran_espada_solar.position = offset_der
 			attach_der.add_child(gran_espada_solar)
@@ -280,7 +280,7 @@ static func equipar_armas_en_esqueleto(modelo: Node3D, nombre_clase: String, inc
 			escudo_solar.position = offset_izq
 			attach_izq.add_child(escudo_solar)
 			resultado["izquierda"] = escudo_solar
-		"Berserker Sangriento":
+		"Provocator Sangriento", "Campeón Augusto de Sangre", "Berserker Sangriento":
 			var hacha_der := _crear_hacha_berserker(incluir_particulas)
 			hacha_der.position = offset_der
 			attach_der.add_child(hacha_der)
@@ -291,13 +291,13 @@ static func equipar_armas_en_esqueleto(modelo: Node3D, nombre_clase: String, inc
 			hacha_izq.rotation_degrees = Vector3(0.0, 180.0, 0.0)
 			attach_izq.add_child(hacha_izq)
 			resultado["izquierda"] = hacha_izq
-		"Francotirador Astral":
+		"Velites Balístico", "Centurión Balístico Astral", "Francotirador Astral":
 			var arco_astral := _crear_arco_astral(incluir_particulas)
 			arco_astral.position = offset_izq
 			arco_astral.rotation_degrees = Vector3(0.0, 90.0, 0.0)
 			attach_izq.add_child(arco_astral)
 			resultado["izquierda"] = arco_astral
-		"Maestro de Sombras":
+		"Dimachaerus Espectral", "Sombra del Anfiteatro", "Maestro de Sombras":
 			var daga_der := _crear_daga_sombra(incluir_particulas, false)
 			daga_der.position = offset_der
 			attach_der.add_child(daga_der)
@@ -307,7 +307,7 @@ static func equipar_armas_en_esqueleto(modelo: Node3D, nombre_clase: String, inc
 			daga_izq.position = offset_izq
 			attach_izq.add_child(daga_izq)
 			resultado["izquierda"] = daga_izq
-		"Archimago del Vacío":
+		"Taumaturgo del Vacío", "Pontífice del Vacío Estelar", "Archimago del Vacío":
 			var baston_vacio := _crear_baston_vacio(incluir_particulas)
 			var b_v := baston_vacio["nodo"] as Node3D
 			b_v.position = offset_der
@@ -316,7 +316,7 @@ static func equipar_armas_en_esqueleto(modelo: Node3D, nombre_clase: String, inc
 			resultado["derecha"] = b_v
 			if baston_vacio.has("luz"):
 				resultado["luz_orbe"] = baston_vacio["luz"]
-		"Piromante Cataclísmico":
+		"Flamen Volcánico", "Señor del Magma Imperial", "Piromante Cataclísmico":
 			var baston_piro := _crear_baston_piromante(incluir_particulas)
 			var b_p := baston_piro["nodo"] as Node3D
 			b_p.position = offset_der
@@ -325,7 +325,7 @@ static func equipar_armas_en_esqueleto(modelo: Node3D, nombre_clase: String, inc
 			resultado["derecha"] = b_p
 			if baston_piro.has("luz"):
 				resultado["luz_orbe"] = baston_piro["luz"]
-		"Avatar del Núcleo":
+		"Custodio del Núcleo", "Titán Supremo del Núcleo", "Avatar del Núcleo":
 			var gauntlet := _crear_guantelete_avatar()
 			gauntlet.position = offset_der
 			attach_der.add_child(gauntlet)

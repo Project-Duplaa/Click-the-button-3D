@@ -16,6 +16,7 @@ const RAREZAS = {
 
 # 10 Bendiciones Iniciales Disponibles desde la primera partida
 const BENDICIONES_INICIALES: Array[String] = [
+	"celeridad_marcial",
 	"iman_gravitatorio",
 	"lentes_critico",
 	"sangre_coloso",
@@ -29,6 +30,17 @@ const BENDICIONES_INICIALES: Array[String] = [
 ]
 
 const BENDICIONES: Dictionary = {
+	"celeridad_marcial": {
+		"id": "celeridad_marcial",
+		"icono": "⚡",
+		"nombre": "Celeridad Marcial",
+		"descripcion": "+18% Cadencia de ataque (reduce el tiempo de espera entre ataques automáticos).",
+		"rareza": "COMUN",
+		"color": Color(0.95, 0.78, 0.25),
+		"categoria": "ataque",
+		"max_nivel": 5,
+		"es_sinergia": false
+	},
 	"cadena_rayos": {
 		"id": "cadena_rayos",
 		"icono": "⚡",

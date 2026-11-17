@@ -9,8 +9,8 @@ const AudioManager = preload("res://audio_manager.gd")
 @export var rapidez: float = 3.2
 @export var vida_maxima: float = 16.0
 @export var radio_explosion: float = 3.4
-@export var dano_a_jugador: float = 14.0
-@export var dano_a_enemigos: float = 35.0
+@export var dano_a_jugador: float = 38.0
+@export var dano_a_enemigos: float = 55.0
 @export var tiempo_mecha: float = 0.95
 
 var vida: float = 16.0

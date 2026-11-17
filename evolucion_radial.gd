@@ -12,8 +12,31 @@ signal clase_preview_cambiada(nombre_clase: String)
 
 const MALLAS_CLASE_PREVIEW = {
 	"Guerrero": preload("res://personaje/character-male-d.glb"),
+	"Murmillo": preload("res://personaje/character-male-d.glb"),
 	"Cazador": preload("res://personaje/character-female-e.glb"),
+	"Sagittario": preload("res://personaje/character-female-e.glb"),
 	"Mago": preload("res://personaje/character-female-b.glb"),
+	"Arúspice": preload("res://personaje/character-female-b.glb"),
+
+	# Tier 2 - Mejora 1
+	"Secutor Radiante": preload("res://personaje/character-male-d.glb"),
+	"Provocator Sangriento": preload("res://personaje/character-male-d.glb"),
+	"Velites Balístico": preload("res://personaje/character-female-e.glb"),
+	"Dimachaerus Espectral": preload("res://personaje/character-female-e.glb"),
+	"Taumaturgo del Vacío": preload("res://personaje/character-female-b.glb"),
+	"Flamen Volcánico": preload("res://personaje/character-female-b.glb"),
+	"Custodio del Núcleo": preload("res://personaje/character-male-d.glb"),
+
+	# Tier 3 - Mejora 2
+	"Paladín del Sol Invictus": preload("res://personaje/character-male-d.glb"),
+	"Campeón Augusto de Sangre": preload("res://personaje/character-male-d.glb"),
+	"Centurión Balístico Astral": preload("res://personaje/character-female-e.glb"),
+	"Sombra del Anfiteatro": preload("res://personaje/character-female-e.glb"),
+	"Pontífice del Vacío Estelar": preload("res://personaje/character-female-b.glb"),
+	"Señor del Magma Imperial": preload("res://personaje/character-female-b.glb"),
+	"Titán Supremo del Núcleo": preload("res://personaje/character-male-d.glb"),
+
+	# Retrocompatibilidad
 	"Paladín Solar": preload("res://personaje/character-male-d.glb"),
 	"Berserker Sangriento": preload("res://personaje/character-male-d.glb"),
 	"Francotirador Astral": preload("res://personaje/character-female-e.glb"),
@@ -285,22 +308,22 @@ func _actualizar_modelo_3d_en_burbuja(nombre_clase: String, col_clase: Color):
 	_anim_preview_ctrl = AnimadorEntidad.new(_modelo_preview_instancia)
 	if _anim_preview_ctrl != null and _anim_preview_ctrl.esta_listo():
 		match nombre_clase:
-			"Guerrero", "Paladín Solar":
+			"Guerrero", "Murmillo", "Secutor Radiante", "Paladín del Sol Invictus", "Paladín Solar":
 				_anim_preview_ctrl.reproducir_bucle("idle", 0.1, 1.0)
 				_anim_preview_ctrl.reproducir_accion("attack-melee-right", 2, 0.08, 0.9)
-			"Berserker Sangriento":
+			"Provocator Sangriento", "Campeón Augusto de Sangre", "Berserker Sangriento":
 				_anim_preview_ctrl.reproducir_bucle("idle", 0.1, 1.0)
 				_anim_preview_ctrl.reproducir_accion("whirlwind", 2, 0.08, 1.1)
-			"Cazador", "Francotirador Astral":
+			"Cazador", "Sagittario", "Velites Balístico", "Centurión Balístico Astral", "Francotirador Astral":
 				_anim_preview_ctrl.reproducir_bucle("idle", 0.1, 1.0)
 				_anim_preview_ctrl.reproducir_accion("shoot-bow", 2, 0.08, 0.9)
-			"Maestro de Sombras":
+			"Dimachaerus Espectral", "Sombra del Anfiteatro", "Maestro de Sombras":
 				_anim_preview_ctrl.reproducir_bucle("idle", 0.1, 1.0)
 				_anim_preview_ctrl.reproducir_accion("attack-melee-left", 2, 0.08, 1.1)
-			"Mago", "Archimago del Vacío", "Piromante Cataclísmico":
+			"Mago", "Arúspice", "Taumaturgo del Vacío", "Flamen Volcánico", "Pontífice del Vacío Estelar", "Señor del Magma Imperial", "Archimago del Vacío", "Piromante Cataclísmico":
 				_anim_preview_ctrl.reproducir_bucle("idle", 0.1, 1.0)
 				_anim_preview_ctrl.reproducir_accion("cast-magic", 2, 0.08, 0.9)
-			"Avatar del Núcleo":
+			"Custodio del Núcleo", "Titán Supremo del Núcleo", "Avatar del Núcleo":
 				_anim_preview_ctrl.reproducir_bucle("idle", 0.1, 1.0)
 				_anim_preview_ctrl.reproducir_accion("cast-magic", 2, 0.08, 1.1)
 

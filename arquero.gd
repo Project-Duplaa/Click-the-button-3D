@@ -6,7 +6,7 @@ const AudioManager = preload("res://audio_manager.gd")
 const ProyectilEnemigoEscena = preload("res://proyectil_enemigo.tscn")
 
 @export var vida_maxima: float = 18.0
-@export var dano_disparo: float = 5.0
+@export var dano_disparo: float = 11.0
 @export var rapidez_caminar: float = 2.0
 @export var rapidez_huir: float = 2.4
 @export var cadencia_disparo: float = 3.8
