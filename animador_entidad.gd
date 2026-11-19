@@ -3790,6 +3790,10 @@ static func estilizar_entidad_visual(modelo_raiz: Node3D, es_jugador: bool) -> v
 		return
 	modelo_raiz.set_meta(&"estilo_visual_aplicado", true)
 
+	# Preservar modelos oficiales custom y no sobreescribir sus texturas ni shaders de arte
+	if modelo_raiz.has_meta(&"modelo_oficial_custom") or modelo_raiz.name.to_lower().contains("parca") or modelo_raiz.name.to_lower().contains("coloso") or modelo_raiz.name.to_lower().contains("heraldo") or modelo_raiz.name.to_lower().contains("arquero") or modelo_raiz.name.to_lower().contains("maestra") or modelo_raiz.name.to_lower().contains("kamikaze") or modelo_raiz.name.to_lower().contains("minero") or modelo_raiz.name.to_lower().contains("bruto") or modelo_raiz.name.to_lower().contains("centurion") or (modelo_raiz.scene_file_path != null and (modelo_raiz.scene_file_path.contains("parca") or modelo_raiz.scene_file_path.contains("coloso") or modelo_raiz.scene_file_path.contains("heraldo") or modelo_raiz.scene_file_path.contains("enemigo_arquero") or modelo_raiz.scene_file_path.contains("maestra") or modelo_raiz.scene_file_path.contains("kamikaze") or modelo_raiz.scene_file_path.contains("minero") or modelo_raiz.scene_file_path.contains("bruto") or modelo_raiz.scene_file_path.contains("centurion") or modelo_raiz.scene_file_path.contains("player_"))):
+		return
+
 	if _outline_enemigo == null:
 		_outline_enemigo = StandardMaterial3D.new()
 		_outline_enemigo.cull_mode = BaseMaterial3D.CULL_FRONT
@@ -3816,6 +3820,8 @@ static func _procesar_mallas_estilo_recursivo(nodo: Node, es_jugador: bool, outl
 			for s in mi.mesh.get_surface_count():
 				var mat_orig: Material = mi.get_active_material(s)
 				if mat_orig is BaseMaterial3D:
+					if mat_orig.albedo_texture != null:
+						continue
 					var mat_nuevo = _transformar_material_estilo(mat_orig, es_jugador, outline_mat, mi.name)
 					mi.set_surface_override_material(s, mat_nuevo)
 	for hijo in nodo.get_children():

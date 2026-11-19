@@ -16,64 +16,57 @@ func _ready() -> void:
 	xp_otorgada = 22
 	oro_otorgado = 9
 	add_to_group("canalizadores_vacio")
-	_construir_geometria_procedural()
+	_asegurar_componentes()
 	super._ready()
 
-func _construir_geometria_procedural():
+func _asegurar_componentes() -> void:
 	if get_node_or_null("CollisionShape3D") == null:
 		var col = CollisionShape3D.new()
 		col.name = "CollisionShape3D"
 		var cap = CapsuleShape3D.new()
-		cap.radius = 0.45
-		cap.height = 1.8
+		cap.radius = 0.55
+		cap.height = 2.2
 		col.shape = cap
-		col.position = Vector3(0, 0.9, 0)
+		col.position = Vector3(0, 1.1, 0)
 		add_child(col)
 
-	var cuerpo = MeshInstance3D.new()
-	cuerpo.name = "MeshInstance3D"
-	var cyl = CylinderMesh.new()
-	cyl.top_radius = 0.32
-	cyl.bottom_radius = 0.55
-	cyl.height = 1.7
-	cuerpo.mesh = cyl
-	var mat_c = StandardMaterial3D.new()
-	mat_c.albedo_color = Color(0.18, 0.08, 0.35)
-	mat_c.emission_enabled = true
-	mat_c.emission = Color(0.45, 0.12, 0.85)
-	cuerpo.material_override = mat_c
-	cuerpo.position = Vector3(0, 0.85, 0)
-	add_child(cuerpo)
+	var modelo = get_node_or_null("Modelo")
+	if modelo == null:
+		var escena_mod = load("res://assets/modelos/enemigo_canalizador_vacio.glb") as PackedScene
+		if escena_mod:
+			modelo = escena_mod.instantiate()
+			modelo.name = "Modelo"
+			add_child(modelo)
 
-	# Orbe del Vacío clicable sobre la cabeza
-	_orbe_area = Area3D.new()
-	_orbe_area.name = "OrbeVacioClicable"
-	_orbe_area.add_to_group("cristal_jefe")
-	_orbe_area.input_ray_pickable = true
-	_orbe_area.position = Vector3(0, 2.35, 0)
+	if get_node_or_null("OrbeVacioClicable") == null:
+		_orbe_area = Area3D.new()
+		_orbe_area.name = "OrbeVacioClicable"
+		_orbe_area.add_to_group("cristal_jefe")
+		_orbe_area.input_ray_pickable = true
+		_orbe_area.position = Vector3(0, 1.85, 0)
 
-	var col_o = CollisionShape3D.new()
-	var sph_o = SphereShape3D.new()
-	sph_o.radius = 0.65
-	col_o.shape = sph_o
-	_orbe_area.add_child(col_o)
+		var col_o = CollisionShape3D.new()
+		var sph_o = SphereShape3D.new()
+		sph_o.radius = 0.75
+		col_o.shape = sph_o
+		_orbe_area.add_child(col_o)
 
-	_orbe_mesh = MeshInstance3D.new()
-	var sph_m = SphereMesh.new()
-	sph_m.radius = 0.42
-	sph_m.height = 0.84
-	_orbe_mesh.mesh = sph_m
-	var mat_o = StandardMaterial3D.new()
-	mat_o.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat_o.albedo_color = Color(0.35, 0.95, 1.0)
-	_orbe_mesh.material_override = mat_o
-	_orbe_area.add_child(_orbe_mesh)
+		_orbe_area.input_event.connect(func(_cam, ev, _pos, _norm, _idx):
+			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+				_detonar_orbe_vacio()
+		)
+		add_child(_orbe_area)
+	else:
+		_orbe_area = get_node_or_null("OrbeVacioClicable") as Area3D
+		if _orbe_area != null and not _orbe_area.is_connected("input_event", Callable(self, "_on_orbe_input")):
+			_orbe_area.input_event.connect(_on_orbe_input)
 
-	_orbe_area.input_event.connect(func(_cam, ev, _pos, _norm, _idx):
-		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			_detonar_orbe_vacio()
-	)
-	add_child(_orbe_area)
+	if modelo != null:
+		_orbe_mesh = modelo.find_child("NucleoSingularidad", true, false) as MeshInstance3D
+
+func _on_orbe_input(_cam, ev, _pos, _norm, _idx) -> void:
+	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+		_detonar_orbe_vacio()
 
 func _calcular_velocidad_ia(delta: float) -> Vector3:
 	_reloj_pulso += delta * 4.0

@@ -596,13 +596,18 @@ func _spawn_jefe_espejo_sombrio(pos: Vector3) -> void:
 	AudioManager.play("jefe_alerta", 1.1, 4.0)
 	BunkerVisualKit.spawn_shockwave_ring(get_parent(), pos, 1.0, 8.5, Color(0.75, 0.20, 0.95), 0.5)
 
-	var jefe = CharacterBody3D.new()
-	jefe.name = "EspejoSombrio"
-	var scr_esp = load("res://espejo_sombrio.gd")
-	if scr_esp != null:
-		jefe.set_script(scr_esp)
-		if jefe.has_method("configurar_espejo"):
-			jefe.configurar_espejo(self)
+	var escena_espejo = load("res://espejo_sombrio.tscn") as PackedScene
+	var jefe: CharacterBody3D = null
+	if escena_espejo != null:
+		jefe = escena_espejo.instantiate() as CharacterBody3D
+	else:
+		jefe = CharacterBody3D.new()
+		var scr_esp = load("res://espejo_sombrio.gd")
+		if scr_esp != null:
+			jefe.set_script(scr_esp)
+
+	if jefe.has_method("configurar_espejo"):
+		jefe.configurar_espejo(self)
 	get_parent().add_child(jefe)
 	jefe.add_to_group("jefes")
 	jefe.add_to_group("enemigos")
@@ -612,29 +617,6 @@ func _spawn_jefe_espejo_sombrio(pos: Vector3) -> void:
 	jefe.set_meta("tipo_enemigo_id", "espejo_sombrio")
 	jefe.set_meta("vida_maxima", 850.0)
 	jefe.set_meta("vida", 850.0)
-
-	# Instanciar modelo .glb idéntico al jugador con sombreado de obsidiana
-	var escena_modelo = load("res://personaje/player_rookie.glb")
-	if escena_modelo != null:
-		var mod = escena_modelo.instantiate() as Node3D
-		jefe.add_child(mod)
-		mod.scale = Vector3.ONE * 2.6
-		var mat_sombra = StandardMaterial3D.new()
-		mat_sombra.albedo_color = Color(0.06, 0.04, 0.12)
-		mat_sombra.emission_enabled = true
-		mat_sombra.emission = Color(0.68, 0.18, 0.95)
-		mat_sombra.emission_energy_multiplier = 3.2
-		for ch in mod.find_children("*", "MeshInstance3D", true, false):
-			if ch is MeshInstance3D:
-				ch.material_override = mat_sombra
-
-	var col = CollisionShape3D.new()
-	var cap = CapsuleShape3D.new()
-	cap.radius = 0.5
-	cap.height = 2.0
-	col.shape = cap
-	col.position = Vector3(0, 1.0, 0)
-	jefe.add_child(col)
 
 	_anunciar_mutador("💀 ¡EL ESPEJO SOMBRÍO HA SIDO LIBERADO!", "El reflejo maldito del campeón imita tus habilidades", Color(0.85, 0.25, 1.0))
 

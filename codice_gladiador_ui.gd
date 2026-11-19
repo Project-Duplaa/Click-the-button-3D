@@ -179,7 +179,7 @@ const DATOS_BESTIARIO: Dictionary = {
 		"tier": "Jefe Secreto",
 		"icono": "🪞💀",
 		"lore": "Reflejo corrupto liberado al destruir el Monolito del Campeón Caído. Otorga Esquirla Astral.",
-		"escena": "res://personaje/player_rookie.glb",
+		"escena": "res://espejo_sombrio.tscn",
 		"color": Color(0.75, 0.20, 0.95)
 	}
 }
@@ -188,7 +188,8 @@ func _ready() -> void:
 	layer = 24
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false
-	_construir_ui_completa()
+	if tabs_btn_container == null:
+		_construir_ui_completa()
 
 func _process(delta: float) -> void:
 	if not visible:
@@ -211,15 +212,19 @@ func toggle() -> void:
 
 func abrir(tab_inicial: int = 0) -> void:
 	visible = true
-	get_tree().paused = true
+	if tabs_btn_container == null:
+		_construir_ui_completa()
+	if is_inside_tree() and get_tree() != null:
+		get_tree().paused = true
 	AudioManager.play("click", 1.25)
 	_cambiar_tab(tab_inicial)
 
 func cerrar() -> void:
 	visible = false
-	var pantalla_fin = get_tree().get_first_node_in_group("pantalla_fin_partida")
-	if pantalla_fin == null or not pantalla_fin.visible:
-		get_tree().paused = false
+	if is_inside_tree() and get_tree() != null:
+		var pantalla_fin = get_tree().get_first_node_in_group("pantalla_fin_partida")
+		if pantalla_fin == null or not pantalla_fin.visible:
+			get_tree().paused = false
 	AudioManager.play("click", 0.95)
 	codice_cerrado.emit()
 
@@ -605,7 +610,7 @@ func _renderizar_tab_bestiario() -> void:
 		
 	# Columna Central: Visor 3D en Vivo (SubViewport)
 	var panel_3d = PanelContainer.new()
-	panel_3d.custom_minimum_size = Vector2(340, 0)
+	panel_3d.custom_minimum_size = Vector2(340, 500)
 	panel_3d.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var sb_3d = StyleBoxFlat.new()
 	sb_3d.bg_color = Color(0.02, 0.03, 0.05, 1.0)
@@ -617,12 +622,14 @@ func _renderizar_tab_bestiario() -> void:
 	
 	var vp_container = SubViewportContainer.new()
 	vp_container.stretch = true
+	vp_container.custom_minimum_size = Vector2(340, 500)
 	vp_container.set_anchors_preset(Control.PRESET_FULL_RECT)
 	panel_3d.add_child(vp_container)
 	
 	subviewport_3d = SubViewport.new()
 	subviewport_3d.own_world_3d = true
 	subviewport_3d.transparent_bg = false
+	subviewport_3d.size = Vector2i(380, 540)
 	subviewport_3d.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	vp_container.add_child(subviewport_3d)
 	
@@ -691,24 +698,51 @@ func _configurar_escena_3d_bestiario() -> void:
 	if subviewport_3d == null:
 		return
 		
+	# Cámara de estudio profesional: encuadre heroico cercano
 	var cam = Camera3D.new()
-	cam.position = Vector3(0, 1.2, 3.2)
+	cam.position = Vector3(0, 1.25, 2.65)
+	cam.current = true
 	subviewport_3d.add_child(cam)
-	cam.look_at(Vector3(0, 0.9, 0))
+	cam.look_at_from_position(Vector3(0, 1.25, 2.65), Vector3(0, 1.05, 0), Vector3.UP)
 	
-	var luz = DirectionalLight3D.new()
-	luz.position = Vector3(2, 4, 3)
-	luz.light_color = Color(1.0, 0.95, 0.85)
-	luz.light_energy = 1.3
-	subviewport_3d.add_child(luz)
-	luz.look_at(Vector3.ZERO)
+	# Iluminación de Estudio Tri-Punto (Key + Fill + Rim) con Ambiente Suave
+	var env = Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0.06, 0.07, 0.09)
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.55, 0.58, 0.65)
+	env.ambient_light_energy = 1.0
+	env.glow_enabled = true
+	env.glow_intensity = 0.6
+	env.glow_bloom = 0.2
 	
+	var we = WorldEnvironment.new()
+	we.environment = env
+	subviewport_3d.add_child(we)
+	
+	# 1. Luz Principal Frontal (Key Light)
+	var luz_key = DirectionalLight3D.new()
+	luz_key.position = Vector3(1.5, 2.8, 3.2)
+	luz_key.rotation_degrees = Vector3(-35, 25, 0)
+	luz_key.light_color = Color(1.0, 0.98, 0.94)
+	luz_key.light_energy = 1.6
+	subviewport_3d.add_child(luz_key)
+	
+	# 2. Luz de Relleno Lateral (Fill Light)
 	var luz_fill = DirectionalLight3D.new()
-	luz_fill.position = Vector3(-2, 2, -2)
-	luz_fill.light_color = Color(0.4, 0.6, 0.9)
-	luz_fill.light_energy = 0.6
+	luz_fill.position = Vector3(-2.2, 1.6, 2.0)
+	luz_fill.rotation_degrees = Vector3(-20, -45, 0)
+	luz_fill.light_color = Color(0.65, 0.8, 1.0)
+	luz_fill.light_energy = 0.9
 	subviewport_3d.add_child(luz_fill)
-	luz_fill.look_at(Vector3.ZERO)
+	
+	# 3. Luz de Contorno Trasera (Rim Light / Kicker) para separar del fondo
+	var luz_rim = DirectionalLight3D.new()
+	luz_rim.position = Vector3(0, 3.2, -2.8)
+	luz_rim.rotation_degrees = Vector3(30, 180, 0)
+	luz_rim.light_color = Color(1.0, 0.85, 0.6)
+	luz_rim.light_energy = 1.4
+	subviewport_3d.add_child(luz_rim)
 	
 	preview_nodo_padre = Node3D.new()
 	subviewport_3d.add_child(preview_nodo_padre)
@@ -760,10 +794,65 @@ func _actualizar_malla_preview(info: Dictionary) -> void:
 		inst.process_mode = Node.PROCESS_MODE_DISABLED
 		# Retirar scripts activos de IA para evitar errores en SubViewport aislado
 		inst.set_script(null)
+		
+		# Ocultar telegraphs, auras, colisiones y escudos/corazas de combate en el visor del bestiario
+		_limpiar_nodos_combate_bestiario(inst)
+				
 		preview_nodo_padre.add_child(inst)
+		_limpiar_nodos_combate_bestiario(inst)
 		instancia_malla_actual = inst
-		inst.position = Vector3.ZERO
-		inst.scale = Vector3.ONE * 0.95
+		
+		# Ajuste de encuadre según el tamaño del jefe/élite para encuadre áureo en SubViewport
+		var esc_base: float = 0.65
+		var off_y: float = 0.0
+		var nom_low = info.get("nombre", "").to_lower()
+		if "parca" in nom_low:
+			esc_base = 0.65
+			off_y = 0.15
+		elif "coloso" in nom_low:
+			esc_base = 0.52
+			off_y = 0.05
+		elif "centurión" in nom_low or "centurion" in nom_low:
+			esc_base = 0.72
+			off_y = 0.15
+		elif "bruto" in nom_low:
+			esc_base = 0.65
+			off_y = 0.20
+		elif "maestra" in nom_low:
+			esc_base = 0.70
+			off_y = 0.22
+		elif "heraldo" in nom_low:
+			esc_base = 0.72
+			off_y = 0.08
+		elif "minero" in nom_low:
+			esc_base = 0.85
+			off_y = 0.28
+		elif "arquero" in nom_low:
+			esc_base = 0.78
+			off_y = 0.20
+		elif "berserker" in nom_low:
+			esc_base = 0.60
+			off_y = 0.0
+		elif "guardia" in nom_low:
+			esc_base = 0.64
+			off_y = 0.0
+		elif "espectro" in nom_low:
+			esc_base = 0.70
+			off_y = 0.0
+		elif "parásito" in nom_low or "parasito" in nom_low:
+			esc_base = 1.05
+			off_y = 0.75
+		elif "gólem" in nom_low or "golem" in nom_low:
+			esc_base = 0.85
+			off_y = 0.25
+		elif "canalizador" in nom_low:
+			esc_base = 0.65
+			off_y = 0.0
+		elif "espejo" in nom_low:
+			esc_base = 0.60
+			off_y = 0.10
+		inst.scale = Vector3.ONE * esc_base
+		inst.position = Vector3(0, off_y, 0)
 	else:
 		# Malla procedural de respaldo si la escena específica no existe
 		var mesh_instance = MeshInstance3D.new()
@@ -778,6 +867,13 @@ func _actualizar_malla_preview(info: Dictionary) -> void:
 		preview_nodo_padre.add_child(mesh_instance)
 		instancia_malla_actual = mesh_instance
 		mesh_instance.position = Vector3(0, 0.7, 0)
+
+func _limpiar_nodos_combate_bestiario(n: Node) -> void:
+	for hijo in n.get_children():
+		var h_nom = hijo.name.to_lower()
+		if "telegraph" in h_nom or "marca" in h_nom or "aura" in h_nom or "escudo" in h_nom or "coraza" in h_nom or "burbuja" in h_nom or "collision" in h_nom:
+			hijo.visible = false
+		_limpiar_nodos_combate_bestiario(hijo)
 
 # ==============================================================================
 # TAB 4: 🏆 HAZAÑAS (32 DESAFÍOS FILTRABLES CON BARRA GLOBAL)

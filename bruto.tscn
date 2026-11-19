@@ -1,7 +1,7 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://c6brutoaplastador"]
 
 [ext_resource type="Script" path="res://bruto.gd" id="1_bruto"]
-[ext_resource type="PackedScene" uid="uid://xa3rc81rfyak" path="res://assets/modelos/mecha_infectado.glb" id="2_modelo"]
+[ext_resource type="PackedScene" uid="uid://d1ibjwme0rjn5" path="res://assets/modelos/enemigo_bruto_aplastador.glb" id="2_modelo"]
 
 [sub_resource type="CapsuleShape3D" id="CapsulaBruto"]
 radius = 0.8
@@ -15,4 +15,4 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
 shape = SubResource("CapsulaBruto")
 
 [node name="Modelo" parent="." instance=ExtResource("2_modelo")]
-transform = Transform3D(1.15, 0, 0, 0, 1.15, 0, 0, 0, 1.15, 0, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
