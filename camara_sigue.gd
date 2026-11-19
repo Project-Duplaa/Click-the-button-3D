@@ -1,10 +1,11 @@
 extends Camera3D
 
+const ArenaColiseo = preload("res://arena_coliseo.gd")
+
 @export var objetivo: Node3D
 @export var distancia = Vector3(0, 10.5, 8.2)
 @export var suavizado = 4.0
-@export var limite_min = Vector2(-22.5, -22.5)
-@export var limite_max = Vector2(22.5, 22.5)
+@export var margen_camara: float = 5.5
 
 var _shake_intensidad: float = 0.0
 
@@ -14,7 +15,8 @@ func _ready():
 	if objetivo == null:
 		objetivo = get_tree().get_first_node_in_group("jugador")
 	if objetivo != null:
-		look_at_from_position(objetivo.global_position + distancia, objetivo.global_position)
+		var foco_init: Vector3 = ArenaColiseo.clamping_en_arena(objetivo.global_position, margen_camara)
+		look_at_from_position(foco_init + distancia, foco_init)
 
 func sacudir(intensidad: float = 0.3):
 	_shake_intensidad = maxf(_shake_intensidad, intensidad)
@@ -24,10 +26,8 @@ func _physics_process(delta):
 		objetivo = get_tree().get_first_node_in_group("jugador")
 		if objetivo == null:
 			return
-	var foco = objetivo.global_position
-	foco.x = clamp(foco.x, limite_min.x, limite_max.x)
-	foco.z = clamp(foco.z, limite_min.y, limite_max.y)
-	var destino = foco + distancia
+	var foco: Vector3 = ArenaColiseo.clamping_en_arena(objetivo.global_position, margen_camara)
+	var destino: Vector3 = foco + distancia
 	global_position = global_position.lerp(destino, suavizado * delta)
 	
 	if _shake_intensidad > 0.0:

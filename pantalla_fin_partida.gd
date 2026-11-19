@@ -30,6 +30,7 @@ const ICON_VICTORY = preload("res://ui_assets/icon_victory_hades.svg")
 
 var arbol_instancia: CanvasLayer = null
 var btn_codice_meta: Button = null
+var btn_run_pura_fin: Button = null
 var _recursos_transferidos: bool = false
 
 func _ready():
@@ -44,6 +45,7 @@ func _ready():
 		btn_arbol_meta.pressed.connect(_on_btn_arbol_meta_pressed)
 
 	_crear_boton_codice_meta()
+	_crear_boton_run_pura()
 
 func _crear_boton_codice_meta() -> void:
 	var vbox = find_child("VBox", true, false)
@@ -83,6 +85,55 @@ func _crear_boton_codice_meta() -> void:
 	vbox.add_child(btn_codice_meta)
 	if btn_arbol_meta != null:
 		vbox.move_child(btn_codice_meta, btn_arbol_meta.get_index())
+
+func _crear_boton_run_pura() -> void:
+	var vbox = find_child("VBox", true, false)
+	if vbox == null:
+		return
+
+	btn_run_pura_fin = Button.new()
+	btn_run_pura_fin.name = "BtnRunPuraFin"
+	btn_run_pura_fin.custom_minimum_size = Vector2(0, 36)
+	btn_run_pura_fin.focus_mode = Control.FOCUS_NONE
+	btn_run_pura_fin.add_theme_font_size_override("font_size", 13)
+
+	var sb_normal := StyleBoxFlat.new()
+	sb_normal.bg_color = Color(0.10, 0.20, 0.30, 0.95)
+	sb_normal.set_border_width_all(1)
+	sb_normal.border_color = Color(0.35, 0.82, 1.0, 0.90)
+	sb_normal.set_corner_radius_all(8)
+
+	var sb_hover := sb_normal.duplicate() as StyleBoxFlat
+	sb_hover.bg_color = Color(0.16, 0.30, 0.44, 1.0)
+	sb_hover.border_color = Color(0.65, 0.95, 1.0, 1.0)
+
+	btn_run_pura_fin.add_theme_stylebox_override("normal", sb_normal)
+	btn_run_pura_fin.add_theme_stylebox_override("hover", sb_hover)
+	btn_run_pura_fin.add_theme_stylebox_override("pressed", sb_hover)
+	btn_run_pura_fin.pressed.connect(_on_btn_run_pura_fin_pressed)
+
+	vbox.add_child(btn_run_pura_fin)
+	var hbox_bot = find_child("HBoxBotones", true, false)
+	if hbox_bot != null:
+		vbox.move_child(btn_run_pura_fin, hbox_bot.get_index())
+	_actualizar_texto_run_pura()
+
+func _actualizar_texto_run_pura() -> void:
+	if btn_run_pura_fin == null:
+		return
+	MetaprogresoManager.asegurar_inicializado()
+	if MetaprogresoManager.modo_run_pura:
+		btn_run_pura_fin.text = "🛡️ MODO RUN PURA: ACTIVO (0% Meta)"
+		btn_run_pura_fin.add_theme_color_override("font_color", Color(0.45, 0.95, 1.0))
+	else:
+		btn_run_pura_fin.text = "🛡️ Modo Run Pura: Desactivado (Con Árbol)"
+		btn_run_pura_fin.add_theme_color_override("font_color", Color(0.86, 0.90, 0.96))
+
+func _on_btn_run_pura_fin_pressed() -> void:
+	AudioManager.play("click", 1.15)
+	MetaprogresoManager.asegurar_inicializado()
+	MetaprogresoManager.establecer_modo_run_pura(not MetaprogresoManager.modo_run_pura)
+	_actualizar_texto_run_pura()
 
 func _on_btn_codice_meta_pressed() -> void:
 	AudioManager.play("click", 1.2)
@@ -210,6 +261,7 @@ func mostrar(es_victoria: bool, motivo: String = ""):
 			MetaprogresoManager.actualizar_record_diario(FortunaManager.fecha_seed_diaria, bajas_cnt, tiempo_s)
 
 	_actualizar_labels_banco()
+	_actualizar_texto_run_pura()
 
 	if panel_fondo != null:
 		panel_fondo.scale = Vector2(0.85, 0.85)
@@ -249,6 +301,7 @@ func _on_btn_arbol_meta_pressed():
 
 func _on_arbol_cerrado():
 	_actualizar_labels_banco()
+	_actualizar_texto_run_pura()
 
 func _on_btn_reintentar_pressed():
 	AudioManager.play("click", 1.2)

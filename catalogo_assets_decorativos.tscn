@@ -1,0 +1,182 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/modelos/wall_vent_fan.glb" id="21_wall_vent"]
+[ext_resource type="PackedScene" path="res://assets/modelos/wall_biohazard_sign.glb" id="22_wall_sign"]
+[ext_resource type="PackedScene" path="res://assets/modelos/wall_pipe_manifold.glb" id="23_wall_pipes"]
+[ext_resource type="PackedScene" path="res://assets/modelos/wall_security_camera.glb" id="24_wall_cam"]
+[ext_resource type="PackedScene" path="res://assets/modelos/wall_control_console.glb" id="25_wall_console"]
+[ext_resource type="PackedScene" path="res://assets/modelos/wall_emergency_beacon.glb" id="26_wall_beacon"]
+[ext_resource type="PackedScene" path="res://assets/modelos/wall_catwalk_banner.glb" id="27_wall_banner"]
+[ext_resource type="PackedScene" path="res://assets/modelos/wall_breaker_box.glb" id="28_wall_breaker"]
+[ext_resource type="PackedScene" path="res://assets/modelos/prop_concrete_bunker_block.glb" id="29_prop_jersey"]
+[ext_resource type="PackedScene" path="res://assets/modelos/prop_floodlight_tower.glb" id="30_prop_flood"]
+[ext_resource type="PackedScene" path="res://assets/modelos/prop_cryo_pod.glb" id="31_prop_cryo"]
+[ext_resource type="PackedScene" path="res://assets/modelos/prop_command_terminal.glb" id="32_prop_cmd"]
+[ext_resource type="PackedScene" path="res://assets/modelos/prop_ammo_pallet.glb" id="33_prop_pallet"]
+[ext_resource type="PackedScene" path="res://assets/modelos/prop_vent_floor_grate.glb" id="34_prop_grate"]
+[ext_resource type="PackedScene" path="res://assets/modelos/prop_biohazard_decal_pad.glb" id="35_prop_decal"]
+[ext_resource type="PackedScene" path="res://assets/modelos/prop_debris_rubble.glb" id="36_prop_rubble"]
+
+[sub_resource type="StandardMaterial3D" id="MatFloor"]
+albedo_color = Color(0.16, 0.18, 0.21, 1)
+roughness = 0.8
+
+[sub_resource type="StandardMaterial3D" id="MatWall"]
+albedo_color = Color(0.12, 0.14, 0.17, 1)
+roughness = 0.75
+
+[sub_resource type="PlaneMesh" id="MeshFloor"]
+material = SubResource("MatFloor")
+size = Vector2(44, 22)
+
+[sub_resource type="BoxMesh" id="MeshWall"]
+material = SubResource("MatWall")
+size = Vector3(38, 7.5, 0.6)
+
+[node name="CatalogoAssetsDecorativos" type="Node3D"]
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, -0.353553, 0.353553, 0, 0.707107, 0.707107, -0.5, -0.612372, 0.612372, 0, 12, 6)
+light_energy = 1.25
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.906308, 0.422618, 0, -0.422618, 0.906308, 0, 7.5, 16.5)
+
+[node name="SueloMuestra" type="MeshInstance3D" parent="."]
+mesh = SubResource("MeshFloor")
+
+[node name="MuroMuestra" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.75, -4.5)
+mesh = SubResource("MeshWall")
+
+[node name="AssetsPared" type="Node3D" parent="."]
+
+[node name="Pared_1_21_wall_vent" parent="AssetsPared" instance=ExtResource("21_wall_vent")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15.75, 3.20, -4.18)
+
+[node name="Lbl_Pared_1_21_wall_vent" type="Label3D" parent="AssetsPared"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15.75, 6.6, -4.0)
+text = "Extractor Ventilación (Pared)"
+font_size = 42
+
+[node name="Pared_2_22_wall_sign" parent="AssetsPared" instance=ExtResource("22_wall_sign")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.25, 3.20, -4.18)
+
+[node name="Lbl_Pared_2_22_wall_sign" type="Label3D" parent="AssetsPared"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.25, 6.6, -4.0)
+text = "Cartel Biohazard (Pared)"
+font_size = 42
+
+[node name="Pared_3_23_wall_pipes" parent="AssetsPared" instance=ExtResource("23_wall_pipes")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.75, 3.20, -4.18)
+
+[node name="Lbl_Pared_3_23_wall_pipes" type="Label3D" parent="AssetsPared"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.75, 6.6, -4.0)
+text = "Colector Tuberías (Pared)"
+font_size = 42
+
+[node name="Pared_4_24_wall_cam" parent="AssetsPared" instance=ExtResource("24_wall_cam")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.25, 3.20, -4.18)
+
+[node name="Lbl_Pared_4_24_wall_cam" type="Label3D" parent="AssetsPared"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.25, 6.6, -4.0)
+text = "Cámara Vigilancia (Pared)"
+font_size = 42
+
+[node name="Pared_5_25_wall_console" parent="AssetsPared" instance=ExtResource("25_wall_console")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.25, 3.20, -4.18)
+
+[node name="Lbl_Pared_5_25_wall_console" type="Label3D" parent="AssetsPared"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.25, 6.6, -4.0)
+text = "Consola Mural (Pared)"
+font_size = 42
+
+[node name="Pared_6_26_wall_beacon" parent="AssetsPared" instance=ExtResource("26_wall_beacon")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.75, 3.20, -4.18)
+
+[node name="Lbl_Pared_6_26_wall_beacon" type="Label3D" parent="AssetsPared"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.75, 6.6, -4.0)
+text = "Baliza Emergencia (Pared)"
+font_size = 42
+
+[node name="Pared_7_27_wall_banner" parent="AssetsPared" instance=ExtResource("27_wall_banner")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.25, 3.80, -4.18)
+
+[node name="Lbl_Pared_7_27_wall_banner" type="Label3D" parent="AssetsPared"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.25, 6.6, -4.0)
+text = "Estandarte Coliseo (Pared)"
+font_size = 42
+
+[node name="Pared_8_28_wall_breaker" parent="AssetsPared" instance=ExtResource("28_wall_breaker")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15.75, 3.20, -4.18)
+
+[node name="Lbl_Pared_8_28_wall_breaker" type="Label3D" parent="AssetsPared"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15.75, 6.6, -4.0)
+text = "Caja Disyuntores (Pared)"
+font_size = 42
+
+[node name="AssetsMapa" type="Node3D" parent="."]
+
+[node name="Mapa_1_29_prop_jersey" parent="AssetsMapa" instance=ExtResource("29_prop_jersey")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15.75, 0.0, 3.5)
+
+[node name="Lbl_Mapa_1_29_prop_jersey" type="Label3D" parent="AssetsMapa"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15.75, 4.3, 3.5)
+text = "Barrera Jersey Hormigón"
+font_size = 42
+
+[node name="Mapa_2_30_prop_flood" parent="AssetsMapa" instance=ExtResource("30_prop_flood")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.25, 0.0, 3.5)
+
+[node name="Lbl_Mapa_2_30_prop_flood" type="Label3D" parent="AssetsMapa"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.25, 4.3, 3.5)
+text = "Torre Reflectores"
+font_size = 42
+
+[node name="Mapa_3_31_prop_cryo" parent="AssetsMapa" instance=ExtResource("31_prop_cryo")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.75, 0.0, 3.5)
+
+[node name="Lbl_Mapa_3_31_prop_cryo" type="Label3D" parent="AssetsMapa"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.75, 4.3, 3.5)
+text = "Cápsula Contención Bio"
+font_size = 42
+
+[node name="Mapa_4_32_prop_cmd" parent="AssetsMapa" instance=ExtResource("32_prop_cmd")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.25, 0.0, 3.5)
+
+[node name="Lbl_Mapa_4_32_prop_cmd" type="Label3D" parent="AssetsMapa"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.25, 4.3, 3.5)
+text = "Terminal Táctica Doble"
+font_size = 42
+
+[node name="Mapa_5_33_prop_pallet" parent="AssetsMapa" instance=ExtResource("33_prop_pallet")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.25, 0.0, 3.5)
+
+[node name="Lbl_Mapa_5_33_prop_pallet" type="Label3D" parent="AssetsMapa"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.25, 4.3, 3.5)
+text = "Palé Suministros"
+font_size = 42
+
+[node name="Mapa_6_34_prop_grate" parent="AssetsMapa" instance=ExtResource("34_prop_grate")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.75, 0.0, 3.5)
+
+[node name="Lbl_Mapa_6_34_prop_grate" type="Label3D" parent="AssetsMapa"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.75, 4.3, 3.5)
+text = "Rejilla Drenaje Suelo"
+font_size = 42
+
+[node name="Mapa_7_35_prop_decal" parent="AssetsMapa" instance=ExtResource("35_prop_decal")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.25, 0.0, 3.5)
+
+[node name="Lbl_Mapa_7_35_prop_decal" type="Label3D" parent="AssetsMapa"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.25, 4.3, 3.5)
+text = "Zona Cuarentena Suelo"
+font_size = 42
+
+[node name="Mapa_8_36_prop_rubble" parent="AssetsMapa" instance=ExtResource("36_prop_rubble")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15.75, 0.0, 3.5)
+
+[node name="Lbl_Mapa_8_36_prop_rubble" type="Label3D" parent="AssetsMapa"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15.75, 4.3, 3.5)
+text = "Escombros y Viga"
+font_size = 42

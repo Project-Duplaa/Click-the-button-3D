@@ -36,6 +36,9 @@ var label_esquirlas_top: Label = null
 var panel_prestigio_top: PanelContainer = null
 var label_prestigio_top: Label = null
 var btn_renacimiento_astral: Button = null
+var btn_run_pura: Button = null
+var btn_reset_meta: Button = null
+var _confirmar_reset_hasta_ms: int = 0
 
 var jugador: CharacterBody3D = null
 var diccionario_nodos: Dictionary = {}
@@ -123,6 +126,94 @@ func _construir_elementos_ui_adicionales():
 	hbox_top.add_child(btn_renacimiento_astral)
 	hbox_top.move_child(btn_renacimiento_astral, 4)
 
+	# 4. Botón Toggle Modo Run Pura (0% Metaprogreso)
+	btn_run_pura = Button.new()
+	btn_run_pura.name = "BtnRunPura"
+	btn_run_pura.text = "🛡️ Run Pura: OFF"
+	var sb_pura = StyleBoxFlat.new()
+	sb_pura.bg_color = Color(0.10, 0.22, 0.30, 0.95)
+	sb_pura.border_color = Color(0.35, 0.85, 1.0, 0.90)
+	sb_pura.set_border_width_all(1)
+	sb_pura.set_corner_radius_all(6)
+	btn_run_pura.add_theme_stylebox_override("normal", sb_pura)
+	btn_run_pura.add_theme_color_override("font_color", Color(0.92, 0.96, 1.0))
+	btn_run_pura.pressed.connect(_on_btn_run_pura_presionado)
+	hbox_top.add_child(btn_run_pura)
+	hbox_top.move_child(btn_run_pura, 5)
+
+	# 5. Botón Resetear Progreso Meta (con confirmación en 2 clics)
+	btn_reset_meta = Button.new()
+	btn_reset_meta.name = "BtnResetMeta"
+	btn_reset_meta.text = "🗑️ Reset Meta"
+	var sb_reset = StyleBoxFlat.new()
+	sb_reset.bg_color = Color(0.30, 0.10, 0.12, 0.95)
+	sb_reset.border_color = Color(0.95, 0.35, 0.35, 0.90)
+	sb_reset.set_border_width_all(1)
+	sb_reset.set_corner_radius_all(6)
+	btn_reset_meta.add_theme_stylebox_override("normal", sb_reset)
+	btn_reset_meta.add_theme_color_override("font_color", Color(1.0, 0.85, 0.85))
+	btn_reset_meta.pressed.connect(_on_btn_reset_meta_presionado)
+	hbox_top.add_child(btn_reset_meta)
+	hbox_top.move_child(btn_reset_meta, 6)
+
+func _en_combate_activo() -> bool:
+	if not is_inside_tree() or get_tree() == null:
+		return false
+	var pantalla_fin = get_tree().get_first_node_in_group("pantalla_fin_partida")
+	if pantalla_fin != null and pantalla_fin.visible:
+		return false
+	var partida = get_tree().get_first_node_in_group("partida")
+	if partida != null and "partida_iniciada" in partida and bool(partida.partida_iniciada):
+		if "estado" in partida and int(partida.estado) == 0:
+			return true
+	var spawner = get_tree().get_first_node_in_group("oleadas_spawner")
+	if spawner != null and "partida_iniciada" in spawner and bool(spawner.partida_iniciada):
+		return true
+	return false
+
+func _on_btn_run_pura_presionado():
+	if _en_combate_activo():
+		return
+	MetaprogresoManager.asegurar_inicializado()
+	MetaprogresoManager.establecer_modo_run_pura(not MetaprogresoManager.modo_run_pura)
+	AudioManager.play("click", 1.15)
+	if jugador != null and is_instance_valid(jugador):
+		MetaprogresoManager.aplicar_a_personaje(jugador)
+		jugador.vida = jugador.vida_maxima
+	_actualizar_barra_economia()
+	if nodo_actual_inspeccionado != null:
+		var est = ArbolInterconectadoDatos.obtener_estado_nodo(nodo_actual_inspeccionado, diccionario_nodos)
+		_actualizar_panel_detalle(nodo_actual_inspeccionado, est)
+
+func _on_btn_reset_meta_presionado():
+	if _en_combate_activo():
+		return
+	var ahora_ms: int = Time.get_ticks_msec()
+	if ahora_ms > _confirmar_reset_hasta_ms:
+		_confirmar_reset_hasta_ms = ahora_ms + 4000
+		if btn_reset_meta != null:
+			btn_reset_meta.text = "⚠️ ¿Confirmar Reset?"
+		AudioManager.play("click", 0.9)
+		return
+
+	_confirmar_reset_hasta_ms = 0
+	MetaprogresoManager.resetear_todo_para_pruebas()
+	diccionario_nodos = ArbolInterconectadoDatos.generar_arbol()
+	lienzo.configurar_nodos(diccionario_nodos)
+	_sincronizar_niveles_desde_jugador()
+	if jugador != null and is_instance_valid(jugador):
+		MetaprogresoManager.aplicar_a_personaje(jugador)
+		jugador.vida = jugador.vida_maxima
+	_actualizar_barra_economia()
+	var nodo_sel = diccionario_nodos.get("nodo_origen", null)
+	if nodo_actual_inspeccionado != null and diccionario_nodos.has(nodo_actual_inspeccionado.id):
+		nodo_sel = diccionario_nodos[nodo_actual_inspeccionado.id]
+	if nodo_sel != null:
+		nodo_actual_inspeccionado = nodo_sel
+		var est = ArbolInterconectadoDatos.obtener_estado_nodo(nodo_sel, diccionario_nodos)
+		_actualizar_panel_detalle(nodo_sel, est)
+	AudioManager.play("escudo_bloqueo", 1.0)
+
 func _vincular_jugador():
 	if jugador == null:
 		jugador = get_tree().get_first_node_in_group("jugador") as CharacterBody3D
@@ -137,9 +228,6 @@ func _vincular_jugador():
 func _sincronizar_niveles_desde_jugador():
 	MetaprogresoManager.asegurar_inicializado()
 	var compradas: Dictionary = MetaprogresoManager.mejoras_arbol
-	if jugador != null and "mejoras_arbol" in jugador and jugador.mejoras_arbol.size() > 0:
-		for k in jugador.mejoras_arbol.keys():
-			compradas[k] = jugador.mejoras_arbol[k]
 			
 	for id in diccionario_nodos.keys():
 		var n: SkillNodeData = diccionario_nodos[id]
@@ -196,29 +284,41 @@ func _on_economia_actualizada(_oro: int, _clics_disp: int, _clics_tot: int):
 
 func _actualizar_barra_economia():
 	MetaprogresoManager.asegurar_inicializado()
+	var en_combate: bool = _en_combate_activo()
 	var oro_cnt = MetaprogresoManager.oro_banco
 	var clk_disp = MetaprogresoManager.clics_banco
-	if jugador != null and is_instance_valid(jugador) and not jugador._muerto_definitivo:
-		oro_cnt += jugador.oro
-		clk_disp += jugador.clics_disponibles
-		
-	label_oro_top.text = "🧪 %s Oro" % MetaprogresoManager.formatear_numero(float(oro_cnt))
-	label_clics_top.text = "⚡ %s Clics" % MetaprogresoManager.formatear_numero(float(clk_disp))
-	
+
+	label_oro_top.text = "🧪 %s Oro (Banco)" % MetaprogresoManager.formatear_numero(float(oro_cnt))
+	label_clics_top.text = "⚡ %s Clics (Banco)" % MetaprogresoManager.formatear_numero(float(clk_disp))
+
 	if label_esquirlas_top != null:
 		label_esquirlas_top.text = "✨ %s Esquirlas" % MetaprogresoManager.formatear_numero(float(MetaprogresoManager.esquirlas_astrales))
-		
+
 	if label_prestigio_top != null:
-		var bonus_pct = int(round(float(MetaprogresoManager.nivel_prestigio) * 35.0))
+		var bonus_pct = 0 if MetaprogresoManager.modo_run_pura else int(round(float(MetaprogresoManager.nivel_prestigio) * 15.0))
 		label_prestigio_top.text = "🌟 Prestigio Nv. %d (+%d%%)" % [MetaprogresoManager.nivel_prestigio, bonus_pct]
-		
+
 	if btn_renacimiento_astral != null:
-		var puede = MetaprogresoManager.puede_hacer_prestigio()
+		var puede = MetaprogresoManager.puede_hacer_prestigio() and not en_combate
 		var esquirlas_est = MetaprogresoManager.calcular_esquirlas_prestigio()
-		btn_renacimiento_astral.text = "✨ RENACIMIENTO (+%d ✨)" % esquirlas_est if puede else "🔒 Renacimiento (Bloq)"
+		if en_combate:
+			btn_renacimiento_astral.text = "🔒 Renacimiento (En Combate)"
+		else:
+			btn_renacimiento_astral.text = "✨ RENACIMIENTO (+%d ✨)" % esquirlas_est if puede else "🔒 Renacimiento (Bloq)"
 		btn_renacimiento_astral.disabled = not puede
 
+	if btn_run_pura != null:
+		btn_run_pura.text = "🛡️ Run Pura: ON (0% Meta)" if MetaprogresoManager.modo_run_pura else "🛡️ Run Pura: OFF"
+		btn_run_pura.disabled = en_combate
+
+	if btn_reset_meta != null:
+		if Time.get_ticks_msec() > _confirmar_reset_hasta_ms:
+			btn_reset_meta.text = "🗑️ Reset Meta"
+		btn_reset_meta.disabled = en_combate
+
 func _on_renacimiento_astral_presionado():
+	if _en_combate_activo():
+		return
 	if not MetaprogresoManager.puede_hacer_prestigio():
 		return
 	var ganadas = MetaprogresoManager.ejecutar_renacimiento_astral()
@@ -303,83 +403,73 @@ func _actualizar_panel_detalle(nodo: SkillNodeData, estado: String):
 		btn_comprar_nodo.text = "Completado"
 		btn_comprar_nodo.disabled = true
 	else:
+		var en_combate: bool = _en_combate_activo()
 		var costos = nodo.calcular_costo()
 		var txt_costo = []
 		MetaprogresoManager.asegurar_inicializado()
 		var oro_actual = MetaprogresoManager.oro_banco
 		var clics_actuales = MetaprogresoManager.clics_banco
-		if jugador != null and is_instance_valid(jugador) and not jugador._muerto_definitivo:
-			oro_actual += jugador.oro
-			clics_actuales += jugador.clics_disponibles
-		
+
 		var c_oro = int(costos.get("oro", 0))
 		var c_clk = int(costos.get("clics", 0))
 		var alcanza_oro = true
 		var alcanza_clic = true
-		
+
 		if c_oro > 0:
 			alcanza_oro = oro_actual >= c_oro
 			txt_costo.append("%s Oro" % MetaprogresoManager.formatear_numero(float(c_oro)))
 		if c_clk > 0:
 			alcanza_clic = clics_actuales >= c_clk
 			txt_costo.append("%s Clics" % MetaprogresoManager.formatear_numero(float(c_clk)))
-			
-		lbl_nodo_costo.text = "Costo: " + (" + ".join(txt_costo) if txt_costo.size() > 0 else "Gratis")
-		
+
+		lbl_nodo_costo.text = "Costo (Banco): " + (" + ".join(txt_costo) if txt_costo.size() > 0 else "Gratis")
+
 		var puede_pagar = alcanza_oro and alcanza_clic
-		if estado == "bloqueado":
+		if en_combate:
+			lbl_nodo_estado.text = "🔒 Combate en curso: mejoras permanentes solo antes de iniciar o al terminar la run."
+			lbl_nodo_estado.add_theme_color_override("font_color", Color(1.0, 0.70, 0.28))
+			btn_comprar_nodo.text = "🔒 Bloqueado en Combate"
+			btn_comprar_nodo.disabled = true
+		elif estado == "bloqueado":
 			btn_comprar_nodo.text = "🔒 Módulo Bloqueado"
 			btn_comprar_nodo.disabled = true
 		elif not puede_pagar:
-			btn_comprar_nodo.text = "Recursos insuficientes"
+			btn_comprar_nodo.text = "Recursos insuficientes en Banco"
 			btn_comprar_nodo.disabled = true
 		else:
 			btn_comprar_nodo.text = "Inyectar Sobrecarga (Nv. %d)" % (nodo.nivel_actual + 1)
 			btn_comprar_nodo.disabled = false
 
 func _on_btn_comprar_presionado():
-	if nodo_actual_inspeccionado == null:
+	if _en_combate_activo() or nodo_actual_inspeccionado == null:
 		return
-		
+
 	var nodo = nodo_actual_inspeccionado
 	var estado = ArbolInterconectadoDatos.obtener_estado_nodo(nodo, diccionario_nodos)
 	if estado == "bloqueado" or (nodo.esta_maxeado() and nodo.nivel_max < 999):
 		return
-		
+
 	var costos = nodo.calcular_costo()
 	MetaprogresoManager.asegurar_inicializado()
-	
+
 	var oro_disponible = MetaprogresoManager.oro_banco
 	var clics_disponibles = MetaprogresoManager.clics_banco
-	if jugador != null and is_instance_valid(jugador) and not jugador._muerto_definitivo:
-		oro_disponible += jugador.oro
-		clics_disponibles += jugador.clics_disponibles
-		
+
 	var c_oro = int(costos.get("oro", 0))
 	var c_clk = int(costos.get("clics", 0))
 	if oro_disponible < c_oro or clics_disponibles < c_clk:
 		return
-		
-	var oro_a_pagar = c_oro
-	if jugador != null and is_instance_valid(jugador) and not jugador._muerto_definitivo:
-		var pago_pj_oro = min(jugador.oro, oro_a_pagar)
-		jugador.oro -= pago_pj_oro
-		oro_a_pagar -= pago_pj_oro
-	MetaprogresoManager.oro_banco -= oro_a_pagar
-	
-	var clics_a_pagar = c_clk
-	if jugador != null and is_instance_valid(jugador) and not jugador._muerto_definitivo:
-		var pago_pj_clk = min(jugador.clics_disponibles, clics_a_pagar)
-		jugador.clics_disponibles -= pago_pj_clk
-		clics_a_pagar -= pago_pj_clk
-	MetaprogresoManager.clics_banco -= clics_a_pagar
-	
+
+	MetaprogresoManager.oro_banco -= c_oro
+	MetaprogresoManager.clics_banco -= c_clk
+
 	nodo.nivel_actual += 1
 	MetaprogresoManager.mejoras_arbol[nodo.id] = nodo.nivel_actual
 	MetaprogresoManager.guardar()
-	
+
 	if jugador != null and is_instance_valid(jugador):
 		MetaprogresoManager.aplicar_a_personaje(jugador)
+		jugador.vida = minf(jugador.vida, jugador.vida_maxima)
 		
 	if nodo.es_keystone:
 		AudioManager.play("victoria", 1.2, 2.0)

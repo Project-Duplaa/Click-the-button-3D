@@ -1,8 +1,10 @@
 extends CharacterBody3D
 
+const ArenaColiseo = preload("res://arena_coliseo.gd")
+
 enum Estado { PATRULLAR, ESPERAR, PERSEGUIR, ATACAR, BUSCAR }
 
-@export var rapidez = 2.2
+@export var rapidez = 2.55
 @export var espera = 1.0
 @export var rango_vision = 18.0
 @export var rango_ataque = 1.25
@@ -10,8 +12,8 @@ enum Estado { PATRULLAR, ESPERAR, PERSEGUIR, ATACAR, BUSCAR }
 @export var tiempo_busqueda = 3.0
 @export var ruta: Array[Vector3] = [Vector3.ZERO, Vector3(0, 0, -6)]
 
-@export var vida_maxima: float = 24.0
-@export var dano_ataque: float = 16.0
+@export var vida_maxima: float = 46.0
+@export var dano_ataque: float = 18.0
 @export var cadencia_ataque: float = 1.1
 
 var estado = Estado.PATRULLAR
@@ -21,7 +23,7 @@ var reloj = 0.0
 var jugador = null
 var ultimo_visto = Vector3.ZERO
 var busca = 0.0
-var vida: float = 24.0
+var vida: float = 46.0
 var _reloj_ataque: float = 0.0
 var _escala_base: Vector3 = Vector3.ONE
 var _muerto: bool = false
@@ -33,6 +35,7 @@ var knockback_vel: Vector3 = Vector3.ZERO
 var resistencia_knockback: float = 0.35
 var _stun_timer: float = 0.0
 var marca_conductiva_timer: float = 0.0
+var _nav_estado: Dictionary = {}
 
 @onready var anim = $Modelo/AnimationPlayer if has_node("Modelo/AnimationPlayer") else null
 @onready var vision = $Vision if has_node("Vision") else null
@@ -40,6 +43,9 @@ var marca_conductiva_timer: float = 0.0
 func _ready():
 	add_to_group("enemies")
 	add_to_group("enemigos")
+	ArenaColiseo.configurar_cuerpo_terreno(self, false, true)
+	if vision != null:
+		vision.collision_mask = 2 | 4
 	vida = vida_maxima
 	if has_node("Modelo"):
 		_escala_base = $Modelo.scale
@@ -96,11 +102,11 @@ func _physics_process(delta):
 
 	match estado:
 		Estado.PATRULLAR:
-			patrullar()
+			patrullar(delta)
 		Estado.ESPERAR:
 			frenar()
 		Estado.PERSEGUIR:
-			ir_a(jugador.global_position)
+			ir_a(jugador.global_position, delta)
 		Estado.ATACAR:
 			frenar()
 			if _stun_timer > 0.0:
@@ -115,12 +121,14 @@ func _physics_process(delta):
 						jugador.get_node("Salud").recibir_golpe(int(dano_ataque))
 		Estado.BUSCAR:
 			if distancia_a(ultimo_visto) > 0.1:
-				ir_a(ultimo_visto)
+				ir_a(ultimo_visto, delta)
 			else:
 				frenar()
 
 	velocity.x += knockback_vel.x
 	velocity.z += knockback_vel.z
+	if is_on_floor():
+		velocity.y = minf(velocity.y, 0.0)
 	move_and_slide()
 
 func decidir(d, ve):
@@ -156,7 +164,7 @@ func lo_ve():
 		_ultimo_lo_ve = true
 	return _ultimo_lo_ve
 
-func patrullar():
+func patrullar(delta: float = 0.016):
 	if puntos.size() == 0:
 		frenar()
 		return
@@ -166,12 +174,10 @@ func patrullar():
 		reloj = espera
 		frenar()
 		return
-	ir_a(destino)
+	ir_a(destino, delta)
 
-func ir_a(destino):
-	var hacia = destino - global_position
-	hacia.y = 0.0
-	var dir = hacia.normalized()
+func ir_a(destino, delta: float = 0.016):
+	var dir = ArenaColiseo.calcular_direccion_persecucion(self, destino, _nav_estado, delta)
 	var mult_stun = 0.15 if _stun_timer > 0.0 else 1.0
 	velocity.x = dir.x * rapidez * mult_stun
 	velocity.z = dir.z * rapidez * mult_stun

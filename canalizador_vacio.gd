@@ -42,6 +42,7 @@ func _asegurar_componentes() -> void:
 		_orbe_area = Area3D.new()
 		_orbe_area.name = "OrbeVacioClicable"
 		_orbe_area.add_to_group("cristal_jefe")
+		_orbe_area.collision_layer = 1 | 8
 		_orbe_area.input_ray_pickable = true
 		_orbe_area.position = Vector3(0, 1.85, 0)
 

@@ -75,9 +75,13 @@ func _calcular_velocidad_ia(delta: float) -> Vector3:
 	if dir_huida.length_squared() < 0.01:
 		dir_huida = Vector3.FORWARD
 	dir_huida = dir_huida.normalized()
-	# Si se acerca al borde de la arena, girar 90 grados para no acorralarse solo
-	if absf(global_position.x) > 21.0 or absf(global_position.z) > 21.0:
-		dir_huida = dir_huida.rotated(Vector3.UP, deg_to_rad(105.0))
+	# Evitar quedar atrapado en muros del dodecágono girando tangencialmente por la pasarela
+	if ArenaColiseo.apotema_en_pos(global_position.x, global_position.z) > ArenaColiseo.APOTEMA_EXTERIOR - 3.5:
+		var inward: Vector3 = ArenaColiseo.obtener_normal_pared_cercana(global_position)
+		var tang: Vector3 = Vector3(-inward.z, 0.0, inward.x).normalized()
+		if dir_huida.dot(tang) < 0.0:
+			tang = -tang
+		dir_huida = (tang * 0.72 + inward * 0.28).normalized()
 	return dir_huida * rapidez
 
 func _golpear_pinata_clic():

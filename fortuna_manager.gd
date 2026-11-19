@@ -1,5 +1,7 @@
 extends Node
 
+const ArenaColiseo = preload("res://arena_coliseo.gd")
+
 ## FortunaManager - Singleton Autoload del Sistema de Fortuna (Clicklike 3D)
 ## Gestiona el RNG con semilla por run, tiradas binarias con suerte no lineal,
 ## tiradas de rareza ponderadas con pity contra malas rachas, tablas de drops
@@ -348,7 +350,7 @@ func soltar_drops(nodo_padre: Node, posicion: Vector3, tipo_enemigo: String = "c
 		var ang: float = rng.randf() * TAU
 		var dist: float = rng.randf_range(0.2, 1.2) if lista.size() <= 3 else rng.randf_range(0.5, 2.5)
 		nodo_padre.add_child(item)
-		item.global_position = posicion + Vector3(cos(ang) * dist, 0.4, sin(ang) * dist)
+		item.global_position = ArenaColiseo.clamping_y_ajustar_a_suelo(posicion + Vector3(cos(ang) * dist, 0.0, sin(ang) * dist), 1.4, 0.40)
 		if item.has_method("iniciar"):
 			item.iniciar(d["tipo"], d["valor"])
 		creados.append(item)

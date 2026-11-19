@@ -1,4 +1,4 @@
-[gd_scene load_steps=43 format=3 uid="uid://bclickhud3d"]
+[gd_scene load_steps=47 format=3 uid="uid://bclickhud3d"]
 
 [ext_resource type="Script" path="res://click_hud.gd" id="1_hud"]
 [ext_resource type="PackedScene" uid="uid://bdbdp0rbndglo" path="res://personaje/player_rookie.glb" id="2_avatar_mesh"]
@@ -21,165 +21,234 @@
 [ext_resource type="Texture2D" path="res://ui_assets/icon_victory_hades.svg" id="19_ico_victory"]
 [ext_resource type="Texture2D" path="res://ui_assets/icon_skull_hades.svg" id="20_ico_skull"]
 [ext_resource type="Texture2D" path="res://ui_assets/icon_pacto_hades.svg" id="21_ico_pacto"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBox_BarraSuperior"]
-bg_color = Color(0.043, 0.051, 0.082, 0.96)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 3
-border_color = Color(0.70, 0.54, 0.28, 0.95)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-shadow_color = Color(0, 0, 0, 0.85)
-shadow_size = 14
-shadow_offset = Vector2(0, 4)
+[ext_resource type="Shader" path="res://shaders/hud_scifi_panel.gdshader" id="22_sh_panel"]
+[ext_resource type="Texture2D" path="res://ui_assets/icon_bolt_hades.svg" id="23_ico_bolt"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBox_Transparent"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBox_AvatarGlow"]
-bg_color = Color(0.04, 0.045, 0.07, 0.95)
-corner_radius_top_left = 44
-corner_radius_top_right = 44
-corner_radius_bottom_right = 44
-corner_radius_bottom_left = 44
-shadow_color = Color(0.79, 0.64, 0.35, 0.35)
-shadow_size = 10
+[sub_resource type="ShaderMaterial" id="ShaderMat_WingLeft"]
+shader = ExtResource("22_sh_panel")
+shader_parameter/panel_size = Vector2(360, 94)
+shader_parameter/glow_pad = 8.0
+shader_parameter/corner_radius = 3.5
+shader_parameter/border_thickness = 1.6
+shader_parameter/slope_left = 0.0
+shader_parameter/slope_right = -24.0
+shader_parameter/chamfer_tl = 0.0
+shader_parameter/chamfer_tr = 3.0
+shader_parameter/chamfer_bl = 8.0
+shader_parameter/chamfer_br = 4.0
+shader_parameter/bg_top = Color(0.035, 0.075, 0.141, 0.92)
+shader_parameter/bg_bot = Color(0.016, 0.035, 0.075, 0.95)
+shader_parameter/border_color = Color(0.133, 0.800, 1.000, 0.96)
+shader_parameter/glow_color = Color(0.039, 0.620, 1.000, 0.50)
+shader_parameter/top_accent_color = Color(0.961, 0.722, 0.239, 0.0)
+shader_parameter/top_accent_width = 0.0
+shader_parameter/bottom_corner_flare = 0.85
+shader_parameter/flare_side = 1.0
+shader_parameter/overdrive_pulse = 0.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMat_WingCenter"]
+shader = ExtResource("22_sh_panel")
+shader_parameter/panel_size = Vector2(400, 94)
+shader_parameter/glow_pad = 8.0
+shader_parameter/corner_radius = 3.5
+shader_parameter/border_thickness = 1.6
+shader_parameter/slope_left = 24.0
+shader_parameter/slope_right = 24.0
+shader_parameter/chamfer_tl = 3.0
+shader_parameter/chamfer_tr = 3.0
+shader_parameter/chamfer_bl = 4.0
+shader_parameter/chamfer_br = 4.0
+shader_parameter/bg_top = Color(0.035, 0.075, 0.141, 0.92)
+shader_parameter/bg_bot = Color(0.016, 0.035, 0.075, 0.95)
+shader_parameter/border_color = Color(0.133, 0.800, 1.000, 0.96)
+shader_parameter/glow_color = Color(0.039, 0.620, 1.000, 0.50)
+shader_parameter/top_accent_color = Color(0.980, 0.765, 0.280, 1.0)
+shader_parameter/top_accent_width = 0.72
+shader_parameter/bottom_corner_flare = 0.0
+shader_parameter/flare_side = 0.0
+shader_parameter/overdrive_pulse = 0.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMat_WingRight"]
+shader = ExtResource("22_sh_panel")
+shader_parameter/panel_size = Vector2(240, 94)
+shader_parameter/glow_pad = 8.0
+shader_parameter/corner_radius = 3.5
+shader_parameter/border_thickness = 1.6
+shader_parameter/slope_left = -24.0
+shader_parameter/slope_right = 0.0
+shader_parameter/chamfer_tl = 3.0
+shader_parameter/chamfer_tr = 8.0
+shader_parameter/chamfer_bl = 4.0
+shader_parameter/chamfer_br = 10.0
+shader_parameter/bg_top = Color(0.035, 0.075, 0.141, 0.92)
+shader_parameter/bg_bot = Color(0.016, 0.035, 0.075, 0.95)
+shader_parameter/border_color = Color(0.133, 0.800, 1.000, 0.96)
+shader_parameter/glow_color = Color(0.039, 0.620, 1.000, 0.50)
+shader_parameter/top_accent_color = Color(0.961, 0.722, 0.239, 0.0)
+shader_parameter/top_accent_width = 0.0
+shader_parameter/bottom_corner_flare = 0.85
+shader_parameter/flare_side = -1.0
+shader_parameter/overdrive_pulse = 0.0
 
 [sub_resource type="ShaderMaterial" id="ShaderMat_Medallion"]
 shader = ExtResource("8_sh_portrait")
-shader_parameter/backdrop_core = Color(0.11, 0.13, 0.21, 1)
-shader_parameter/backdrop_edge = Color(0.03, 0.04, 0.07, 1)
-shader_parameter/class_aura = Color(0.88, 0.74, 0.38, 1)
-shader_parameter/bronze_dark = Color(0.32, 0.22, 0.09, 1)
-shader_parameter/bronze_mid = Color(0.79, 0.64, 0.35, 1)
-shader_parameter/bronze_spec = Color(1, 0.9, 0.64, 1)
-shader_parameter/border_width = 0.085
+shader_parameter/backdrop_core = Color(0.078, 0.176, 0.322, 1)
+shader_parameter/backdrop_edge = Color(0.020, 0.047, 0.102, 1)
+shader_parameter/class_aura = Color(0.141, 0.722, 1.0, 1)
+shader_parameter/steel_dark = Color(0.075, 0.169, 0.271, 1)
+shader_parameter/steel_mid = Color(0.298, 0.486, 0.639, 1)
+shader_parameter/steel_spec = Color(0.722, 0.922, 1.0, 1)
+shader_parameter/glow_color = Color(0.102, 0.776, 1.0, 0.85)
+shader_parameter/hex_inradius = 0.390
+shader_parameter/corner_radius = 0.032
+shader_parameter/border_width = 0.066
+shader_parameter/glow_extent = 0.052
 shader_parameter/overdrive_pulse = 0.0
 
 [sub_resource type="Environment" id="Environment_Avatar"]
 background_mode = 0
 ambient_light_source = 2
-ambient_light_color = Color(0.28, 0.26, 0.34, 1)
-ambient_light_energy = 0.55
+ambient_light_color = Color(0.28, 0.34, 0.44, 1)
+ambient_light_energy = 0.62
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_BadgeNivel"]
-content_margin_left = 6.0
+content_margin_left = 8.0
 content_margin_top = 1.0
-content_margin_right = 6.0
+content_margin_right = 8.0
 content_margin_bottom = 1.0
-bg_color = Color(0.07, 0.05, 0.04, 0.98)
+bg_color = Color(0.078, 0.063, 0.031, 0.96)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.85, 0.68, 0.35, 1)
-corner_radius_top_left = 5
-corner_radius_top_right = 5
-corner_radius_bottom_right = 5
-corner_radius_bottom_left = 5
+border_width_bottom = 2
+border_color = Color(0.867, 0.659, 0.247, 1)
+corner_radius_top_left = 7
+corner_radius_top_right = 7
+corner_radius_bottom_right = 7
+corner_radius_bottom_left = 7
 shadow_color = Color(0, 0, 0, 0.9)
 shadow_size = 4
 
 [sub_resource type="ShaderMaterial" id="ShaderMat_BarVida"]
 shader = ExtResource("9_sh_bar")
+shader_parameter/bar_size = Vector2(184, 20)
 shader_parameter/hp_ratio = 1.0
 shader_parameter/trail_ratio = 1.0
 shader_parameter/shield_ratio = 0.0
 shader_parameter/segment_notches = 0
-shader_parameter/color_bg = Color(0.07, 0.02, 0.04, 0.96)
-shader_parameter/color_hp_top = Color(0.98, 0.32, 0.42, 1)
-shader_parameter/color_hp_bot = Color(0.58, 0.05, 0.14, 1)
-shader_parameter/color_trail = Color(0.99, 0.92, 0.54, 0.96)
+shader_parameter/color_bg = Color(0.090, 0.024, 0.043, 0.96)
+shader_parameter/color_hp_top = Color(0.969, 0.224, 0.329, 1)
+shader_parameter/color_hp_bot = Color(0.580, 0.043, 0.129, 1)
+shader_parameter/color_trail = Color(0.988, 0.914, 0.541, 0.96)
 shader_parameter/color_shield_top = Color(0.49, 0.83, 0.99, 0.96)
 shader_parameter/color_shield_bot = Color(0.05, 0.48, 0.78, 0.92)
-shader_parameter/border_color = Color(0.76, 0.6, 0.32, 0.95)
+shader_parameter/border_color = Color(0.271, 0.361, 0.478, 0.90)
 
-[sub_resource type="StyleBoxFlat" id="StyleBox_BarXP_Bg"]
-bg_color = Color(0.04, 0.03, 0.08, 0.96)
+[sub_resource type="StyleBoxFlat" id="StyleBox_BadgeEscudoHP"]
+content_margin_left = 8.0
+content_margin_top = 1.0
+content_margin_right = 8.0
+content_margin_bottom = 1.0
+bg_color = Color(0.027, 0.102, 0.180, 0.94)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.28, 0.22, 0.45, 0.9)
+border_color = Color(0.141, 0.533, 0.769, 0.90)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0.05, 0.55, 0.95, 0.28)
+shadow_size = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_BarXP_Bg"]
+bg_color = Color(0.039, 0.043, 0.094, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.173, 0.157, 0.302, 0.85)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_BarXP_Fill"]
-bg_color = Color(0.55, 0.35, 0.96, 1)
+bg_color = Color(0.545, 0.259, 1, 1)
 border_width_top = 1
-border_color = Color(0.88, 0.78, 1, 0.95)
+border_color = Color(0.812, 0.651, 1, 0.95)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
-shadow_color = Color(0.54, 0.36, 0.96, 0.55)
-shadow_size = 4
+shadow_color = Color(0.549, 0.239, 1, 0.6)
+shadow_size = 5
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_BarFiebre_Bg"]
-bg_color = Color(0.05, 0.06, 0.10, 0.96)
+bg_color = Color(0.024, 0.055, 0.106, 0.96)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.32, 0.28, 0.20, 0.92)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
+border_color = Color(0.145, 0.310, 0.431, 0.90)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_BarFiebre_Fill"]
-bg_color = Color(0.14, 0.80, 0.92, 1)
+bg_color = Color(0.180, 0.902, 0.431, 1)
 border_width_top = 1
-border_color = Color(0.75, 0.96, 1, 0.95)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
+border_color = Color(0.68, 1, 0.82, 0.95)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_BadgeFiebre"]
-content_margin_left = 6.0
+content_margin_left = 8.0
 content_margin_top = 1.0
-content_margin_right = 6.0
+content_margin_right = 8.0
 content_margin_bottom = 1.0
-bg_color = Color(0.06, 0.10, 0.16, 0.95)
+bg_color = Color(0.031, 0.086, 0.161, 0.96)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.22, 0.74, 0.90, 0.9)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-
-[sub_resource type="StyleBoxFlat" id="StyleBox_ChipDark"]
-content_margin_left = 10.0
-content_margin_top = 4.0
-content_margin_right = 10.0
-content_margin_bottom = 4.0
-bg_color = Color(0.055, 0.068, 0.105, 0.92)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.45, 0.36, 0.20, 0.9)
+border_color = Color(0.302, 0.776, 0.941, 0.92)
 corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
-shadow_color = Color(0, 0, 0, 0.65)
+shadow_color = Color(0.08, 0.62, 0.98, 0.30)
+shadow_size = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_ChipDark"]
+content_margin_left = 11.0
+content_margin_top = 3.0
+content_margin_right = 11.0
+content_margin_bottom = 3.0
+bg_color = Color(0.035, 0.067, 0.110, 0.88)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.271, 0.384, 0.478, 0.75)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_color = Color(0, 0, 0, 0.55)
 shadow_size = 6
 shadow_offset = Vector2(0, 2)
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_ChipPacto"]
-content_margin_left = 10.0
+content_margin_left = 11.0
 content_margin_top = 3.0
-content_margin_right = 10.0
+content_margin_right = 11.0
 content_margin_bottom = 3.0
 bg_color = Color(0.13, 0.03, 0.05, 0.95)
 border_width_left = 2
@@ -187,41 +256,49 @@ border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
 border_color = Color(0.90, 0.16, 0.26, 0.95)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
 shadow_color = Color(0.88, 0.12, 0.22, 0.35)
 shadow_size = 10
 shadow_offset = Vector2(0, 2)
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_BtnArbol"]
-bg_color = Color(0.08, 0.065, 0.045, 0.94)
+content_margin_left = 12.0
+content_margin_top = 2.0
+content_margin_right = 12.0
+content_margin_bottom = 2.0
+bg_color = Color(0.090, 0.067, 0.024, 0.92)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 2
-border_color = Color(0.76, 0.60, 0.29, 0.95)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-shadow_color = Color(0, 0, 0, 0.7)
-shadow_size = 6
+border_color = Color(0.949, 0.714, 0.196, 0.95)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+shadow_color = Color(0.961, 0.651, 0.137, 0.38)
+shadow_size = 8
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_BtnArbolHover"]
-bg_color = Color(0.18, 0.13, 0.06, 0.98)
+content_margin_left = 12.0
+content_margin_top = 2.0
+content_margin_right = 12.0
+content_margin_bottom = 2.0
+bg_color = Color(0.161, 0.118, 0.035, 0.98)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 2
-border_color = Color(1, 0.88, 0.56, 1)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-shadow_color = Color(0.95, 0.76, 0.28, 0.35)
-shadow_size = 10
+border_color = Color(1, 0.878, 0.490, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+shadow_color = Color(0.98, 0.78, 0.25, 0.55)
+shadow_size = 11
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_PanelJefe"]
 bg_color = Color(0.08, 0.03, 0.05, 0.96)
@@ -240,6 +317,7 @@ shadow_offset = Vector2(0, 3)
 
 [sub_resource type="ShaderMaterial" id="ShaderMat_BarJefe"]
 shader = ExtResource("9_sh_bar")
+shader_parameter/bar_size = Vector2(492, 20)
 shader_parameter/hp_ratio = 1.0
 shader_parameter/trail_ratio = 1.0
 shader_parameter/shield_ratio = 0.0
@@ -322,101 +400,43 @@ offset_right = -18.0
 offset_bottom = 90.0
 grow_horizontal = 2
 mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBox_BarraSuperior")
+theme_override_styles/panel = SubResource("StyleBox_Transparent")
 
-[node name="HairlineTop" type="ColorRect" parent="Control/BarraSuperior"]
+[node name="WingsBackdrop" type="Control" parent="Control/BarraSuperior"]
 layout_mode = 1
-anchors_preset = 10
-anchor_right = 1.0
-offset_left = 18.0
-offset_top = 4.0
-offset_right = -18.0
-offset_bottom = 5.0
-grow_horizontal = 2
-mouse_filter = 2
-color = Color(1, 0.89, 0.60, 0.22)
-
-[node name="HairlineBottom" type="ColorRect" parent="Control/BarraSuperior"]
-layout_mode = 1
-anchors_preset = 12
-anchor_top = 1.0
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 18.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="WingLeft" type="ColorRect" parent="Control/BarraSuperior/WingsBackdrop"]
+material = SubResource("ShaderMat_WingLeft")
+layout_mode = 0
+offset_left = 40.0
 offset_top = -6.0
-offset_right = -18.0
-offset_bottom = -5.0
-grow_horizontal = 2
-grow_vertical = 0
+offset_right = 410.0
+offset_bottom = 88.0
 mouse_filter = 2
-color = Color(0.79, 0.64, 0.35, 0.20)
 
-[node name="EsquinaTL" type="TextureRect" parent="Control/BarraSuperior"]
-modulate = Color(0.96, 0.82, 0.50, 0.92)
-layout_mode = 1
-offset_left = -3.0
-offset_top = -3.0
-offset_right = 23.0
-offset_bottom = 23.0
+[node name="WingCenter" type="ColorRect" parent="Control/BarraSuperior/WingsBackdrop"]
+material = SubResource("ShaderMat_WingCenter")
+layout_mode = 0
+offset_left = 368.0
+offset_top = -6.0
+offset_right = 768.0
+offset_bottom = 88.0
 mouse_filter = 2
-texture = ExtResource("3_corner")
-expand_mode = 1
-stretch_mode = 5
 
-[node name="EsquinaTR" type="TextureRect" parent="Control/BarraSuperior"]
-modulate = Color(0.96, 0.82, 0.50, 0.92)
-layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -23.0
-offset_top = -3.0
-offset_right = 3.0
-offset_bottom = 23.0
-grow_horizontal = 0
+[node name="WingRight" type="ColorRect" parent="Control/BarraSuperior/WingsBackdrop"]
+material = SubResource("ShaderMat_WingRight")
+layout_mode = 0
+offset_left = 860.0
+offset_top = -6.0
+offset_right = 1122.0
+offset_bottom = 88.0
 mouse_filter = 2
-texture = ExtResource("3_corner")
-expand_mode = 1
-stretch_mode = 5
-flip_h = true
-
-[node name="EsquinaBL" type="TextureRect" parent="Control/BarraSuperior"]
-modulate = Color(0.96, 0.82, 0.50, 0.92)
-layout_mode = 1
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = -3.0
-offset_top = -23.0
-offset_right = 23.0
-offset_bottom = 3.0
-grow_vertical = 0
-mouse_filter = 2
-texture = ExtResource("3_corner")
-expand_mode = 1
-stretch_mode = 5
-flip_v = true
-
-[node name="EsquinaBR" type="TextureRect" parent="Control/BarraSuperior"]
-modulate = Color(0.96, 0.82, 0.50, 0.92)
-layout_mode = 1
-anchors_preset = 3
-anchor_left = 1.0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -23.0
-offset_top = -23.0
-offset_right = 3.0
-offset_bottom = 3.0
-grow_horizontal = 0
-grow_vertical = 0
-mouse_filter = 2
-texture = ExtResource("3_corner")
-expand_mode = 1
-stretch_mode = 5
-flip_h = true
-flip_v = true
 
 [node name="MarginSuperior" type="MarginContainer" parent="Control/BarraSuperior"]
 layout_mode = 1
@@ -426,7 +446,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-theme_override_constants/margin_left = 14
+theme_override_constants/margin_left = 8
 theme_override_constants/margin_top = 6
 theme_override_constants/margin_right = 14
 theme_override_constants/margin_bottom = 6
@@ -440,11 +460,11 @@ theme_override_constants/separation = 10
 layout_mode = 2
 size_flags_horizontal = 2
 mouse_filter = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 10
 alignment = 1
 
 [node name="AvatarSocket" type="Control" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe"]
-custom_minimum_size = Vector2(80, 70)
+custom_minimum_size = Vector2(82, 72)
 layout_mode = 2
 mouse_filter = 2
 
@@ -455,15 +475,15 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -42.0
-offset_top = -42.0
-offset_right = 42.0
-offset_bottom = 42.0
+offset_left = -44.0
+offset_top = -44.0
+offset_right = 44.0
+offset_bottom = 44.0
 grow_horizontal = 2
 grow_vertical = 2
-pivot_offset = Vector2(42, 42)
+pivot_offset = Vector2(44, 44)
 mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBox_AvatarGlow")
+theme_override_styles/panel = SubResource("StyleBox_Transparent")
 
 [node name="SubViewportContainer" type="SubViewportContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/AvatarSocket/AvatarFrame"]
 material = SubResource("ShaderMat_Medallion")
@@ -488,24 +508,24 @@ render_target_update_mode = 1
 environment = SubResource("Environment_Avatar")
 
 [node name="CamaraAvatar" type="Camera3D" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/AvatarSocket/AvatarFrame/SubViewportContainer/SubViewport"]
-transform = Transform3D(1, 0, 0, 0, 0.999391, 0.0348995, 0, -0.0348995, 0.999391, 0.04, 0.52, 1.1)
+transform = Transform3D(0.997416, -0.00326356, 0.0717704, 0, 0.998967, 0.0454275, -0.0718445, -0.0453101, 0.996385, 0.055, 0.485, 0.77)
 current = true
 fov = 30.0
 
 [node name="LuzFrontal" type="DirectionalLight3D" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/AvatarSocket/AvatarFrame/SubViewportContainer/SubViewport"]
 transform = Transform3D(0.866025, -0.25, 0.433013, 0, 0.866025, 0.5, -0.5, -0.433013, 0.75, 0.5, 1.5, 1)
-light_color = Color(1, 0.94, 0.85, 1)
-light_energy = 1.15
+light_color = Color(1, 0.96, 0.90, 1)
+light_energy = 1.18
 
 [node name="LuzRelleno" type="DirectionalLight3D" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/AvatarSocket/AvatarFrame/SubViewportContainer/SubViewport"]
 transform = Transform3D(0.866025, 0.17101, -0.469846, 0, 0.939693, 0.34202, 0.5, -0.296198, 0.813798, -0.8, 0.8, 0.8)
-light_color = Color(0.55, 0.68, 0.88, 1)
-light_energy = 0.55
+light_color = Color(0.45, 0.74, 0.98, 1)
+light_energy = 0.65
 
 [node name="LuzContorno" type="DirectionalLight3D" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/AvatarSocket/AvatarFrame/SubViewportContainer/SubViewport"]
 transform = Transform3D(-0.866025, -0.17101, -0.469846, 0, 0.939693, -0.34202, 0.5, -0.296198, -0.813798, -0.6, 1.1, -1)
-light_color = Color(0.88, 0.74, 0.38, 1)
-light_energy = 2.4
+light_color = Color(0.22, 0.82, 1.0, 1)
+light_energy = 2.2
 
 [node name="ModeloAvatar" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/AvatarSocket/AvatarFrame/SubViewportContainer/SubViewport" instance=ExtResource("2_avatar_mesh")]
 transform = Transform3D(0.939693, 0, 0.34202, 0, 1, 0, -0.34202, 0, 0.939693, 0, 0, 0)
@@ -518,10 +538,10 @@ anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -25.0
-offset_top = -10.0
-offset_right = 25.0
-offset_bottom = 8.0
+offset_left = -26.0
+offset_top = -6.0
+offset_right = 26.0
+offset_bottom = 12.0
 grow_horizontal = 2
 grow_vertical = 0
 mouse_filter = 2
@@ -529,19 +549,19 @@ theme_override_styles/panel = SubResource("StyleBox_BadgeNivel")
 
 [node name="LabelNivel" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/AvatarSocket/BadgeNivel"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.89, 0.60, 1)
-theme_override_colors/font_outline_color = Color(0.08, 0.04, 0.02, 1)
+theme_override_colors/font_color = Color(1, 0.910, 0.639, 1)
+theme_override_colors/font_outline_color = Color(0.06, 0.04, 0.01, 1)
 theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 10
-text = "NV. 1"
+theme_override_font_sizes/font_size = 11
+text = "Nv. 1"
 horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="ContenedorHeroe" type="VBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe"]
-custom_minimum_size = Vector2(218, 0)
+custom_minimum_size = Vector2(296, 0)
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 3
+theme_override_constants/separation = 4
 alignment = 1
 
 [node name="HeaderHeroe" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe"]
@@ -562,12 +582,12 @@ stretch_mode = 5
 [node name="LabelClase" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HeaderHeroe"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.96, 0.91, 0.78, 1)
+theme_override_colors/font_color = Color(0.941, 0.961, 0.980, 1)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.95)
-theme_override_colors/font_outline_color = Color(0.10, 0.07, 0.02, 1)
+theme_override_colors/font_outline_color = Color(0.04, 0.06, 0.10, 1)
 theme_override_constants/shadow_offset_x = 1
 theme_override_constants/shadow_offset_y = 1
-theme_override_constants/outline_size = 2
+theme_override_constants/outline_size = 1
 theme_override_font_sizes/font_size = 13
 text = "Novato"
 clip_text = true
@@ -577,16 +597,8 @@ text_overrun_behavior = 3
 layout_mode = 2
 size_flags_horizontal = 8
 mouse_filter = 2
-theme_override_constants/separation = 3
+theme_override_constants/separation = 5
 alignment = 2
-
-[node name="LabelVidas" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HeaderHeroe/ContenedorVidas"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.80, 0.85, 0.92, 1)
-theme_override_colors/font_outline_color = Color(0.05, 0.06, 0.09, 1)
-theme_override_constants/outline_size = 1
-theme_override_font_sizes/font_size = 10
-text = "1/1"
 
 [node name="HBoxCorazones" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HeaderHeroe/ContenedorVidas"]
 layout_mode = 2
@@ -619,16 +631,32 @@ texture = ExtResource("5_heart")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="BarVida" type="ProgressBar" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe"]
-custom_minimum_size = Vector2(218, 22)
+[node name="LabelVidas" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HeaderHeroe/ContenedorVidas"]
 layout_mode = 2
+theme_override_colors/font_color = Color(0.902, 0.929, 0.961, 1)
+theme_override_colors/font_outline_color = Color(0.05, 0.06, 0.09, 1)
+theme_override_constants/outline_size = 1
+theme_override_font_sizes/font_size = 11
+text = "1/1"
+
+[node name="HBoxVidaRow" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="BarVida" type="ProgressBar" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HBoxVidaRow"]
+custom_minimum_size = Vector2(214, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
 mouse_filter = 2
 theme_override_styles/background = SubResource("StyleBox_Transparent")
 theme_override_styles/fill = SubResource("StyleBox_Transparent")
 value = 100.0
 show_percentage = false
 
-[node name="BarVidaShader" type="ColorRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/BarVida"]
+[node name="BarVidaShader" type="ColorRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HBoxVidaRow/BarVida"]
 material = SubResource("ShaderMat_BarVida")
 layout_mode = 1
 anchors_preset = 15
@@ -638,7 +666,7 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="HBoxVidaTexto" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/BarVida"]
+[node name="HBoxVidaTexto" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HBoxVidaRow/BarVida"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -649,21 +677,36 @@ mouse_filter = 2
 theme_override_constants/separation = 5
 alignment = 1
 
-[node name="LabelVida" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/BarVida/HBoxVidaTexto"]
+[node name="LabelVida" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HBoxVidaRow/BarVida/HBoxVidaTexto"]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
-theme_override_colors/font_outline_color = Color(0.18, 0.02, 0.05, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.95)
+theme_override_colors/font_outline_color = Color(0.14, 0.02, 0.04, 0.95)
 theme_override_constants/shadow_offset_x = 1
 theme_override_constants/shadow_offset_y = 1
-theme_override_constants/outline_size = 2
+theme_override_constants/outline_size = 1
 theme_override_font_sizes/font_size = 11
-text = "100 / 100"
+text = "100 / 100 HP"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="IconoEscudoHP" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/BarVida/HBoxVidaTexto"]
+[node name="BadgeEscudoHP" type="PanelContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HBoxVidaRow"]
 visible = false
+custom_minimum_size = Vector2(68, 20)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBox_BadgeEscudoHP")
+
+[node name="HBoxEscudo" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HBoxVidaRow/BadgeEscudoHP"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 4
+alignment = 1
+
+[node name="IconoEscudoHP" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HBoxVidaRow/BadgeEscudoHP/HBoxEscudo"]
+visible = false
+modulate = Color(0.235, 0.784, 1, 1)
 custom_minimum_size = Vector2(13, 13)
 layout_mode = 2
 size_flags_vertical = 4
@@ -672,15 +715,15 @@ texture = ExtResource("11_ico_shield")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="LabelEscudoHP" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/BarVida/HBoxVidaTexto"]
+[node name="LabelEscudoHP" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HBoxVidaRow/BadgeEscudoHP/HBoxEscudo"]
 visible = false
 layout_mode = 2
-theme_override_colors/font_color = Color(0.49, 0.83, 0.99, 1)
-theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
-theme_override_colors/font_outline_color = Color(0.02, 0.18, 0.30, 1)
+theme_override_colors/font_color = Color(0.890, 0.965, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.95)
+theme_override_colors/font_outline_color = Color(0.02, 0.14, 0.24, 1)
 theme_override_constants/shadow_offset_x = 1
 theme_override_constants/shadow_offset_y = 1
-theme_override_constants/outline_size = 2
+theme_override_constants/outline_size = 1
 theme_override_font_sizes/font_size = 11
 text = "+0"
 vertical_alignment = 1
@@ -688,11 +731,11 @@ vertical_alignment = 1
 [node name="HBoxXPHeroe" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe"]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 6
+theme_override_constants/separation = 7
 alignment = 1
 
 [node name="BarXP" type="ProgressBar" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HBoxXPHeroe"]
-custom_minimum_size = Vector2(126, 9)
+custom_minimum_size = Vector2(166, 8)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
@@ -705,10 +748,10 @@ show_percentage = false
 [node name="LabelXP" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HBoxXPHeroe"]
 layout_mode = 2
 size_flags_horizontal = 8
-theme_override_colors/font_color = Color(0.86, 0.78, 1, 1)
-theme_override_colors/font_outline_color = Color(0.10, 0.05, 0.18, 1)
+theme_override_colors/font_color = Color(0.886, 0.859, 0.980, 1)
+theme_override_colors/font_outline_color = Color(0.08, 0.04, 0.16, 1)
 theme_override_constants/outline_size = 1
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 11
 text = "0 / 25 XP"
 horizontal_alignment = 2
 vertical_alignment = 1
@@ -720,7 +763,7 @@ size_flags_horizontal = 3
 mouse_filter = 2
 
 [node name="ContenedorCentro" type="VBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior"]
-custom_minimum_size = Vector2(360, 0)
+custom_minimum_size = Vector2(344, 0)
 layout_mode = 2
 size_flags_horizontal = 4
 mouse_filter = 2
@@ -730,12 +773,12 @@ alignment = 1
 [node name="HBoxWaveHeader" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro"]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 7
+theme_override_constants/separation = 8
 alignment = 1
 
 [node name="DagaIzq" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxWaveHeader"]
-modulate = Color(1, 0.88, 0.58, 0.98)
-custom_minimum_size = Vector2(68, 16)
+modulate = Color(1, 0.86, 0.42, 1)
+custom_minimum_size = Vector2(52, 11)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
@@ -745,7 +788,8 @@ stretch_mode = 5
 flip_h = true
 
 [node name="IconoOleada" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxWaveHeader"]
-modulate = Color(1, 0.89, 0.60, 1)
+visible = false
+modulate = Color(0.969, 0.808, 0.408, 1)
 custom_minimum_size = Vector2(14, 14)
 layout_mode = 2
 size_flags_vertical = 4
@@ -756,9 +800,9 @@ stretch_mode = 5
 
 [node name="LabelOleada" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxWaveHeader"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.89, 0.60, 1)
+theme_override_colors/font_color = Color(0.969, 0.808, 0.408, 1)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.95)
-theme_override_colors/font_outline_color = Color(0.12, 0.08, 0.02, 1)
+theme_override_colors/font_outline_color = Color(0.10, 0.06, 0.01, 1)
 theme_override_constants/shadow_offset_x = 1
 theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 2
@@ -767,6 +811,7 @@ text = "EN ESPERA"
 vertical_alignment = 1
 
 [node name="SepWave" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxWaveHeader"]
+visible = false
 layout_mode = 2
 theme_override_colors/font_color = Color(0.60, 0.48, 0.24, 0.85)
 theme_override_font_sizes/font_size = 12
@@ -774,6 +819,7 @@ text = "|"
 vertical_alignment = 1
 
 [node name="IconoTiempo" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxWaveHeader"]
+modulate = Color(0.55, 0.82, 1, 0.95)
 custom_minimum_size = Vector2(14, 14)
 layout_mode = 2
 size_flags_vertical = 4
@@ -785,7 +831,7 @@ stretch_mode = 5
 [node name="LabelTiempo" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxWaveHeader"]
 custom_minimum_size = Vector2(44, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.89, 0.91, 0.96, 1)
+theme_override_colors/font_color = Color(0.929, 0.957, 0.980, 1)
 theme_override_colors/font_outline_color = Color(0.03, 0.04, 0.06, 1)
 theme_override_constants/outline_size = 2
 theme_override_font_sizes/font_size = 13
@@ -793,8 +839,8 @@ text = "00:00"
 vertical_alignment = 1
 
 [node name="DagaDer" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxWaveHeader"]
-modulate = Color(1, 0.88, 0.58, 0.98)
-custom_minimum_size = Vector2(68, 16)
+modulate = Color(1, 0.86, 0.42, 1)
+custom_minimum_size = Vector2(52, 11)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
@@ -809,18 +855,19 @@ theme_override_constants/separation = 5
 alignment = 1
 
 [node name="IconoNucleo" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxNucleoLine"]
+modulate = Color(0.220, 0.859, 1, 1)
 custom_minimum_size = Vector2(14, 14)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
-texture = ExtResource("14_ico_clicks")
+texture = ExtResource("23_ico_bolt")
 expand_mode = 1
 stretch_mode = 5
 
 [node name="LabelNucleo" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxNucleoLine"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.32, 0.90, 0.98, 1)
-theme_override_colors/font_outline_color = Color(0.03, 0.05, 0.08, 1)
+theme_override_colors/font_color = Color(0.220, 0.859, 1, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.05, 0.10, 1)
 theme_override_constants/outline_size = 2
 theme_override_font_sizes/font_size = 12
 text = "Pulsa el Núcleo para iniciar"
@@ -831,11 +878,12 @@ max_lines_visible = 1
 [node name="HBoxFiebreBar" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro"]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 6
+theme_override_constants/separation = 7
 alignment = 1
 
 [node name="IconoFiebre" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxFiebreBar"]
-custom_minimum_size = Vector2(14, 14)
+modulate = Color(0.180, 0.902, 0.431, 1)
+custom_minimum_size = Vector2(15, 15)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
@@ -844,7 +892,7 @@ expand_mode = 1
 stretch_mode = 5
 
 [node name="BarFiebre" type="ProgressBar" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxFiebreBar"]
-custom_minimum_size = Vector2(214, 8)
+custom_minimum_size = Vector2(198, 10)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
@@ -859,9 +907,11 @@ anchors_preset = -1
 anchor_left = 0.25
 anchor_right = 0.25
 anchor_bottom = 1.0
-offset_right = 1.0
+offset_top = 1.0
+offset_right = 1.5
+offset_bottom = -1.0
 mouse_filter = 2
-color = Color(0.95, 0.85, 0.55, 0.45)
+color = Color(0.28, 0.65, 0.82, 0.55)
 
 [node name="Tick55" type="ColorRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxFiebreBar/BarFiebre"]
 layout_mode = 1
@@ -869,9 +919,11 @@ anchors_preset = -1
 anchor_left = 0.55
 anchor_right = 0.55
 anchor_bottom = 1.0
-offset_right = 1.0
+offset_top = 1.0
+offset_right = 1.5
+offset_bottom = -1.0
 mouse_filter = 2
-color = Color(0.98, 0.72, 0.30, 0.55)
+color = Color(0.96, 0.76, 0.32, 0.60)
 
 [node name="Tick85" type="ColorRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxFiebreBar/BarFiebre"]
 layout_mode = 1
@@ -879,21 +931,23 @@ anchors_preset = -1
 anchor_left = 0.85
 anchor_right = 0.85
 anchor_bottom = 1.0
+offset_top = 1.0
 offset_right = 1.5
+offset_bottom = -1.0
 mouse_filter = 2
-color = Color(1, 0.35, 0.85, 0.75)
+color = Color(0.95, 0.38, 0.82, 0.72)
 
 [node name="BadgeFiebre" type="PanelContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxFiebreBar"]
-custom_minimum_size = Vector2(62, 16)
+custom_minimum_size = Vector2(56, 18)
 layout_mode = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBox_BadgeFiebre")
 
 [node name="LabelFiebre" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxFiebreBar/BadgeFiebre"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.49, 0.83, 0.99, 1)
-theme_override_font_sizes/font_size = 10
-text = "FIEBRE x1"
+theme_override_colors/font_color = Color(0.941, 0.973, 1, 1)
+theme_override_font_sizes/font_size = 11
+text = "▶ x1"
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -904,27 +958,28 @@ size_flags_horizontal = 3
 mouse_filter = 2
 
 [node name="ContenedorEconomia" type="VBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior"]
-custom_minimum_size = Vector2(196, 0)
+custom_minimum_size = Vector2(210, 0)
 layout_mode = 2
 size_flags_horizontal = 8
 mouse_filter = 2
-theme_override_constants/separation = 5
+theme_override_constants/separation = 6
 alignment = 1
 
 [node name="HBoxEconomiaTop" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia"]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 12
-alignment = 2
+theme_override_constants/separation = 16
+alignment = 0
 
 [node name="HBoxOro" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxEconomiaTop"]
+custom_minimum_size = Vector2(108, 0)
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 5
-alignment = 2
+alignment = 0
 
 [node name="IconoOro" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxEconomiaTop/HBoxOro"]
-custom_minimum_size = Vector2(19, 19)
+custom_minimum_size = Vector2(18, 18)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
@@ -934,25 +989,26 @@ stretch_mode = 5
 
 [node name="LabelOro" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxEconomiaTop/HBoxOro"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.98, 0.80, 0.14, 1)
+theme_override_colors/font_color = Color(1, 0.788, 0.200, 1)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.95)
 theme_override_colors/font_outline_color = Color(0.24, 0.12, 0.02, 1)
 theme_override_constants/shadow_offset_x = 1
 theme_override_constants/shadow_offset_y = 1
 theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 15
 text = "0"
-horizontal_alignment = 2
+horizontal_alignment = 0
 vertical_alignment = 1
 
 [node name="HBoxDenarios" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxEconomiaTop"]
+custom_minimum_size = Vector2(82, 0)
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 4
-alignment = 2
+theme_override_constants/separation = 5
+alignment = 0
 
 [node name="IconoDenarios" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxEconomiaTop/HBoxDenarios"]
-custom_minimum_size = Vector2(17, 17)
+custom_minimum_size = Vector2(16, 16)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
@@ -962,25 +1018,26 @@ stretch_mode = 5
 
 [node name="LabelDenarios" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxEconomiaTop/HBoxDenarios"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.58, 0.77, 0.99, 1)
+theme_override_colors/font_color = Color(0.478, 0.769, 1, 1)
 theme_override_colors/font_outline_color = Color(0.06, 0.11, 0.22, 1)
 theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 14
 text = "0"
-horizontal_alignment = 2
+horizontal_alignment = 0
 vertical_alignment = 1
 
 [node name="HBoxEconomiaBot" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia"]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 12
-alignment = 2
+theme_override_constants/separation = 16
+alignment = 0
 
 [node name="HBoxBajas" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxEconomiaBot"]
+custom_minimum_size = Vector2(108, 0)
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 5
-alignment = 2
+alignment = 0
 
 [node name="IconoBajas" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxEconomiaBot/HBoxBajas"]
 custom_minimum_size = Vector2(15, 15)
@@ -993,22 +1050,23 @@ stretch_mode = 5
 
 [node name="LabelBajas" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxEconomiaBot/HBoxBajas"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.89, 0.91, 0.94, 1)
-theme_override_colors/font_outline_color = Color(0.08, 0.10, 0.14, 1)
+theme_override_colors/font_color = Color(0.871, 0.906, 0.941, 1)
+theme_override_colors/font_outline_color = Color(0.06, 0.08, 0.12, 1)
 theme_override_constants/outline_size = 1
 theme_override_font_sizes/font_size = 12
 text = "0 Bajas"
-horizontal_alignment = 2
+horizontal_alignment = 0
 vertical_alignment = 1
 
 [node name="HBoxSuerte" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxEconomiaBot"]
+custom_minimum_size = Vector2(82, 0)
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 4
-alignment = 2
+theme_override_constants/separation = 5
+alignment = 0
 
 [node name="IconoSuerte" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxEconomiaBot/HBoxSuerte"]
-custom_minimum_size = Vector2(14, 14)
+custom_minimum_size = Vector2(15, 15)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
@@ -1018,22 +1076,22 @@ stretch_mode = 5
 
 [node name="LabelSuerte" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxEconomiaBot/HBoxSuerte"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.20, 0.83, 0.60, 1)
-theme_override_colors/font_outline_color = Color(0.02, 0.18, 0.12, 1)
+theme_override_colors/font_color = Color(0.231, 0.902, 0.463, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.18, 0.10, 1)
 theme_override_constants/outline_size = 1
 theme_override_font_sizes/font_size = 12
 text = "+0%"
-horizontal_alignment = 2
+horizontal_alignment = 0
 vertical_alignment = 1
 
 [node name="StatusRail" type="Control" parent="Control"]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
-offset_left = 20.0
-offset_top = 97.0
-offset_right = -20.0
-offset_bottom = 127.0
+offset_left = 18.0
+offset_top = 106.0
+offset_right = -18.0
+offset_bottom = 134.0
 grow_horizontal = 2
 mouse_filter = 2
 
@@ -1045,7 +1103,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 10
 
 [node name="ChipPresagio" type="PanelContainer" parent="Control/StatusRail/HBoxStatusRail"]
 layout_mode = 2
@@ -1055,7 +1113,7 @@ theme_override_styles/panel = SubResource("StyleBox_ChipDark")
 [node name="HBox" type="HBoxContainer" parent="Control/StatusRail/HBoxStatusRail/ChipPresagio"]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 5
+theme_override_constants/separation = 6
 alignment = 1
 
 [node name="IconoPresagio" type="TextureRect" parent="Control/StatusRail/HBoxStatusRail/ChipPresagio/HBox"]
@@ -1069,7 +1127,7 @@ stretch_mode = 5
 
 [node name="LabelPresagio" type="Label" parent="Control/StatusRail/HBoxStatusRail/ChipPresagio/HBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.86, 0.90, 0.96, 1)
+theme_override_colors/font_color = Color(0.902, 0.933, 0.969, 1)
 theme_override_font_sizes/font_size = 11
 text = "Presagio: Cielo Despejado"
 vertical_alignment = 1
@@ -1083,10 +1141,11 @@ theme_override_styles/panel = SubResource("StyleBox_ChipDark")
 [node name="HBox" type="HBoxContainer" parent="Control/StatusRail/HBoxStatusRail/ChipReliquias"]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 5
+theme_override_constants/separation = 6
 alignment = 1
 
 [node name="IconoReliquias" type="TextureRect" parent="Control/StatusRail/HBoxStatusRail/ChipReliquias/HBox"]
+modulate = Color(0.961, 0.741, 0.220, 1)
 custom_minimum_size = Vector2(14, 14)
 layout_mode = 2
 size_flags_vertical = 4
@@ -1097,7 +1156,7 @@ stretch_mode = 5
 
 [node name="LabelReliquias" type="Label" parent="Control/StatusRail/HBoxStatusRail/ChipReliquias/HBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.98, 0.85, 0.45, 1)
+theme_override_colors/font_color = Color(0.902, 0.933, 0.969, 1)
 theme_override_font_sizes/font_size = 11
 text = "0 Reliquias"
 vertical_alignment = 1
@@ -1152,7 +1211,7 @@ size_flags_horizontal = 3
 mouse_filter = 2
 
 [node name="BtnArbolPoE" type="Button" parent="Control/StatusRail/HBoxStatusRail"]
-custom_minimum_size = Vector2(142, 26)
+custom_minimum_size = Vector2(168, 28)
 layout_mode = 2
 focus_mode = 0
 theme_override_styles/normal = SubResource("StyleBox_BtnArbol")
@@ -1171,6 +1230,7 @@ theme_override_constants/separation = 6
 alignment = 1
 
 [node name="IconoArbol" type="TextureRect" parent="Control/StatusRail/HBoxStatusRail/BtnArbolPoE/HBoxArbol"]
+modulate = Color(1, 0.800, 0.267, 1)
 custom_minimum_size = Vector2(14, 14)
 layout_mode = 2
 size_flags_vertical = 4
@@ -1182,9 +1242,9 @@ stretch_mode = 5
 [node name="LabelArbol" type="Label" parent="Control/StatusRail/HBoxStatusRail/BtnArbolPoE/HBoxArbol"]
 layout_mode = 2
 mouse_filter = 2
-theme_override_colors/font_color = Color(0.99, 0.89, 0.56, 1)
+theme_override_colors/font_color = Color(1, 0.941, 0.761, 1)
 theme_override_font_sizes/font_size = 11
-text = "[U] Ascensión"
+text = "Ascensión [U]"
 vertical_alignment = 1
 
 [node name="PanelJefe" type="Panel" parent="Control"]
@@ -1194,9 +1254,9 @@ anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
 offset_left = -260.0
-offset_top = 133.0
+offset_top = 140.0
 offset_right = 260.0
-offset_bottom = 190.0
+offset_bottom = 197.0
 grow_horizontal = 2
 pivot_offset = Vector2(260, 0)
 mouse_filter = 2

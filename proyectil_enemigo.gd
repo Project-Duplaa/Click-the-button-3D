@@ -1,10 +1,12 @@
 extends Area3D
 
 const AudioManager = preload("res://audio_manager.gd")
+const ArenaColiseo = preload("res://arena_coliseo.gd")
 
 @export var rapidez: float = 5.5
 @export var dano: float = 11.0
 @export var tiempo_vida: float = 4.0
+@export var seguir_terreno: bool = false
 
 var direccion: Vector3 = Vector3.FORWARD
 var _tiempo: float = 0.0
@@ -15,6 +17,7 @@ var _impactado: bool = false
 
 func _ready():
 	add_to_group("proyectiles_enemigos")
+	collision_mask = 2 | 4
 	body_entered.connect(_on_body_entered)
 	area_entered.connect(_on_area_entered)
 
@@ -33,8 +36,14 @@ func _physics_process(delta):
 	if _impactado:
 		return
 	global_position += direccion * rapidez * delta
+	if seguir_terreno:
+		var y_obj := ArenaColiseo.obtener_altura_suelo(global_position.x, global_position.z) + 1.0
+		global_position.y = lerpf(global_position.y, y_obj, minf(1.0, delta * 14.0))
+	elif global_position.y < ArenaColiseo.obtener_altura_suelo(global_position.x, global_position.z) - 0.15:
+		_impactar_obstaculo()
+		return
 	_tiempo += delta
-	if _tiempo >= tiempo_vida:
+	if _tiempo >= tiempo_vida or not ArenaColiseo.esta_dentro(global_position, 0.0):
 		queue_free()
 
 func _on_body_entered(body):

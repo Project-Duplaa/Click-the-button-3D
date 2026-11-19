@@ -15,6 +15,7 @@ class_name BotonMovil
 ##    - "corrupta_hilo_corto": Clampa la órbita del botón a radio máximo de 5.5m del jugador.
 
 const AudioManager = preload("res://audio_manager.gd")
+const ArenaColiseo = preload("res://arena_coliseo.gd")
 const PalancaEscena = preload("res://palanca_boton.tscn")
 const BunkerVisualKit = preload("res://bunker_visual_kit.gd")
 const MetaprogresoManager = preload("res://metaprogreso_manager.gd")
@@ -66,15 +67,17 @@ var clics_recibidos: int:
 var clics_run_boton: int:
 	get: return total_clicks
 
-# Ruta táctica de anclaje con punto central de partida
+# Ruta táctica de anclaje por foso, bastiones y pasarela del anfiteatro
 var ruta: Array[Vector3] = [
-	Vector3(0.0, 1.25, 0.0),     # 0: Altar Central (Punto de inicio)
-	Vector3(13.0, 1.25, 8.5),    # 1: Sureste
-	Vector3(15.0, 1.25, -9.0),   # 2: Noreste
-	Vector3(0.0, 1.25, -15.5),   # 3: Norte
-	Vector3(-15.0, 1.25, -9.0),  # 4: Noroeste
-	Vector3(-13.0, 1.25, 8.5),   # 5: Suroeste
-	Vector3(0.0, 1.25, 14.0)     # 6: Sur
+	Vector3(0.0, 1.25, 0.0),      # 0: Nexo Central (Inicio)
+	Vector3(14.5, 1.25, 7.5),     # 1: Foso SE
+	Vector3(24.5, 2.05, 0.0),     # 2: Pasarela Este (Reactor)
+	Vector3(15.0, 1.25, -9.0),    # 3: Foso NE
+	Vector3(0.0, 2.05, -24.5),    # 4: Pasarela Norte (Portal Cryo)
+	Vector3(-15.0, 1.25, -9.0),   # 5: Foso NO
+	Vector3(-24.5, 2.05, 0.0),    # 6: Pasarela Oeste (Fragua)
+	Vector3(-13.65, 1.65, 13.65), # 7: Bastión Suroeste (+0.40 m)
+	Vector3(0.0, 1.65, 19.5)      # 8: Rampa Sur
 ]
 
 var estado_actual: EstadoBoton = EstadoBoton.ACTIVO
@@ -151,6 +154,7 @@ func _ready():
 
 	_sincronizar_telemetria_termica()
 	_actualizar_visual_termico(0.0)
+	_generar_ruta_aleatoria_run()
 	call_deferred("_crear_palancas_en_arena")
 
 ## Cambio dinámico y pre-run del Chasis del Núcleo Rúnico
@@ -312,7 +316,8 @@ func _actualizar_visual_termico(delta: float):
 		luz_nucleo.light_energy = energia_emision
 
 	if _anillo_termico_suelo != null:
-		_anillo_termico_suelo.position.y = -1.18
+		var suelo_anillo := ArenaColiseo.obtener_altura_suelo(global_position.x, global_position.z)
+		_anillo_termico_suelo.global_position.y = suelo_anillo + 0.03
 		if _mat_anillo_termico != null:
 			_mat_anillo_termico.set_shader_parameter("progress", ratio_calor)
 			var estado_act: float = 1.0 if (sobrecalentado or calor_actual >= umbral_sobrecarga_termica) else 0.0
@@ -361,12 +366,114 @@ func _crear_anillo_ritmo_visual():
 	_anillo_ritmo_visual.position = Vector3(0.0, 0.55, 0.0)
 	add_child(_anillo_ritmo_visual)
 
-func _crear_palancas_en_arena():
-	var posiciones_palancas = [
-		Vector3(-16.0, 0.0, 13.0),
-		Vector3(0.0, 0.0, -17.0),
-		Vector3(16.0, 0.0, 13.0)
+func _generar_ruta_aleatoria_run() -> void:
+	var rng: RandomNumberGenerator = ArenaColiseo._obtener_rng_run(self)
+	ruta.clear()
+	ruta.append(Vector3(0.0, _altura_base, 0.0))
+	var exclusiones: Array[Vector2] = [Vector2(0.0, 0.0)]
+	var ang_offset: float = rng.randf() * TAU
+	for i in range(8):
+		var en_pasarela: bool = (i % 3 == 2)
+		var r_min: float = 42.2 if en_pasarela else 16.0
+		var r_max: float = 47.4 if en_pasarela else 35.2
+		var elegido := Vector3.ZERO
+		var sector_ang: float = ang_offset + float(i) * (TAU / 8.0)
+		for _intento in range(36):
+			var ang: float = sector_ang + rng.randf_range(-0.35, 0.35)
+			var r: float = rng.randf_range(r_min, r_max)
+			var cand := Vector3(sin(ang) * r, 0.0, -cos(ang) * r)
+			if not ArenaColiseo.esta_dentro(cand, 2.5):
+				continue
+			if ArenaColiseo.esta_en_pendiente(cand.x, cand.z, 0.8):
+				continue
+			if not ArenaColiseo.punto_libre_de_obstaculos(cand, 3.0):
+				continue
+			var m_c: float = ArenaColiseo.apotema_en_pos(cand.x, cand.z)
+			if m_c >= (ArenaColiseo.APOTEMA_FOSO - 1.4) and m_c <= (ArenaColiseo.APOTEMA_FOSO + 1.4):
+				continue
+			var p2 := Vector2(cand.x, cand.z)
+			var ok := true
+			for ex in exclusiones:
+				if p2.distance_to(ex) < 12.0:
+					ok = false
+					break
+			if ok:
+				elegido = ArenaColiseo.clamping_y_ajustar_a_suelo(cand, 2.5, _altura_base)
+				break
+		if elegido == Vector3.ZERO:
+			elegido = ArenaColiseo.punto_seguro_con_exclusiones(r_min, r_max, exclusiones, 10.0, rng, _altura_base, false, false)
+		ruta.append(elegido)
+		exclusiones.append(Vector2(elegido.x, elegido.z))
+
+func _calcular_posiciones_palancas_aleatorias() -> Array[Vector3]:
+	var rng: RandomNumberGenerator = ArenaColiseo._obtener_rng_run(self)
+	var posiciones: Array[Vector3] = []
+	var exclusiones: Array[Vector2] = [
+		Vector2(0.0, 0.0),
+		Vector2(global_position.x, global_position.z),
 	]
+	if jugador != null and is_instance_valid(jugador):
+		exclusiones.append(Vector2(jugador.global_position.x, jugador.global_position.z))
+	else:
+		exclusiones.append(Vector2(0.0, 5.25))
+
+	var ang_base: float = rng.randf() * TAU
+	var primer_elevado: int = int(rng.randi() % 2)
+	for i in range(3):
+		var en_pasarela: bool = ((i + primer_elevado) % 2 == 1) if i < 2 else (rng.randf() < 0.5)
+		var r_min: float = 42.0 if en_pasarela else 22.0
+		var r_max: float = 47.5 if en_pasarela else 35.0
+		var elegido := Vector3.ZERO
+		var ang_sec: float = ang_base + float(i) * (TAU / 3.0)
+		for _intento in range(44):
+			var ang: float = ang_sec + rng.randf_range(-0.42, 0.42)
+			var r: float = rng.randf_range(r_min, r_max)
+			var cand := Vector3(sin(ang) * r, 0.0, -cos(ang) * r)
+			if not ArenaColiseo.esta_dentro(cand, 2.4):
+				continue
+			if ArenaColiseo.esta_en_pendiente(cand.x, cand.z, 1.0):
+				continue
+			if not ArenaColiseo.punto_libre_de_obstaculos(cand, 3.2):
+				continue
+			var m_c: float = ArenaColiseo.apotema_en_pos(cand.x, cand.z)
+			if m_c >= (ArenaColiseo.APOTEMA_FOSO - 1.5) and m_c <= (ArenaColiseo.APOTEMA_FOSO + 1.5):
+				continue
+			var p2 := Vector2(cand.x, cand.z)
+			var ok := true
+			if p2.distance_to(Vector2(global_position.x, global_position.z)) < 8.0:
+				ok = false
+			if ok and jugador != null and is_instance_valid(jugador):
+				if p2.distance_to(Vector2(jugador.global_position.x, jugador.global_position.z)) < 8.0:
+					ok = false
+			if ok:
+				for prev_p in posiciones:
+					if p2.distance_to(Vector2(prev_p.x, prev_p.z)) < 22.0:
+						ok = false
+						break
+			if ok:
+				elegido = ArenaColiseo.clamping_y_ajustar_a_suelo(cand, 2.4, 0.0)
+				break
+		if elegido == Vector3.ZERO:
+			var excl_full: Array[Vector2] = exclusiones.duplicate()
+			for prev_p in posiciones:
+				excl_full.append(Vector2(prev_p.x, prev_p.z))
+			elegido = ArenaColiseo.punto_seguro_con_exclusiones(22.0, 47.5, excl_full, 18.0, rng, 0.0, false, false)
+		posiciones.append(elegido)
+	return posiciones
+
+func _reubicar_palancas_aleatorias() -> void:
+	if palancas_instancias.is_empty():
+		return
+	var nuevas: Array[Vector3] = _calcular_posiciones_palancas_aleatorias()
+	for i in range(mini(palancas_instancias.size(), nuevas.size())):
+		var p: Node3D = palancas_instancias[i] as Node3D
+		if p != null and is_instance_valid(p):
+			var pos_n: Vector3 = nuevas[i]
+			p.global_position = pos_n
+			p.rotation.y = atan2(-pos_n.x, -pos_n.z)
+
+func _crear_palancas_en_arena():
+	var posiciones_palancas: Array[Vector3] = _calcular_posiciones_palancas_aleatorias()
 
 	var arena = get_parent()
 	if arena == null:
@@ -493,17 +600,22 @@ func _physics_process(delta: float):
 						var clamped_pos = jugador.global_position + off_pj.normalized() * 5.5
 						global_position.x = clamped_pos.x
 						global_position.z = clamped_pos.z
-				else:
-					global_position.x = clampf(global_position.x, -25.0, 25.0)
-					global_position.z = clampf(global_position.z, -25.0, 25.0)
+				var pos_arena_lim := ArenaColiseo.clamping_en_arena(global_position, 1.8)
+				global_position.x = pos_arena_lim.x
+				global_position.z = pos_arena_lim.z
 	else:
 		global_position += _impulso_evasion * delta
+		var pos_enc_lim := ArenaColiseo.clamping_en_arena(global_position, 1.8)
+		global_position.x = pos_enc_lim.x
+		global_position.z = pos_enc_lim.z
 
 	_impulso_evasion = _impulso_evasion.move_toward(Vector3.ZERO, delta * 12.0)
 
 	_reloj_flotacion += delta * (4.8 if estado_actual == EstadoBoton.SOBRECARGA_FRENESI else 3.0)
 	if not _esta_presionado:
-		global_position.y = _altura_base + sin(_reloj_flotacion) * 0.14
+		var suelo_btn := ArenaColiseo.obtener_altura_suelo(global_position.x, global_position.z)
+		var y_obj := suelo_btn + _altura_base + sin(_reloj_flotacion) * 0.14
+		global_position.y = lerpf(global_position.y, y_obj, minf(1.0, delta * 9.0))
 
 	if anillo_runico != null:
 		var mult_rot = 3.5 if estado_actual == EstadoBoton.SOBRECARGA_FRENESI else (0.8 if estado_actual == EstadoBoton.ENCADENADO else (2.4 if calor_actual >= umbral_sobrecarga_termica else 1.5))
@@ -638,9 +750,9 @@ func pulsar_boton():
 		jugador = get_tree().get_first_node_in_group("jugador")
 
 	var mult_termico: float = 1.5 if es_sobrecarga_termica else 1.0
-	var dano_onda_base: float = 18.0 * (1.45 if es_perfecto else 1.0) * mult_termico
+	var dano_onda_base: float = 7.5 * (1.35 if es_perfecto else 1.0) * mult_termico
 	if jugador != null and is_instance_valid(jugador):
-		var xp_por_clic: int = (6 if es_perfecto else 4) + (2 if es_sobrecarga_termica else 0)
+		var xp_por_clic: int = (2 if es_perfecto else 1) + (1 if es_sobrecarga_termica else 0)
 		for i in range(mult_recompensa):
 			if jugador.has_method("registrar_clic_boton"):
 				jugador.registrar_clic_boton(global_position, dano_onda_base, es_perfecto or es_sobrecarga_termica)
@@ -698,7 +810,7 @@ func _crear_zona_voltaica_suelo() -> void:
 
 	var zona = Area3D.new()
 	zona.name = "ZonaVoltaicaCometa"
-	zona.position = Vector3(global_position.x, 0.06, global_position.z)
+	zona.position = ArenaColiseo.clamping_y_ajustar_a_suelo(global_position, 1.5, 0.04)
 
 	var col = CollisionShape3D.new()
 	var cyl = CylinderShape3D.new()
@@ -765,6 +877,7 @@ func activar_bloqueo_cadenas():
 	AudioManager.play("alerta_oleada", 1.45, 2.0)
 	_spawn_floating_text("⚠️ ¡NÚCLEO ENCADENADO! Activa 3 palancas ⚡")
 
+	_reubicar_palancas_aleatorias()
 	for p in palancas_instancias:
 		if p != null and is_instance_valid(p):
 			p.armar()
@@ -853,7 +966,7 @@ func _ejecutar_teletransporte_seguro():
 	indice_ruta = (indice_ruta + randi_range(2, 4)) % ruta.size()
 	if indice_ruta == 0:
 		indice_ruta = 1
-	global_position = ruta[indice_ruta]
+	global_position = ArenaColiseo.clamping_y_ajustar_a_suelo(ruta[indice_ruta], 1.8, _altura_base)
 
 	var tw_pop = create_tween()
 	tw_pop.tween_property(self, "scale", Vector3.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

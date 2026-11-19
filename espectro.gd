@@ -1,12 +1,14 @@
 extends CharacterBody3D
 
-@export var rapidez: float = 2.85
-@export var vida_maxima: float = 14.0
-@export var dano_ataque: float = 9.0
+const ArenaColiseo = preload("res://arena_coliseo.gd")
+
+@export var rapidez: float = 3.15
+@export var vida_maxima: float = 24.0
+@export var dano_ataque: float = 12.0
 @export var cadencia_ataque: float = 1.0
 @export var rango_ataque: float = 1.1
 
-var vida: float = 14.0
+var vida: float = 24.0
 var jugador: Node3D = null
 var _reloj_ataque: float = 0.0
 var _escala_base: Vector3 = Vector3.ONE
@@ -17,6 +19,7 @@ var knockback_vel: Vector3 = Vector3.ZERO
 var resistencia_knockback: float = 0.0
 var _stun_timer: float = 0.0
 var marca_conductiva_timer: float = 0.0
+var _nav_estado: Dictionary = {}
 
 @onready var anim = $Modelo/AnimationPlayer if has_node("Modelo/AnimationPlayer") else null
 @onready var modelo = $Modelo if has_node("Modelo") else null
@@ -24,6 +27,7 @@ var marca_conductiva_timer: float = 0.0
 func _ready():
 	add_to_group("enemies")
 	add_to_group("enemigos")
+	ArenaColiseo.configurar_cuerpo_terreno(self, true, true)
 	vida = vida_maxima
 	if modelo != null:
 		_escala_base = modelo.scale
@@ -74,17 +78,17 @@ func _physics_process(delta):
 			_anim_ctrl.reproducir_accion("attack-melee-right", 2, 0.07, 1.15)
 			_golpear_jugador()
 	else:
-		ir_a(jugador.global_position)
+		ir_a(jugador.global_position, delta)
 
 	velocity.x += knockback_vel.x
 	velocity.z += knockback_vel.z
+	if is_on_floor():
+		velocity.y = minf(velocity.y, 0.0)
 	move_and_slide()
 
-func ir_a(destino: Vector3):
-	var hacia = destino - global_position
-	hacia.y = 0.0
-	if hacia.length_squared() > 0.01:
-		var dir = hacia.normalized()
+func ir_a(destino: Vector3, delta: float = 0.016):
+	var dir = ArenaColiseo.calcular_direccion_persecucion(self, destino, _nav_estado, delta)
+	if dir.length_squared() > 0.0025:
 		var mult_stun = 0.15 if _stun_timer > 0.0 else 1.0
 		velocity.x = dir.x * rapidez * mult_stun
 		velocity.z = dir.z * rapidez * mult_stun

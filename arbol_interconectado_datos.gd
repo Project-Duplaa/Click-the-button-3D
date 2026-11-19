@@ -48,36 +48,36 @@ static func generar_arbol() -> Dictionary:
 	# ==========================================================================
 	registrar.call(
 		"clk_fuerza_1", "Fuerza de Clic",
-		"+20% daño por clic",
-		"azul", Vector2(-160, -90), 5, "clics", 0, 10, 1.38, "dano_clic_pct", 20.0,
+		"+8% daño por clic",
+		"azul", Vector2(-160, -90), 5, "clics", 0, 70, 1.55, "dano_clic_pct", 8.0,
 		["nodo_origen", "clk_pulso_1", "clk_aoe_1"], false, "👆"
 	)
 
 	registrar.call(
 		"clk_pulso_1", "Pulsación Rúnica",
 		"+1 clic generado por golpe",
-		"azul", Vector2(-120, -180), 5, "clics", 0, 14, 1.4, "clics_por_pulsacion", 1.0,
+		"azul", Vector2(-120, -180), 3, "clics", 0, 120, 1.65, "clics_por_pulsacion", 1.0,
 		["nodo_origen", "clk_fuerza_1", "clk_crit_1", "pnt_dorada_azul_1", "clk_impulso_1"], false, "⚡"
 	)
 
 	registrar.call(
 		"clk_aoe_1", "Onda Sónica Expansiva",
-		"+1.5m radio detonación por clic",
-		"azul", Vector2(-310, -80), 5, "clics", 0, 45, 1.45, "radio_aoe_clic", 1.5,
+		"+0.6m radio detonación por clic",
+		"azul", Vector2(-310, -80), 5, "clics", 0, 180, 1.55, "radio_aoe_clic", 0.6,
 		["clk_fuerza_1", "clk_eco_1", "pnt_azul_verde_1"], false, "💥"
 	)
 
 	registrar.call(
 		"clk_crit_1", "Precisión Quirúrgica",
-		"+6% prob golpe crítico manual",
-		"azul", Vector2(-270, -220), 5, "clics", 0, 50, 1.48, "critico_clic_prob", 6.0,
+		"+3% prob golpe crítico manual",
+		"azul", Vector2(-270, -220), 5, "clics", 0, 200, 1.55, "critico_clic_prob", 3.0,
 		["clk_pulso_1", "clk_filo_1", "clk_eco_1"], false, "🎯"
 	)
 
 	registrar.call(
 		"clk_impulso_1", "Onda Repulsiva",
-		"+25% retroceso y sprint al pulsar",
-		"azul", Vector2(-200, -320), 4, "clics", 0, 40, 1.45, "empuje_clic_pct", 25.0,
+		"+12% retroceso y sprint al pulsar",
+		"azul", Vector2(-200, -320), 4, "clics", 0, 150, 1.55, "empuje_clic_pct", 12.0,
 		["clk_pulso_1", "clk_anomalia_1", "pnt_dorada_azul_1"], false, "🌀"
 	)
 
@@ -142,57 +142,57 @@ static func generar_arbol() -> Dictionary:
 	# ==========================================================================
 	registrar.call(
 		"srv_salud_1", "Constitución Heroica",
-		"+25 HP Vida Máxima por nivel",
-		"verde", Vector2(0, 160), 5, "oro", 12, 0, 1.35, "salud_maxima", 25.0,
+		"+10 HP Vida Máxima por nivel",
+		"verde", Vector2(0, 160), 5, "oro", 65, 0, 1.55, "salud_maxima", 10.0,
 		["nodo_origen", "srv_armadura_1", "srv_vel_1", "srv_iman_1"], false, "❤️"
 	)
 
 	registrar.call(
 		"srv_armadura_1", "Coraza de Gladiador",
-		"+6% mitigación pasiva de daño",
-		"verde", Vector2(-100, 190), 5, "oro", 15, 0, 1.38, "mitigacion_dano_pct", 6.0,
+		"+3% mitigación pasiva de daño",
+		"verde", Vector2(-100, 190), 5, "oro", 80, 0, 1.55, "mitigacion_dano_pct", 3.0,
 		["nodo_origen", "srv_salud_1", "srv_escudo_1"], false, "🛡️"
 	)
 
 	registrar.call(
 		"srv_vel_1", "Paso de Viento",
-		"+8% velocidad de movimiento",
-		"verde", Vector2(-180, 310), 5, "oro", 45, 0, 1.45, "velocidad_mov_pct", 8.0,
+		"+4% velocidad de movimiento",
+		"verde", Vector2(-180, 310), 5, "oro", 180, 0, 1.55, "velocidad_mov_pct", 4.0,
 		["srv_salud_1", "srv_regen_1", "pnt_azul_verde_1"], false, "👟"
 	)
 
 	registrar.call(
 		"srv_iman_1", "Magnetismo Espectral",
-		"+2.5m radio imán de orbes y oro",
-		"verde", Vector2(140, 290), 5, "oro", 50, 0, 1.46, "radio_iman", 2.5,
+		"+1.2m radio imán de orbes y oro",
+		"verde", Vector2(140, 290), 5, "oro", 160, 0, 1.55, "radio_iman", 1.2,
 		["srv_salud_1", "srv_regen_1", "pnt_verde_dorada_1", "srv_iframes_1"], false, "🧲"
 	)
 
 	registrar.call(
 		"srv_escudo_1", "Escudo de Almas (Aegis)",
-		"Absorbe +35 de daño antes de perder HP",
-		"verde", Vector2(-60, 360), 4, "oro", 60, 0, 1.48, "escudo_almas", 35.0,
+		"Absorbe +15 de daño antes de perder HP",
+		"verde", Vector2(-60, 360), 4, "oro", 240, 0, 1.58, "escudo_almas", 15.0,
 		["srv_armadura_1", "srv_vampirismo_1", "srv_regen_1", "srv_vida_extra_1"], false, "🔰"
 	)
 
 	registrar.call(
 		"srv_vida_extra_1", "Segunda Oportunidad (Vidas Extras)",
 		"+1 Vida / Reaparición adicional en combate por nivel",
-		"verde", Vector2(-90, 520), 3, "ambas", 180, 100, 1.6, "vidas_extra", 1.0,
+		"verde", Vector2(-90, 520), 2, "ambas", 850, 450, 1.85, "vidas_extra", 1.0,
 		["srv_escudo_1", "srv_regen_1", "srv_fortaleza_1"], false, "💖👑"
 	)
 
 	registrar.call(
 		"srv_regen_1", "Aliento Vital Continuo",
-		"+1.5 HP/s regenerado continuamente",
-		"verde", Vector2(0, 480), 4, "oro", 140, 0, 1.52, "regen_vida_seg", 1.5,
+		"+0.5 HP/s regenerado continuamente",
+		"verde", Vector2(0, 480), 4, "oro", 420, 0, 1.60, "regen_vida_seg", 0.5,
 		["srv_vel_1", "srv_iman_1", "srv_escudo_1", "srv_fortaleza_1", "srv_vida_extra_1"], false, "💖"
 	)
 
 	registrar.call(
 		"srv_vampirismo_1", "Festín Sangriento (Vampirismo)",
-		"+4 HP restaurados por cada enemigo abatido",
-		"verde", Vector2(-190, 490), 4, "oro", 160, 0, 1.55, "vida_por_baja", 4.0,
+		"+1 HP restaurado por cada enemigo abatido",
+		"verde", Vector2(-190, 490), 4, "oro", 480, 0, 1.60, "vida_por_baja", 1.0,
 		["srv_escudo_1", "srv_desquite_1", "pnt_azul_verde_2"], false, "🩸"
 	)
 
@@ -250,15 +250,15 @@ static func generar_arbol() -> Dictionary:
 	# ==========================================================================
 	registrar.call(
 		"eco_oro_1", "Tributo de Sangre",
-		"+20% oro de bajas y cofres",
-		"dorada", Vector2(160, -90), 5, "oro", 12, 0, 1.36, "oro_por_baja_pct", 20.0,
+		"+8% oro de bajas y cofres",
+		"dorada", Vector2(160, -90), 5, "oro", 75, 0, 1.55, "oro_por_baja_pct", 8.0,
 		["nodo_origen", "eco_xp_1", "eco_cadencia_1"], false, "🪙"
 	)
 
 	registrar.call(
 		"eco_xp_1", "Sabiduría del Coliseo",
-		"+18% ganancia de experiencia",
-		"dorada", Vector2(120, -180), 5, "oro", 16, 0, 1.38, "xp_ganada_pct", 18.0,
+		"+8% ganancia de experiencia",
+		"dorada", Vector2(120, -180), 5, "oro", 85, 0, 1.55, "xp_ganada_pct", 8.0,
 		["nodo_origen", "eco_oro_1", "eco_autoclick_1", "pnt_dorada_azul_1"], false, "📜"
 	)
 
@@ -271,22 +271,22 @@ static func generar_arbol() -> Dictionary:
 
 	registrar.call(
 		"eco_cadencia_1", "Cadencia Bélica",
-		"+10% cadencia de armas automáticas",
-		"dorada", Vector2(310, -80), 5, "oro", 55, 0, 1.46, "cadencia_armas_pct", 10.0,
+		"+5% cadencia de armas automáticas",
+		"dorada", Vector2(310, -80), 5, "oro", 220, 0, 1.55, "cadencia_armas_pct", 5.0,
 		["eco_oro_1", "eco_proyectiles_1", "pnt_verde_dorada_1"], false, "⚔️"
 	)
 
 	registrar.call(
 		"eco_autoclick_1", "Autoclicker Rúnico",
-		"+0.6 clics automáticos por segundo",
-		"dorada", Vector2(260, -220), 5, "clics", 0, 60, 1.48, "autoclick_tasa", 0.6,
+		"+0.25 clics automáticos por segundo",
+		"dorada", Vector2(260, -220), 5, "clics", 0, 280, 1.60, "autoclick_tasa", 0.25,
 		["eco_xp_1", "eco_proyectiles_1", "eco_minero_1"], false, "⏳"
 	)
 
 	registrar.call(
 		"eco_proyectiles_1", "Calibre Expandido",
-		"+15% daño a proyectiles y ataques automáticos",
-		"dorada", Vector2(220, -320), 4, "oro", 65, 0, 1.48, "dano_armas_pct", 15.0,
+		"+6% daño a proyectiles y ataques automáticos",
+		"dorada", Vector2(220, -320), 4, "oro", 240, 0, 1.55, "dano_armas_pct", 6.0,
 		["eco_cadencia_1", "eco_autoclick_1", "eco_multidisparo_1", "eco_perforacion_1"], false, "🏹"
 	)
 
@@ -306,8 +306,8 @@ static func generar_arbol() -> Dictionary:
 
 	registrar.call(
 		"eco_minero_1", "Tributo de Bóveda Pasiva",
-		"+1.5 de oro generado por segundo",
-		"dorada", Vector2(350, -420), 4, "oro", 170, 0, 1.54, "oro_pasivo_seg", 1.5,
+		"+0.5 de oro generado por segundo",
+		"dorada", Vector2(350, -420), 4, "oro", 450, 0, 1.60, "oro_pasivo_seg", 0.5,
 		["eco_autoclick_1", "eco_perforacion_1", "eco_dividendos_1", "pnt_dorada_azul_2"], false, "⛏️"
 	)
 

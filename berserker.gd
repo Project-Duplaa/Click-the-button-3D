@@ -3,6 +3,7 @@ extends CharacterBody3D
 enum Estado { PERSEGUIR, PREPARAR_CARGA, CARGAR, ATURDIDO }
 
 const AudioManager = preload("res://audio_manager.gd")
+const ArenaColiseo = preload("res://arena_coliseo.gd")
 
 @export var rapidez_caminar: float = 2.4
 @export var rapidez_carga: float = 7.5
@@ -31,6 +32,7 @@ var knockback_vel: Vector3 = Vector3.ZERO
 var resistencia_knockback: float = 0.35
 var _stun_timer: float = 0.0
 var marca_conductiva_timer: float = 0.0
+var _nav_estado: Dictionary = {}
 
 @onready var modelo: Node3D = $Modelo if has_node("Modelo") else null
 @onready var anim = $Modelo/AnimationPlayer if has_node("Modelo/AnimationPlayer") else null
@@ -41,6 +43,7 @@ func _ready():
 	add_to_group("enemies")
 	add_to_group("enemigos")
 	add_to_group("berserkers")
+	ArenaColiseo.configurar_cuerpo_terreno(self, true, true)
 	vida = vida_maxima
 	if modelo != null:
 		_escala_base = modelo.scale
@@ -97,13 +100,13 @@ func _physics_process(delta):
 
 	match estado:
 		Estado.PERSEGUIR:
-			if dist <= 8.5 and _reloj_cooldown_carga <= 0.001 and _stun_timer <= 0.0:
+			if dist <= 8.5 and _reloj_cooldown_carga <= 0.001 and _stun_timer <= 0.0 and absf(pos_jugador.y - global_position.y) <= 0.6:
 				_iniciar_preparacion_carga(dif.normalized())
 			else:
-				var dir = dif.normalized()
+				var dir = ArenaColiseo.calcular_direccion_persecucion(self, pos_jugador, _nav_estado, delta)
 				velocity.x = dir.x * rapidez_caminar * mult_stun
 				velocity.z = dir.z * rapidez_caminar * mult_stun
-				if dif.length_squared() > 0.01:
+				if dir.length_squared() > 0.01:
 					basis = Basis.looking_at(dir)
 				if _stun_timer > 0.0:
 					_anim_ctrl.reproducir_bucle("stunned", 0.10, 1.0, 1)
@@ -143,6 +146,8 @@ func _physics_process(delta):
 
 	velocity.x += knockback_vel.x
 	velocity.z += knockback_vel.z
+	if is_on_floor():
+		velocity.y = minf(velocity.y, 0.0)
 	move_and_slide()
 
 func _iniciar_preparacion_carga(dir_hacia_jugador: Vector3):

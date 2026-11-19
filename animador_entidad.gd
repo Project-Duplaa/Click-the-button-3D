@@ -3784,14 +3784,62 @@ static func _adjuntar_array_empaquetado(dst: Variant, src: Variant) -> Variant:
 
 static var _outline_enemigo: StandardMaterial3D = null
 static var _outline_heroe: StandardMaterial3D = null
+static var _outline_heroe_calibrado: StandardMaterial3D = null
+
+static func _obtener_outline_heroe_calibrado() -> StandardMaterial3D:
+	if _outline_heroe_calibrado == null:
+		_outline_heroe_calibrado = StandardMaterial3D.new()
+		_outline_heroe_calibrado.cull_mode = BaseMaterial3D.CULL_FRONT
+		_outline_heroe_calibrado.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_outline_heroe_calibrado.albedo_color = Color(0.05, 0.06, 0.09, 1.0)
+		_outline_heroe_calibrado.grow = true
+		_outline_heroe_calibrado.grow_amount = 0.0026
+	return _outline_heroe_calibrado
+
+static func _duplicar_material_heroe_calibrado(mat_in: BaseMaterial3D, outline_mat: StandardMaterial3D) -> BaseMaterial3D:
+	var mat_dup := mat_in.duplicate() as BaseMaterial3D
+	if mat_dup == null:
+		return mat_in
+	mat_dup.resource_name = mat_in.resource_name
+	if mat_dup.transparency == BaseMaterial3D.TRANSPARENCY_DISABLED:
+		mat_dup.rim_enabled = true
+		mat_dup.rim = 0.62 if mat_dup.metallic >= 0.4 else 0.42
+		mat_dup.rim_tint = 0.45
+		if not mat_dup.emission_enabled:
+			mat_dup.next_pass = outline_mat
+	return mat_dup
+
+static func _aplicar_acabado_heroe_recursivo(nodo: Node, outline_mat: StandardMaterial3D) -> void:
+	if nodo is MeshInstance3D:
+		var mi := nodo as MeshInstance3D
+		if mi.material_override is BaseMaterial3D:
+			mi.material_override = _duplicar_material_heroe_calibrado(mi.material_override as BaseMaterial3D, outline_mat)
+		elif mi.mesh != null:
+			for s in mi.mesh.get_surface_count():
+				var mat_orig: Material = mi.get_active_material(s)
+				if mat_orig is BaseMaterial3D:
+					mi.set_surface_override_material(s, _duplicar_material_heroe_calibrado(mat_orig as BaseMaterial3D, outline_mat))
+	for hijo in nodo.get_children():
+		_aplicar_acabado_heroe_recursivo(hijo, outline_mat)
+
+static func _aplicar_acabado_heroe(modelo_raiz: Node3D) -> void:
+	if modelo_raiz == null:
+		return
+	var outline_mat := _obtener_outline_heroe_calibrado()
+	_aplicar_acabado_heroe_recursivo(modelo_raiz, outline_mat)
 
 static func estilizar_entidad_visual(modelo_raiz: Node3D, es_jugador: bool) -> void:
 	if modelo_raiz == null or modelo_raiz.has_meta(&"estilo_visual_aplicado"):
 		return
 	modelo_raiz.set_meta(&"estilo_visual_aplicado", true)
 
+	var ruta_escena: String = String(modelo_raiz.scene_file_path) if modelo_raiz.scene_file_path != null else ""
+	if es_jugador or ruta_escena.contains("player_"):
+		_aplicar_acabado_heroe(modelo_raiz)
+		return
+
 	# Preservar modelos oficiales custom y no sobreescribir sus texturas ni shaders de arte
-	if modelo_raiz.has_meta(&"modelo_oficial_custom") or modelo_raiz.name.to_lower().contains("parca") or modelo_raiz.name.to_lower().contains("coloso") or modelo_raiz.name.to_lower().contains("heraldo") or modelo_raiz.name.to_lower().contains("arquero") or modelo_raiz.name.to_lower().contains("maestra") or modelo_raiz.name.to_lower().contains("kamikaze") or modelo_raiz.name.to_lower().contains("minero") or modelo_raiz.name.to_lower().contains("bruto") or modelo_raiz.name.to_lower().contains("centurion") or (modelo_raiz.scene_file_path != null and (modelo_raiz.scene_file_path.contains("parca") or modelo_raiz.scene_file_path.contains("coloso") or modelo_raiz.scene_file_path.contains("heraldo") or modelo_raiz.scene_file_path.contains("enemigo_arquero") or modelo_raiz.scene_file_path.contains("maestra") or modelo_raiz.scene_file_path.contains("kamikaze") or modelo_raiz.scene_file_path.contains("minero") or modelo_raiz.scene_file_path.contains("bruto") or modelo_raiz.scene_file_path.contains("centurion") or modelo_raiz.scene_file_path.contains("player_"))):
+	if modelo_raiz.has_meta(&"modelo_oficial_custom") or modelo_raiz.name.to_lower().contains("parca") or modelo_raiz.name.to_lower().contains("coloso") or modelo_raiz.name.to_lower().contains("heraldo") or modelo_raiz.name.to_lower().contains("arquero") or modelo_raiz.name.to_lower().contains("maestra") or modelo_raiz.name.to_lower().contains("kamikaze") or modelo_raiz.name.to_lower().contains("minero") or modelo_raiz.name.to_lower().contains("bruto") or modelo_raiz.name.to_lower().contains("centurion") or (ruta_escena != "" and (ruta_escena.contains("parca") or ruta_escena.contains("coloso") or ruta_escena.contains("heraldo") or ruta_escena.contains("enemigo_arquero") or ruta_escena.contains("maestra") or ruta_escena.contains("kamikaze") or ruta_escena.contains("minero") or ruta_escena.contains("bruto") or ruta_escena.contains("centurion"))):
 		return
 
 	if _outline_enemigo == null:

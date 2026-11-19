@@ -5,32 +5,58 @@ class_name GestorSantuarios
 ## y ánforas rompibles en la arena, la reposición por oleadas y el pity de 180 s.
 
 const EstatuaScript = preload("res://estatua_fortuna.gd")
+const ArenaColiseo = preload("res://arena_coliseo.gd")
 const ForjaScript = preload("res://forja_vulcano.gd")
 const FuenteScript = preload("res://fuente_deseos.gd")
 const AnforaScript = preload("res://anfora_rompible.gd")
 const CofreScript = preload("res://cofre_gladiador.gd")
 const PactoScript = preload("res://pacto_marte.gd")
 
-const INTERVALO_PITY_SANTUARIO: float = 180.0
-const MAX_ANFORAS_OLEADA: int = 5
+const INTERVALO_PITY_SANTUARIO: float = 150.0
+const MAX_ANFORAS_OLEADA: int = 6
+const MAX_SANTUARIOS_ACTIVOS: int = 5
 
 const PUNTOS_SPAWN_VERIFICADOS: Array[Vector3] = [
-	Vector3(-10.0, 0.0, 0.5),
-	Vector3(10.5, 0.0, 0.0),
-	Vector3(0.0, 0.0, 11.5),
-	Vector3(0.0, 0.0, -11.0),
-	Vector3(-4.8, 0.0, -14.5),
-	Vector3(14.5, 0.0, -11.5),
-	Vector3(17.5, 0.0, -4.5),
-	Vector3(19.5, 0.0, 3.5),
-	Vector3(17.5, 0.0, 19.0),
-	Vector3(8.5, 0.0, 19.0),
-	Vector3(-3.5, 0.0, 17.5),
-	Vector3(-10.5, 0.0, 18.0),
-	Vector3(-19.5, 0.0, 2.5),
-	Vector3(-19.0, 0.0, -6.5),
-	Vector3(-5.5, 0.0, -20.5),
-	Vector3(9.0, 0.0, -19.0),
+	# Foso Central interior/medio (Y = 0.00 m, 10 puntos libres de Núcleo y rampas)
+	Vector3(-15.0, 0.0, 4.5),
+	Vector3(15.0, 0.0, -4.5),
+	Vector3(5.0, 0.0, 16.5),
+	Vector3(-5.0, 0.0, -16.5),
+	Vector3(-19.5, 0.0, -10.5),
+	Vector3(19.5, 0.0, 10.5),
+	Vector3(21.5, 0.0, -6.5),
+	Vector3(-21.5, 0.0, 6.5),
+	Vector3(11.0, 0.0, 22.0),
+	Vector3(-11.0, 0.0, -22.0),
+	# Anillo Exterior del Foso (Y = 0.00 m, 10 puntos distribuidos en r = 28..35 m)
+	Vector3(10.9, 0.0, -30.1),
+	Vector3(30.1, 0.0, -10.9),
+	Vector3(30.1, 0.0, 10.9),
+	Vector3(10.9, 0.0, 30.1),
+	Vector3(-10.9, 0.0, 30.1),
+	Vector3(-30.1, 0.0, 10.9),
+	Vector3(-30.1, 0.0, -10.9),
+	Vector3(-10.9, 0.0, -30.1),
+	Vector3(22.5, 0.0, -25.0),
+	Vector3(-22.5, 0.0, 25.0),
+	# Bastiones Diagonales (Y = +0.40 m, 4 decks planos a r = 34 m)
+	Vector3(24.0, 0.40, -24.0),
+	Vector3(24.0, 0.40, 24.0),
+	Vector3(-24.0, 0.40, 24.0),
+	Vector3(-24.0, 0.40, -24.0),
+	# Pasarela Perimetral (Y = +0.80 m, 12 sectores en r = 46.0 m)
+	Vector3(11.9, 0.80, -44.4),
+	Vector3(32.5, 0.80, -32.5),
+	Vector3(44.4, 0.80, -11.9),
+	Vector3(44.4, 0.80, 11.9),
+	Vector3(32.5, 0.80, 32.5),
+	Vector3(11.9, 0.80, 44.4),
+	Vector3(-11.9, 0.80, 44.4),
+	Vector3(-32.5, 0.80, 32.5),
+	Vector3(-44.4, 0.80, 11.9),
+	Vector3(-44.4, 0.80, -11.9),
+	Vector3(-32.5, 0.80, -32.5),
+	Vector3(-11.9, 0.80, -44.4),
 ]
 
 var _presagio_actual: Dictionary = {}
@@ -38,6 +64,8 @@ var _banner_mostrado: bool = false
 var _ultima_oleada: int = 1
 var _reloj_pity_santuario: float = 0.0
 var _spawner_ref: Node = null
+var _arena_inicial_desplegada: bool = false
+var _oleadas_santuarios_desplegadas: Dictionary = {}
 
 func _ready() -> void:
 	add_to_group("gestor_santuarios")
@@ -57,14 +85,23 @@ func _inicializar_run() -> void:
 		boton.click_presionado.connect(_on_primer_click_boton)
 		if "total_clicks" in boton and int(boton.total_clicks) > 0:
 			_mostrar_banner_presagio(_presagio_actual)
+			_desplegar_inicio_combate()
 	else:
 		_mostrar_banner_presagio(_presagio_actual)
-
-	_poblar_arena_inicial()
 
 func _on_primer_click_boton(_total_clicks: int) -> void:
 	if not _banner_mostrado and not _presagio_actual.is_empty():
 		_mostrar_banner_presagio(_presagio_actual)
+	_desplegar_inicio_combate()
+
+func _desplegar_inicio_combate() -> void:
+	if _arena_inicial_desplegada:
+		return
+	_arena_inicial_desplegada = true
+	var libres := _obtener_puntos_libres()
+	var cant_anforas: int = FortunaManager.rng.randi_range(2, 3)
+	for i in range(mini(cant_anforas, libres.size())):
+		_instanciar_interactuable(AnforaScript, libres[i])
 
 func _process(delta: float) -> void:
 	if not is_inside_tree() or get_tree() == null:
@@ -78,18 +115,52 @@ func _process(delta: float) -> void:
 	if not partida_iniciada:
 		return
 
-	# Reposición de ánforas al subir de oleada
+	if not _arena_inicial_desplegada:
+		_desplegar_inicio_combate()
+
+	# Reposición de ánforas y despliegue escalonado de santuarios al subir de oleada
 	if "oleada_actual" in _spawner_ref:
 		var oleada_ahora := int(_spawner_ref.oleada_actual)
 		if oleada_ahora > _ultima_oleada:
+			var prev_ol := _ultima_oleada
 			_ultima_oleada = oleada_ahora
 			_reponer_anforas_oleada()
+			_desplegar_santuarios_por_oleada(prev_ol, oleada_ahora)
 
-	# Pity de 180s sin activar ningún santuario
-	_reloj_pity_santuario += delta
-	if _reloj_pity_santuario >= INTERVALO_PITY_SANTUARIO:
-		_reloj_pity_santuario = 0.0
-		_forzar_santuario_pity()
+	# Pity de 150s sin activar ningún santuario (solo activo a partir de Oleada 3)
+	if _ultima_oleada >= 3:
+		_reloj_pity_santuario += delta
+		if _reloj_pity_santuario >= INTERVALO_PITY_SANTUARIO:
+			_reloj_pity_santuario = 0.0
+			_forzar_santuario_pity()
+
+func _desplegar_santuarios_por_oleada(prev_oleada: int, oleada_ahora: int) -> void:
+	if get_tree() == null:
+		return
+	var techo_santuarios: int = MAX_SANTUARIOS_ACTIVOS + maxi(0, FortunaManager.santuarios_extra)
+	for ol in range(prev_oleada + 1, oleada_ahora + 1):
+		if _oleadas_santuarios_desplegadas.has(ol):
+			continue
+		_oleadas_santuarios_desplegadas[ol] = true
+		var santuarios_activos := get_tree().get_nodes_in_group("santuarios").size()
+		if santuarios_activos >= techo_santuarios:
+			continue
+		var libres := _obtener_puntos_libres()
+		if libres.is_empty():
+			continue
+		var script_elegido = null
+		if ol == 3:
+			script_elegido = EstatuaScript
+		elif ol == 4:
+			script_elegido = FuenteScript
+		elif ol == 5:
+			var pool_mid := [ForjaScript, CofreScript, PactoScript]
+			script_elegido = pool_mid[FortunaManager.rng.randi_range(0, pool_mid.size() - 1)]
+		elif ol >= 7 and ol % 2 == 1:
+			var pool_late := [EstatuaScript, FuenteScript, ForjaScript, CofreScript, PactoScript]
+			script_elegido = pool_late[FortunaManager.rng.randi_range(0, pool_late.size() - 1)]
+		if script_elegido != null:
+			_instanciar_interactuable(script_elegido, libres[0])
 
 
 func _poblar_arena_inicial() -> void:
@@ -160,7 +231,8 @@ func _reponer_anforas_oleada() -> void:
 func _forzar_santuario_pity() -> void:
 	if get_tree() == null:
 		return
-	if get_tree().get_nodes_in_group("santuarios").size() >= 8:
+	var techo_santuarios: int = MAX_SANTUARIOS_ACTIVOS + maxi(0, FortunaManager.santuarios_extra)
+	if get_tree().get_nodes_in_group("santuarios").size() >= techo_santuarios:
 		return
 	var libres := _obtener_puntos_libres()
 	if libres.is_empty():
@@ -176,7 +248,28 @@ func _instanciar_interactuable(script_clase, pos: Vector3) -> Node:
 	var nodo: Node = script_clase.new()
 	arena.add_child(nodo)
 	if nodo is Node3D:
-		(nodo as Node3D).global_position = pos
+		var pos_final: Vector3 = ArenaColiseo.clamping_y_ajustar_a_suelo(pos, 2.2, 0.0)
+		var rng: RandomNumberGenerator = ArenaColiseo._obtener_rng_run(self)
+		var pj: Node3D = get_tree().get_first_node_in_group("jugador") as Node3D if get_tree() != null else null
+		for _j in range(12):
+			var jx: float = rng.randf_range(-3.5, 3.5)
+			var jz: float = rng.randf_range(-3.5, 3.5)
+			var cand := Vector3(pos.x + jx, 0.0, pos.z + jz)
+			if not ArenaColiseo.esta_dentro(cand, 2.2):
+				continue
+			if ArenaColiseo.esta_en_pendiente(cand.x, cand.z, 0.8):
+				continue
+			if not ArenaColiseo.punto_libre_de_obstaculos(cand, 2.8):
+				continue
+			var m_c: float = ArenaColiseo.apotema_en_pos(cand.x, cand.z)
+			if m_c >= (ArenaColiseo.APOTEMA_FOSO - 1.3) and m_c <= (ArenaColiseo.APOTEMA_FOSO + 1.3):
+				continue
+			if pj != null and is_instance_valid(pj):
+				if Vector2(cand.x - pj.global_position.x, cand.z - pj.global_position.z).length() < 4.0:
+					continue
+			pos_final = ArenaColiseo.clamping_y_ajustar_a_suelo(cand, 2.2, 0.0)
+			break
+		(nodo as Node3D).global_position = pos_final
 	if nodo.has_signal("activado"):
 		nodo.activado.connect(_on_santuario_activado)
 	return nodo

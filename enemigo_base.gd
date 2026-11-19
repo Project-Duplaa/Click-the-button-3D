@@ -7,6 +7,7 @@ class_name EnemigoBase
 # Domain 3: Telemetría de daño, Bono de Bestiario, Sistema Némesis y Chasis Gravitatorio (+25% XP).
 
 const AudioManager = preload("res://audio_manager.gd")
+const ArenaColiseo = preload("res://arena_coliseo.gd")
 const MetaprogresoManager = preload("res://metaprogreso_manager.gd")
 
 @export var tipo_enemigo_id: String = ""
@@ -38,10 +39,12 @@ var knockback_vel: Vector3 = Vector3.ZERO
 var resistencia_knockback: float = 0.0
 var _stun_timer: float = 0.0
 var marca_conductiva_timer: float = 0.0
+var _nav_estado: Dictionary = {}
 
 func _ready() -> void:
 	add_to_group("enemies")
 	add_to_group("enemigos")
+	ArenaColiseo.configurar_cuerpo_terreno(self, rapidez >= 4.0, true)
 	vida = vida_maxima
 	_escala_base = scale
 	jugador = get_tree().get_first_node_in_group("player")
@@ -81,15 +84,13 @@ func _physics_process(delta: float) -> void:
 			if jugador.has_method("recibir_dano"):
 				jugador.recibir_dano(dano_contacto)
 
-func _calcular_velocidad_ia(_delta: float) -> Vector3:
+func _calcular_velocidad_ia(delta: float) -> Vector3:
 	if jugador == null or not is_instance_valid(jugador):
 		jugador = get_tree().get_first_node_in_group("jugador")
 		if jugador == null:
 			return Vector3.ZERO
-	var dif: Vector3 = jugador.global_position - global_position
-	dif.y = 0.0
-	if dif.length_squared() > 0.01:
-		var dir_norm = dif.normalized()
+	var dir_norm: Vector3 = ArenaColiseo.calcular_direccion_persecucion(self, jugador.global_position, _nav_estado, delta)
+	if dir_norm.length_squared() > 0.0025:
 		look_at(global_position + dir_norm, Vector3.UP)
 		return dir_norm * rapidez
 	return Vector3.ZERO
@@ -118,6 +119,8 @@ func procesar_fisica_base(delta: float, vel_deseada: Vector3 = Vector3.ZERO) -> 
 
 	velocity.x = mov.x + knockback_vel.x
 	velocity.z = mov.z + knockback_vel.z
+	if is_on_floor():
+		velocity.y = minf(velocity.y, 0.0)
 	move_and_slide()
 
 func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false) -> void:

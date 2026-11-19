@@ -22,6 +22,7 @@ func _ready() -> void:
 	super._ready()
 	remove_from_group("santuarios")
 	add_to_group("rompibles")
+	collision_layer = 1 | 8 # Detección por proyectiles y área de ataque sin chocar con terreno Layer 1
 	if colision != null and colision.shape is CylinderShape3D:
 		var forma := colision.shape as CylinderShape3D
 		forma.radius = 0.85

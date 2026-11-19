@@ -78,8 +78,8 @@ const WEAPON_KEYS := {
 }
 
 const CLASS_ACCENTS := {
-	"Novato": Color(0.88, 0.74, 0.38),
-	"Recluta del Coliseo": Color(0.88, 0.74, 0.38),
+	"Novato": Color(0.231, 0.902, 0.463),
+	"Recluta del Coliseo": Color(0.231, 0.902, 0.463),
 	"Guerrero": Color(0.95, 0.25, 0.22),
 	"Murmillo": Color(0.95, 0.25, 0.22),
 	"Cazador": Color(0.20, 0.85, 0.50),
@@ -131,6 +131,7 @@ const TEX_ICO_FROST := preload("res://ui_assets/icon_frost_hades.svg")
 const TEX_ICO_BLOOD := preload("res://ui_assets/icon_blood_hades.svg")
 const TEX_ICO_PRISM := preload("res://ui_assets/icon_prism_hades.svg")
 const TEX_ICO_SYNERGY := preload("res://ui_assets/icon_synergy_hades.svg")
+const TEX_ICO_BOOK := preload("res://ui_assets/icon_book_cyber.svg")
 
 const RESOLUCIONES_DISPONIBLES := [
 	{"label": "1152 × 648 (Base 16:9)", "size": Vector2i(1152, 648)},
@@ -153,6 +154,12 @@ const MetaprogresoManager := preload("res://metaprogreso_manager.gd")
 # --- Referencias Top Bar ---
 @onready var overlay_colapso: ColorRect = $Control/OverlayColapso
 @onready var barra_superior: Panel = $Control/BarraSuperior
+@onready var wing_left: ColorRect = $Control/BarraSuperior/WingsBackdrop/WingLeft
+@onready var wing_center: ColorRect = $Control/BarraSuperior/WingsBackdrop/WingCenter
+@onready var wing_right: ColorRect = $Control/BarraSuperior/WingsBackdrop/WingRight
+@onready var cluster_heroe: HBoxContainer = $Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe
+@onready var contenedor_centro: VBoxContainer = $Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro
+@onready var contenedor_economia: VBoxContainer = $Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia
 
 @onready var avatar_frame: Panel = $Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/AvatarSocket/AvatarFrame
 @onready var subviewport_container: SubViewportContainer = $Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/AvatarSocket/AvatarFrame/SubViewportContainer
@@ -171,11 +178,12 @@ const MetaprogresoManager := preload("res://metaprogreso_manager.gd")
 @onready var corazon2: TextureRect = $Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HeaderHeroe/ContenedorVidas/HBoxCorazones/Corazon2
 @onready var corazon3: TextureRect = $Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HeaderHeroe/ContenedorVidas/HBoxCorazones/Corazon3
 
-@onready var bar_vida: ProgressBar = $Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/BarVida
-@onready var bar_vida_shader: ColorRect = $Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/BarVida/BarVidaShader
-@onready var label_vida: Label = $Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/BarVida/HBoxVidaTexto/LabelVida
-@onready var icono_escudo_hp: TextureRect = $Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/BarVida/HBoxVidaTexto/IconoEscudoHP
-@onready var label_escudo_hp: Label = $Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/BarVida/HBoxVidaTexto/LabelEscudoHP
+@onready var bar_vida: ProgressBar = $Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HBoxVidaRow/BarVida
+@onready var bar_vida_shader: ColorRect = $Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HBoxVidaRow/BarVida/BarVidaShader
+@onready var label_vida: Label = $Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HBoxVidaRow/BarVida/HBoxVidaTexto/LabelVida
+@onready var badge_escudo_hp: PanelContainer = $Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HBoxVidaRow/BadgeEscudoHP
+@onready var icono_escudo_hp: TextureRect = $Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HBoxVidaRow/BadgeEscudoHP/HBoxEscudo/IconoEscudoHP
+@onready var label_escudo_hp: Label = $Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HBoxVidaRow/BadgeEscudoHP/HBoxEscudo/LabelEscudoHP
 @onready var bar_xp: ProgressBar = $Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HBoxXPHeroe/BarXP
 @onready var label_xp: Label = $Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/ContenedorHeroe/HBoxXPHeroe/LabelXP
 
@@ -309,6 +317,7 @@ func _ready() -> void:
 	_calibrar_avatar()
 	_configurar_tarot_hover()
 	_conectar_escalado_resolucion()
+	_conectar_sync_alas()
 
 	if btn_arbol_poe != null:
 		btn_arbol_poe.pressed.connect(_toggle_arbol_poe)
@@ -331,6 +340,70 @@ func _ready() -> void:
 	_crear_modales_dominio4()
 	call_deferred("_bootstrap_domain4_managers")
 	call_deferred("_ajustar_layout_resolucion")
+	call_deferred("_sync_wings_geometry")
+
+
+func _conectar_sync_alas() -> void:
+	for nodo in [barra_superior, cluster_heroe, contenedor_centro, contenedor_economia, bar_vida, bar_vida_jefe]:
+		if nodo != null and not nodo.resized.is_connected(_sync_wings_geometry):
+			nodo.resized.connect(_sync_wings_geometry)
+
+
+func _sync_wings_geometry() -> void:
+	if barra_superior != null and cluster_heroe != null and contenedor_centro != null and contenedor_economia != null:
+		var bar_w := barra_superior.size.x
+		var bar_h := barra_superior.size.y
+		if bar_w > 100.0 and bar_h > 20.0:
+			var bx := barra_superior.global_position.x
+			var wing_y := -6.0
+			var wing_h := bar_h + 12.0
+
+			var hero_left := cluster_heroe.global_position.x - bx
+			var hero_right := hero_left + cluster_heroe.size.x
+			var cen_left := contenedor_centro.global_position.x - bx
+			var cen_right := cen_left + contenedor_centro.size.x
+			var econ_left := contenedor_economia.global_position.x - bx
+
+			# Center trapezoid hugs ContenedorCentro cleanly
+			var wc_x := cen_left - 34.0
+			var wc_r := cen_right + 34.0
+			if wing_center != null:
+				wing_center.position = Vector2(wc_x, wing_y)
+				wing_center.size = Vector2(maxf(wc_r - wc_x, 180.0), wing_h)
+				if wing_center.material is ShaderMaterial:
+					(wing_center.material as ShaderMaterial).set_shader_parameter("panel_size", wing_center.size)
+
+			# Left wing starts at AvatarSocket centerline and stops with a crisp ~14px parallel diagonal slit before WingCenter
+			var wl_x := hero_left + 40.0
+			var wl_target_r := wc_x + 26.0
+			if wl_target_r - hero_right > 130.0:
+				wl_target_r = hero_right + 96.0
+			var wl_r := maxf(hero_right + 36.0, wl_target_r)
+			if wing_left != null:
+				wing_left.position = Vector2(wl_x, wing_y)
+				wing_left.size = Vector2(maxf(wl_r - wl_x, 180.0), wing_h)
+				if wing_left.material is ShaderMaterial:
+					(wing_left.material as ShaderMaterial).set_shader_parameter("panel_size", wing_left.size)
+
+			# Right wing starts with a crisp ~14px parallel diagonal slit after WingCenter and reaches right edge
+			var wr_target_x := wc_r - 26.0
+			if econ_left - wr_target_x > 130.0:
+				wr_target_x = econ_left - 84.0
+			var wr_x := minf(econ_left - 34.0, wr_target_x)
+			var wr_r := bar_w + 6.0
+			if wing_right != null:
+				wing_right.position = Vector2(wr_x, wing_y)
+				wing_right.size = Vector2(maxf(wr_r - wr_x, 160.0), wing_h)
+				if wing_right.material is ShaderMaterial:
+					(wing_right.material as ShaderMaterial).set_shader_parameter("panel_size", wing_right.size)
+
+	if bar_vida != null and bar_vida_shader != null and bar_vida_shader.material is ShaderMaterial:
+		if bar_vida.size.x > 10.0 and bar_vida.size.y > 4.0:
+			(bar_vida_shader.material as ShaderMaterial).set_shader_parameter("bar_size", bar_vida.size)
+
+	if bar_vida_jefe != null and bar_jefe_shader != null and bar_jefe_shader.material is ShaderMaterial:
+		if bar_vida_jefe.size.x > 10.0 and bar_vida_jefe.size.y > 4.0:
+			(bar_jefe_shader.material as ShaderMaterial).set_shader_parameter("bar_size", bar_vida_jefe.size)
 
 
 func _inicializar_estilos_dinamicos() -> void:
@@ -402,8 +475,8 @@ func _conectar_fortuna() -> void:
 
 func _calibrar_avatar() -> void:
 	if camara_avatar != null:
-		camara_avatar.fov = 32.0
-		camara_avatar.look_at_from_position(Vector3(0.02, 0.36, 0.52), Vector3(0.0, 0.33, 0.0), Vector3.UP)
+		camara_avatar.fov = 30.0
+		camara_avatar.look_at_from_position(Vector3(0.055, 0.485, 0.770), Vector3(0.0, 0.450, 0.005), Vector3.UP)
 	if modelo_avatar_nodo != null:
 		_clase_actual_avatar = "Novato"
 		modelo_avatar_nodo.rotation_degrees.y = 20.0
@@ -415,6 +488,7 @@ func _preparar_modelo_retrato(modelo: Node3D, nombre_clase: String) -> void:
 		return
 	var weapon_key: String = String(WEAPON_KEYS.get(nombre_clase, "Novato"))
 	AnimadorEntidad.equipar_armas_en_esqueleto(modelo, weapon_key, false)
+	AnimadorEntidad.estilizar_entidad_visual(modelo, true)
 	var ap := AnimadorEntidad.buscar_animation_player(modelo)
 	if ap != null:
 		var clip := "idle" if ap.has_animation("idle") else ""
@@ -430,7 +504,7 @@ func _preparar_modelo_retrato(modelo: Node3D, nombre_clase: String) -> void:
 	var accent: Color = CLASS_ACCENTS.get(nombre_clase, Color(0.88, 0.74, 0.38))
 	if luz_contorno != null:
 		luz_contorno.light_color = accent
-		luz_contorno.light_energy = 1.0 if nombre_clase != "Novato" else 0.85
+		luz_contorno.light_energy = 1.85 if nombre_clase != "Novato" else 1.65
 	if subviewport_container != null and subviewport_container.material is ShaderMaterial:
 		var mat := subviewport_container.material as ShaderMaterial
 		mat.set_shader_parameter("class_aura", accent)
@@ -511,10 +585,10 @@ func _actualizar_timer_y_oleada() -> void:
 				icono_tiempo.modulate = Color(1.0, 0.30, 0.35, flicker)
 		elif _ultimo_juicio_ui != 0:
 			_ultimo_juicio_ui = 0
-			label_tiempo.add_theme_color_override("font_color", Color(0.89, 0.91, 0.96))
+			label_tiempo.add_theme_color_override("font_color", Color(0.929, 0.957, 0.980))
 			if icono_tiempo != null:
 				icono_tiempo.texture = TEX_ICO_TIME
-				icono_tiempo.modulate = Color(1.0, 1.0, 1.0)
+				icono_tiempo.modulate = Color(0.55, 0.82, 1.0, 0.95)
 
 	if label_oleada != null:
 		var txt_o := "EN ESPERA" if clicks_boton == 0 else ("OLEADA %d" % oleada)
@@ -522,7 +596,8 @@ func _actualizar_timer_y_oleada() -> void:
 			_ultimo_txt_oleada = txt_o
 			label_oleada.text = txt_o
 			if icono_oleada != null:
-				icono_oleada.modulate = Color(0.85, 0.72, 0.42, 0.7) if clicks_boton == 0 else Color(1.0, 0.89, 0.60, 1.0)
+				icono_oleada.visible = clicks_boton > 0
+				icono_oleada.modulate = Color(0.969, 0.808, 0.408, 1.0)
 
 
 func _actualizar_telemetria_nucleo_y_fiebre(delta: float) -> void:
@@ -548,9 +623,10 @@ func _actualizar_telemetria_nucleo_y_fiebre(delta: float) -> void:
 		var nuevo_ico: Texture2D = TEX_ICO_CLICKS
 
 		if clicks_boton == 0 and (boton == null or not ("sobrecalentado" in boton and bool(boton.sobrecalentado))):
-			var pulso := 0.82 + sin(Time.get_ticks_msec() * 0.0045) * 0.18
+			var pulso := 0.85 + sin(Time.get_ticks_msec() * 0.0045) * 0.15
 			nuevo_txt = "Pulsa el Núcleo para iniciar"
-			nuevo_col = Color(0.28, 0.94, 1.0, pulso)
+			nuevo_col = Color(0.220, 0.859, 1.0, pulso)
+			nuevo_ico = TEX_ICO_BOLT
 		elif boton != null and "estado_actual" in boton:
 			match int(boton.estado_actual):
 				1: # ENCADENADO / ESTROPEADO POR SOBRECALENTAMIENTO
@@ -607,37 +683,42 @@ func _aplicar_tema_fiebre(fever_mult: int, en_overdrive: bool, delta: float) -> 
 		_ultimo_overdrive_shader = _overdrive_glow
 		if subviewport_container != null and subviewport_container.material is ShaderMaterial:
 			(subviewport_container.material as ShaderMaterial).set_shader_parameter("overdrive_pulse", _overdrive_glow)
+		for wing in [wing_left, wing_center, wing_right]:
+			if wing != null and wing.material is ShaderMaterial:
+				(wing.material as ShaderMaterial).set_shader_parameter("overdrive_pulse", _overdrive_glow)
 
-	var col_tier := Color(0.18, 0.78, 0.94)
-	var txt_badge := "x%d" % max(fever_mult, 1)
+	var col_tier := Color(0.180, 0.902, 0.431)
+	var col_badge_rim := Color(0.302, 0.776, 0.941, 0.92)
+	var col_badge_txt := Color(0.941, 0.973, 1.0)
+	var txt_badge := "▶ x%d" % max(fever_mult, 1)
 	if en_overdrive or fever_mult >= 5:
-		col_tier = Color(0.96, 0.28, 0.72)
-		txt_badge = "OVER x5"
+		col_tier = Color(0.961, 0.278, 0.722)
+		col_badge_rim = col_tier
+		col_badge_txt = col_tier.lightened(0.35)
+		txt_badge = "▶ OVER x5"
 	elif fever_mult >= 3:
-		col_tier = Color(0.98, 0.45, 0.12)
+		col_tier = Color(0.980, 0.451, 0.122)
+		col_badge_rim = col_tier
+		col_badge_txt = col_tier.lightened(0.35)
 	elif fever_mult >= 2:
-		col_tier = Color(0.96, 0.72, 0.14)
+		col_tier = Color(0.961, 0.722, 0.141)
+		col_badge_rim = col_tier
+		col_badge_txt = col_tier.lightened(0.35)
 
 	if label_fiebre != null and label_fiebre.text != txt_badge:
 		label_fiebre.text = txt_badge
 	if not col_tier.is_equal_approx(_ultimo_col_fiebre):
 		_ultimo_col_fiebre = col_tier
 		if label_fiebre != null:
-			label_fiebre.add_theme_color_override("font_color", col_tier.lightened(0.35))
+			label_fiebre.add_theme_color_override("font_color", col_badge_txt)
 		if _sb_fiebre_fill != null:
 			_sb_fiebre_fill.bg_color = col_tier
 			_sb_fiebre_fill.border_color = col_tier.lightened(0.45)
 		if _sb_badge_fiebre != null:
-			_sb_badge_fiebre.border_color = col_tier
-			_sb_badge_fiebre.bg_color = Color(col_tier.r * 0.14 + 0.03, col_tier.g * 0.12 + 0.03, col_tier.b * 0.14 + 0.05, 0.95)
+			_sb_badge_fiebre.border_color = col_badge_rim
+			_sb_badge_fiebre.bg_color = Color(0.031, 0.086, 0.161, 0.96) if fever_mult <= 1 and not en_overdrive else Color(col_tier.r * 0.14 + 0.03, col_tier.g * 0.12 + 0.03, col_tier.b * 0.14 + 0.05, 0.96)
 		if icono_fiebre != null:
 			icono_fiebre.modulate = col_tier
-	if _sb_barra_superior_base != null:
-		var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.008) if en_overdrive else 0.0
-		var nuevo_borde := Color(0.70, 0.54, 0.28, 0.95).lerp(Color(0.98, 0.35, 0.78, 1.0), _overdrive_glow * (0.45 + 0.45 * pulse))
-		if not nuevo_borde.is_equal_approx(_ultimo_border_barra):
-			_ultimo_border_barra = nuevo_borde
-			_sb_barra_superior_base.border_color = nuevo_borde
 
 
 func _actualizar_overlays_shader(delta: float) -> void:
@@ -660,7 +741,7 @@ func _actualizar_overlays_shader(delta: float) -> void:
 		var m := bar_vida_shader.material as ShaderMaterial
 		m.set_shader_parameter("hp_ratio", _hp_ratio_actual)
 		m.set_shader_parameter("trail_ratio", _hp_trail_ratio)
-		m.set_shader_parameter("shield_ratio", _shield_ratio_actual)
+		m.set_shader_parameter("shield_ratio", 0.0 if badge_escudo_hp != null else _shield_ratio_actual)
 
 	# Boss HP Trail catch-up
 	if _jefe_trail_hold > 0.0:
@@ -715,6 +796,8 @@ func _actualizar_chips_estado(_delta: float) -> void:
 		var esc_vis: int = 1 if esc > 0.5 else 0
 		if esc_vis != _ultimo_escudo_vis:
 			_ultimo_escudo_vis = esc_vis
+			if badge_escudo_hp != null:
+				badge_escudo_hp.visible = esc_vis == 1
 			if icono_escudo_hp != null:
 				icono_escudo_hp.visible = esc_vis == 1
 			if label_escudo_hp != null:
@@ -725,16 +808,45 @@ func _actualizar_chips_estado(_delta: float) -> void:
 				_ultimo_escudo_txt = esc_txt
 				label_escudo_hp.text = esc_txt
 
-	# Actualizar botón [U] Ascensión
-	if label_arbol != null and "clics_disponibles" in jugador:
-		var pts := int(jugador.clics_disponibles)
-		var nuevo_lbl := "[U] Ascensión (%s)" % _formatear_numero(pts) if pts > 0 else "[U] Ascensión"
-		if label_arbol.text != nuevo_lbl:
-			label_arbol.text = nuevo_lbl
-		var ready_gl: int = 1 if pts >= 10 else 0
-		if _sb_btn_arbol_normal != null and ready_gl != _ultimo_ready_gl:
-			_ultimo_ready_gl = ready_gl
-			_sb_btn_arbol_normal.border_color = Color(1.0, 0.86, 0.35, 1.0) if ready_gl == 1 else Color(0.76, 0.60, 0.29, 0.92)
+	# Actualizar botón Ascensión [U] (Pre-combate / Run Pura / Solo Lectura en Combate)
+	_actualizar_estado_btn_arbol()
+
+
+func _actualizar_estado_btn_arbol() -> void:
+	if label_arbol == null:
+		return
+	MetaprogresoManager.asegurar_inicializado()
+	var en_combate_hud: bool = _partida_ref != null and "partida_iniciada" in _partida_ref and bool(_partida_ref.partida_iniciada)
+	var nuevo_lbl := "Ascensión [U]"
+	var col_borde := Color(0.949, 0.714, 0.196, 0.95)
+	var tooltip := "Abrir Matriz de Ascensión Permanente [U]"
+	var ready_gl: int = 0
+	if MetaprogresoManager.modo_run_pura:
+		nuevo_lbl = "Run Pura [U]"
+		col_borde = Color(0.220, 0.800, 0.961, 0.92)
+		tooltip = "Modo Run Pura activo (0% Metaprogreso) · Pulsa [U] para consultar"
+		ready_gl = 2
+	elif en_combate_hud:
+		nuevo_lbl = "Matriz [U]"
+		col_borde = Color(0.45, 0.55, 0.68, 0.85)
+		tooltip = "Matriz de Ascensión (Solo Lectura durante el combate)"
+		ready_gl = 3
+	else:
+		var oro_b: int = int(MetaprogresoManager.oro_banco)
+		if oro_b > 0:
+			nuevo_lbl = "Ascensión [U] (%s)" % _formatear_numero(oro_b)
+			col_borde = Color(1.0, 0.84, 0.30, 1.0)
+			ready_gl = 1
+		elif MetaprogresoManager.clics_banco > 0:
+			col_borde = Color(1.0, 0.84, 0.30, 1.0)
+			ready_gl = 1
+	if label_arbol.text != nuevo_lbl:
+		label_arbol.text = nuevo_lbl
+	if btn_arbol_poe != null and btn_arbol_poe.tooltip_text != tooltip:
+		btn_arbol_poe.tooltip_text = tooltip
+	if _sb_btn_arbol_normal != null and ready_gl != _ultimo_ready_gl:
+		_ultimo_ready_gl = ready_gl
+		_sb_btn_arbol_normal.border_color = col_borde
 
 
 func _animar_retrato_sutil(delta: float) -> void:
@@ -744,7 +856,7 @@ func _animar_retrato_sutil(delta: float) -> void:
 	_avatar_reloj_redraw += delta
 	if _avatar_reloj_redraw >= 0.055:
 		_avatar_reloj_redraw = 0.0
-		modelo_avatar_nodo.rotation_degrees.y = 20.0 + sin(_avatar_reloj_idle * 1.1) * 5.0
+		modelo_avatar_nodo.rotation_degrees.y = 20.0 + sin(_avatar_reloj_idle * 1.1) * 4.0
 		if subviewport_avatar != null:
 			subviewport_avatar.render_target_update_mode = SubViewport.UPDATE_ONCE
 
@@ -759,7 +871,7 @@ func _on_stats_actualizadas(vida: float, max_vida: float, xp: int, xp_sig: int, 
 		_actualizar_avatar_clase(nombre_clase)
 
 	if label_nivel != null:
-		var txt_nv := "NV. %d" % nivel
+		var txt_nv := "Nv. %d" % nivel
 		if label_nivel.text != txt_nv:
 			label_nivel.text = txt_nv
 
@@ -786,6 +898,8 @@ func _on_stats_actualizadas(vida: float, max_vida: float, xp: int, xp_sig: int, 
 
 	var esc: float = float(jugador.escudo_almas) if (jugador != null and "escudo_almas" in jugador) else 0.0
 	_shield_ratio_actual = clampf(esc / safe_max, 0.0, 1.0)
+	if badge_escudo_hp != null:
+		badge_escudo_hp.visible = esc > 0.5
 	if icono_escudo_hp != null:
 		icono_escudo_hp.visible = esc > 0.5
 	if label_escudo_hp != null:
@@ -805,11 +919,10 @@ func _on_stats_actualizadas(vida: float, max_vida: float, xp: int, xp_sig: int, 
 		label_bajas.text = "%s Bajas" % _formatear_numero(bajas)
 
 
-func _on_economia_actualizada(oro_cnt: int, clics_disp: int, _clics_tot: int) -> void:
+func _on_economia_actualizada(oro_cnt: int, _clics_disp: int, _clics_tot: int) -> void:
 	if label_oro != null:
 		label_oro.text = _formatear_numero(oro_cnt)
-	if label_arbol != null:
-		label_arbol.text = "[U] Ascensión (%s)" % _formatear_numero(clics_disp) if clics_disp > 0 else "[U] Ascensión"
+	_actualizar_estado_btn_arbol()
 
 
 func _on_denarios_actualizados(denarios_actuales: int) -> void:
@@ -856,13 +969,14 @@ func _actualizar_chip_presagio(nombre: String, desc: String, color_acento: Color
 	chip_presagio.visible = true
 	if label_presagio != null:
 		label_presagio.text = "Presagio: %s" % nombre
-		label_presagio.add_theme_color_override("font_color", color_acento.lightened(0.32))
+		label_presagio.add_theme_color_override("font_color", Color(0.902, 0.933, 0.969, 1.0))
 	if icono_presagio != null:
 		icono_presagio.modulate = color_acento
 	var sb := chip_presagio.get_theme_stylebox("panel")
 	if sb is StyleBoxFlat:
 		var sb_new := sb.duplicate() as StyleBoxFlat
-		sb_new.border_color = Color(color_acento.r, color_acento.g, color_acento.b, 0.85)
+		var base_rim := Color(0.271, 0.384, 0.478, 0.78)
+		sb_new.border_color = base_rim.lerp(Color(color_acento.r, color_acento.g, color_acento.b, 0.85), 0.28)
 		chip_presagio.add_theme_stylebox_override("panel", sb_new)
 	chip_presagio.tooltip_text = desc
 
@@ -2040,12 +2154,8 @@ func _ajustar_layout_resolucion() -> void:
 		if modal_mejora.visible:
 			modal_mejora.scale = _calcular_escala_modal_mejora()
 
-	# Ajustar barra superior en resoluciones estrechas o ultrawide
-	var top_bar := get_node_or_null("Control/MarginTop") as Control
-	if top_bar != null:
-		var margen_lateral := clampf((vis_size.x - 1152.0) * 0.18, 12.0, 140.0)
-		top_bar.offset_left = margen_lateral
-		top_bar.offset_right = -margen_lateral
+	# Sincronizar geometría de las 3 alas biseladas y tamaño de barras cápsula
+	call_deferred("_sync_wings_geometry")
 
 	_actualizar_texto_boton_resolucion()
 
@@ -2141,7 +2251,7 @@ func _crear_selector_resolucion() -> void:
 	btn_res.text = "1280x720 ▾"
 	btn_res.tooltip_text = "Cambiar resolución de ventana o Pantalla Completa (F11)"
 	btn_res.focus_mode = Control.FOCUS_NONE
-	_aplicar_estilo_boton(btn_res, Color(0.45, 0.72, 0.94))
+	_aplicar_estilo_boton(btn_res, Color(0.290, 0.400, 0.502, 0.72))
 	btn_res.pressed.connect(func():
 		_panel_resoluciones.visible = not _panel_resoluciones.visible
 	)
@@ -2157,7 +2267,7 @@ func _crear_selector_resolucion() -> void:
 
 func _aplicar_estilo_boton(btn: Button, color_acento: Color) -> void:
 	var s_normal := StyleBoxFlat.new()
-	s_normal.bg_color = Color(0.055, 0.065, 0.098, 0.92)
+	s_normal.bg_color = Color(0.035, 0.059, 0.094, 0.88)
 	s_normal.border_color = color_acento
 	s_normal.set_border_width_all(1)
 	s_normal.set_corner_radius_all(6)
@@ -2167,13 +2277,13 @@ func _aplicar_estilo_boton(btn: Button, color_acento: Color) -> void:
 	s_normal.content_margin_bottom = 4.0
 
 	var s_hover := s_normal.duplicate() as StyleBoxFlat
-	s_hover.bg_color = Color(0.14, 0.08, 0.10, 0.96)
-	s_hover.border_color = color_acento.lightened(0.28)
+	s_hover.bg_color = Color(0.065, 0.115, 0.185, 0.96)
+	s_hover.border_color = Color(0.35, 0.78, 0.98, 0.95)
 
 	btn.add_theme_stylebox_override("normal", s_normal)
 	btn.add_theme_stylebox_override("hover", s_hover)
 	btn.add_theme_stylebox_override("pressed", s_hover)
-	btn.add_theme_color_override("font_color", Color(0.95, 0.92, 0.85))
+	btn.add_theme_color_override("font_color", Color(0.863, 0.902, 0.941))
 	btn.add_theme_font_size_override("font_size", 11)
 
 
@@ -2303,24 +2413,29 @@ func _crear_boton_codice_en_status_rail() -> void:
 
 	btn_codice_rail = Button.new()
 	btn_codice_rail.name = "BtnCodice"
-	btn_codice_rail.custom_minimum_size = Vector2(105, 26)
+	btn_codice_rail.custom_minimum_size = Vector2(114, 28)
 	btn_codice_rail.focus_mode = Control.FOCUS_NONE
+	btn_codice_rail.tooltip_text = "Abrir Códice del Gladiador [C]"
 
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.065, 0.055, 0.10, 0.92)
+	sb.bg_color = Color(0.027, 0.086, 0.149, 0.92)
 	sb.border_width_left = 1
 	sb.border_width_top = 1
 	sb.border_width_right = 1
-	sb.border_width_bottom = 1
-	sb.border_color = Color(0.70, 0.54, 0.28, 0.92)
-	sb.corner_radius_top_left = 4
-	sb.corner_radius_top_right = 4
-	sb.corner_radius_bottom_right = 4
-	sb.corner_radius_bottom_left = 4
+	sb.border_width_bottom = 2
+	sb.border_color = Color(0.141, 0.784, 1.000, 0.95)
+	sb.set_corner_radius_all(14)
+	sb.content_margin_left = 12.0
+	sb.content_margin_right = 12.0
+	sb.content_margin_top = 2.0
+	sb.content_margin_bottom = 2.0
+	sb.shadow_color = Color(0.071, 0.620, 1.000, 0.42)
+	sb.shadow_size = 8
 
 	var sb_hov := sb.duplicate() as StyleBoxFlat
-	sb_hov.border_color = Color(1.0, 0.85, 0.40, 1.0)
-	sb_hov.bg_color = Color(0.12, 0.09, 0.18, 0.98)
+	sb_hov.border_color = Color(0.459, 0.894, 1.000, 1.0)
+	sb_hov.bg_color = Color(0.051, 0.149, 0.251, 0.98)
+	sb_hov.shadow_size = 11
 
 	btn_codice_rail.add_theme_stylebox_override("normal", sb)
 	btn_codice_rail.add_theme_stylebox_override("hover", sb_hov)
@@ -2330,14 +2445,31 @@ func _crear_boton_codice_en_status_rail() -> void:
 	hbox.set_anchors_preset(Control.PRESET_FULL_RECT)
 	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hbox.add_theme_constant_override("separation", 5)
+	hbox.add_theme_constant_override("separation", 6)
 	btn_codice_rail.add_child(hbox)
 
-	var lbl := Label.new()
-	lbl.text = "📖 [C] Códice"
-	lbl.add_theme_font_size_override("font_size", 10)
-	lbl.add_theme_color_override("font_color", Color(0.92, 0.86, 0.72))
-	hbox.add_child(lbl)
+	var ico := TextureRect.new()
+	ico.custom_minimum_size = Vector2(15, 15)
+	ico.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	ico.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ico.texture = TEX_ICO_BOOK
+	ico.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ico.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	hbox.add_child(ico)
+
+	var lbl_tit := Label.new()
+	lbl_tit.text = "Códice"
+	lbl_tit.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl_tit.add_theme_font_size_override("font_size", 11)
+	lbl_tit.add_theme_color_override("font_color", Color(0.941, 0.965, 0.988))
+	hbox.add_child(lbl_tit)
+
+	var lbl_key := Label.new()
+	lbl_key.text = "[C]"
+	lbl_key.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl_key.add_theme_font_size_override("font_size", 11)
+	lbl_key.add_theme_color_override("font_color", Color(0.298, 0.878, 1.0))
+	hbox.add_child(lbl_key)
 
 	btn_codice_rail.pressed.connect(_toggle_codice)
 	rail_box.add_child(btn_codice_rail)
@@ -2362,17 +2494,19 @@ func _crear_strip_favor_y_contrato() -> void:
 	strip_favor = PanelContainer.new()
 	strip_favor.name = "StripFavorContrato"
 	strip_favor.offset_left = 18.0
-	strip_favor.offset_top = 134.0
-	strip_favor.offset_right = 302.0
-	strip_favor.offset_bottom = 188.0
+	strip_favor.offset_top = 141.0
+	strip_favor.offset_right = 304.0
+	strip_favor.offset_bottom = 196.0
 	strip_favor.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	var sb_vacio := StyleBoxEmpty.new()
 	strip_favor.add_theme_stylebox_override("panel", sb_vacio)
 	$Control.add_child(strip_favor)
+	if modal_dimmer != null:
+		$Control.move_child(strip_favor, modal_dimmer.get_index())
 
 	var vbox_strip := VBoxContainer.new()
-	vbox_strip.add_theme_constant_override("separation", 4)
+	vbox_strip.add_theme_constant_override("separation", 5)
 	vbox_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	strip_favor.add_child(vbox_strip)
 
@@ -2383,25 +2517,48 @@ func _crear_strip_favor_y_contrato() -> void:
 
 	# 1. Pill Favor del Emperador
 	var pill_f := PanelContainer.new()
-	pill_f.add_theme_stylebox_override("panel", _crear_style_pill(Color(0.06, 0.05, 0.09, 0.90), Color(0.70, 0.54, 0.28, 0.85)))
+	pill_f.add_theme_stylebox_override("panel", _crear_style_pill(Color(0.035, 0.067, 0.110, 0.88), Color(0.271, 0.384, 0.478, 0.75)))
 	hbox_fila1.add_child(pill_f)
 
 	var h_f := HBoxContainer.new()
-	h_f.add_theme_constant_override("separation", 5)
+	h_f.add_theme_constant_override("separation", 6)
+	h_f.alignment = BoxContainer.ALIGNMENT_CENTER
 	pill_f.add_child(h_f)
 
+	var ico_f := TextureRect.new()
+	ico_f.custom_minimum_size = Vector2(13, 13)
+	ico_f.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	ico_f.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ico_f.texture = TEX_ICO_VAULT
+	ico_f.modulate = Color(0.867, 0.902, 0.941, 0.95)
+	ico_f.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ico_f.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	h_f.add_child(ico_f)
+
 	lbl_favor_mini = Label.new()
-	lbl_favor_mini.text = "🏛️ FAVOR: 15%"
-	lbl_favor_mini.add_theme_font_size_override("font_size", 10)
-	lbl_favor_mini.add_theme_color_override("font_color", Color(1.0, 0.88, 0.45))
+	lbl_favor_mini.text = "FAVOR: 15%"
+	lbl_favor_mini.add_theme_font_size_override("font_size", 11)
+	lbl_favor_mini.add_theme_color_override("font_color", Color(0.918, 0.941, 0.973))
 	h_f.add_child(lbl_favor_mini)
 
 	bar_favor_mini = ProgressBar.new()
-	bar_favor_mini.custom_minimum_size = Vector2(44, 8)
+	bar_favor_mini.custom_minimum_size = Vector2(62, 8)
 	bar_favor_mini.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	bar_favor_mini.max_value = 100.0
 	bar_favor_mini.value = 15.0
 	bar_favor_mini.show_percentage = false
+	var sb_fav_bg := StyleBoxFlat.new()
+	sb_fav_bg.bg_color = Color(0.039, 0.051, 0.078, 0.95)
+	sb_fav_bg.set_border_width_all(1)
+	sb_fav_bg.border_color = Color(0.271, 0.329, 0.408, 0.85)
+	sb_fav_bg.set_corner_radius_all(4)
+	var sb_fav_fill := StyleBoxFlat.new()
+	sb_fav_fill.bg_color = Color(0.949, 0.706, 0.161, 1.0)
+	sb_fav_fill.border_width_top = 1
+	sb_fav_fill.border_color = Color(1.0, 0.890, 0.502, 0.95)
+	sb_fav_fill.set_corner_radius_all(4)
+	bar_favor_mini.add_theme_stylebox_override("background", sb_fav_bg)
+	bar_favor_mini.add_theme_stylebox_override("fill", sb_fav_fill)
 	h_f.add_child(bar_favor_mini)
 
 	# 2. Chip Mutador de Clima
@@ -2431,19 +2588,16 @@ func _crear_strip_favor_y_contrato() -> void:
 func _crear_style_pill(bg: Color, borde: Color) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = bg
-	s.border_width_left = 1
-	s.border_width_top = 1
-	s.border_width_right = 1
-	s.border_width_bottom = 1
+	s.set_border_width_all(1)
 	s.border_color = borde
-	s.corner_radius_top_left = 4
-	s.corner_radius_top_right = 4
-	s.corner_radius_bottom_right = 4
-	s.corner_radius_bottom_left = 4
-	s.content_margin_left = 6.0
-	s.content_margin_right = 6.0
-	s.content_margin_top = 2.0
-	s.content_margin_bottom = 2.0
+	s.set_corner_radius_all(12)
+	s.content_margin_left = 10.0
+	s.content_margin_right = 10.0
+	s.content_margin_top = 3.0
+	s.content_margin_bottom = 3.0
+	s.shadow_color = Color(0.0, 0.0, 0.0, 0.50)
+	s.shadow_size = 5
+	s.shadow_offset = Vector2(0, 2)
 	return s
 
 func _on_favor_cambiado(nuevo_pct: float, _nivel_txt: String = "") -> void:
@@ -2451,11 +2605,11 @@ func _on_favor_cambiado(nuevo_pct: float, _nivel_txt: String = "") -> void:
 		bar_favor_mini.value = nuevo_pct
 	if lbl_favor_mini != null:
 		if nuevo_pct >= 80.0:
-			lbl_favor_mini.text = "🏛️ ¡LOCURA! (%d%%)" % int(round(nuevo_pct))
-			lbl_favor_mini.add_theme_color_override("font_color", Color(1.0, 0.84, 0.20))
+			lbl_favor_mini.text = "¡LOCURA! %d%%" % int(round(nuevo_pct))
+			lbl_favor_mini.add_theme_color_override("font_color", Color(1.0, 0.84, 0.25))
 		else:
-			lbl_favor_mini.text = "🏛️ FAVOR: %d%%" % int(round(nuevo_pct))
-			lbl_favor_mini.add_theme_color_override("font_color", Color(0.95, 0.85, 0.60))
+			lbl_favor_mini.text = "FAVOR: %d%%" % int(round(nuevo_pct))
+			lbl_favor_mini.add_theme_color_override("font_color", Color(0.918, 0.941, 0.973))
 
 func _on_contrato_actualizado(datos: Dictionary) -> void:
 	if chip_contrato == null:
@@ -2516,9 +2670,9 @@ func _crear_panel_f3_telemetria() -> void:
 	panel_f3 = PanelContainer.new()
 	panel_f3.name = "PanelF3Telemetria"
 	panel_f3.offset_left = 18.0
-	panel_f3.offset_top = 194.0
+	panel_f3.offset_top = 200.0
 	panel_f3.offset_right = 296.0
-	panel_f3.offset_bottom = 220.0
+	panel_f3.offset_bottom = 226.0
 	panel_f3.custom_minimum_size = Vector2(278, 0)
 	panel_f3.visible = false
 
@@ -2539,6 +2693,8 @@ func _crear_panel_f3_telemetria() -> void:
 	sb.content_margin_bottom = 8.0
 	panel_f3.add_theme_stylebox_override("panel", sb)
 	$Control.add_child(panel_f3)
+	if modal_dimmer != null:
+		$Control.move_child(panel_f3, modal_dimmer.get_index())
 
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 6)

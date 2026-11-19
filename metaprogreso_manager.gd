@@ -33,6 +33,7 @@ static var bajas_historicas: int = 0
 # Nuevos campos persistentes Versión 2
 static var nivel_prestigio: int = 0
 static var esquirlas_astrales: int = 0
+static var modo_run_pura: bool = false
 static var bendiciones_desbloqueadas: Array = []
 static var clases_desbloqueadas: Array = ["Novato", "Guerrero", "Cazador", "Mago"]
 static var sinergias_descubiertas: Array = []
@@ -95,6 +96,7 @@ static func cargar() -> void:
 		# Carga de campos v2 con inicialización defensiva
 		nivel_prestigio = int(d.get("nivel_prestigio", 0))
 		esquirlas_astrales = int(d.get("esquirlas_astrales", 0))
+		modo_run_pura = bool(d.get("modo_run_pura", false))
 		
 		var bend_cargadas = d.get("bendiciones_desbloqueadas", [])
 		bendiciones_desbloqueadas = []
@@ -180,6 +182,7 @@ static func _establecer_valores_por_defecto() -> void:
 	bajas_historicas = 0
 	nivel_prestigio = 0
 	esquirlas_astrales = 0
+	modo_run_pura = false
 	bendiciones_desbloqueadas = []
 	for b in BENDICIONES_INICIALES:
 		bendiciones_desbloqueadas.append(b)
@@ -207,6 +210,7 @@ static func guardar() -> void:
 		"bajas_historicas": bajas_historicas,
 		"nivel_prestigio": nivel_prestigio,
 		"esquirlas_astrales": esquirlas_astrales,
+		"modo_run_pura": modo_run_pura,
 		"bendiciones_desbloqueadas": bendiciones_desbloqueadas,
 		"clases_desbloqueadas": clases_desbloqueadas,
 		"sinergias_descubiertas": sinergias_descubiertas,
@@ -238,6 +242,12 @@ static func transferir_recursos_run(oro_run: int, clics_run: int, bajas_run: int
 		"prestigio": nivel_prestigio
 	}
 
+static func establecer_modo_run_pura(activo: bool) -> void:
+	asegurar_inicializado()
+	modo_run_pura = activo
+	guardar()
+	print("[MetaprogresoManager] Modo Run Pura: %s" % ("ACTIVO (0% metaprogreso)" if modo_run_pura else "Desactivado"))
+
 # ==============================================================================
 # FORMATEO NUMÉRICO UNIVERSAL (K, M, B)
 # ==============================================================================
@@ -258,7 +268,9 @@ static func formatear_numero(valor: float) -> String:
 # ==============================================================================
 static func obtener_multiplicador_prestigio() -> float:
 	asegurar_inicializado()
-	return 1.0 + float(nivel_prestigio) * 0.35
+	if modo_run_pura:
+		return 1.0
+	return 1.0 + float(nivel_prestigio) * 0.15
 
 static func puede_hacer_prestigio() -> bool:
 	asegurar_inicializado()
@@ -365,6 +377,8 @@ static func registrar_baja_bestiario(tipo: String) -> void:
 
 static func obtener_bono_bestiario(tipo: String) -> float:
 	asegurar_inicializado()
+	if modo_run_pura:
+		return 0.0
 	var key := _normalizar_bestiario_id(tipo)
 	var bajas = int(bestiario_bajas.get(key, 0))
 	return minf(0.20, floor(float(bajas) / 25.0) * 0.01)
@@ -523,7 +537,14 @@ static func aplicar_a_personaje(pj: CharacterBody3D) -> void:
 	asegurar_inicializado()
 	if pj == null:
 		return
-		
+
+	if modo_run_pura:
+		pj.mejoras_arbol = {}
+		if pj.has_method("recalcular_stats_incrementales"):
+			pj.recalcular_stats_incrementales()
+		print("[MetaprogresoManager] Modo Run Pura activo (0% metaprogreso aplicado).")
+		return
+
 	pj.mejoras_arbol = mejoras_arbol.duplicate(true)
 	if pj.has_method("recalcular_stats_incrementales"):
 		pj.recalcular_stats_incrementales()

@@ -25,27 +25,27 @@ signal evolucion_tier3_completada(nombre_subclase: String)
 signal evolucion_completada(nombre_subclase: String)
 signal malla_cambiada(nuevo_modelo: Node3D)
 
-# Requisitos de Metamorfosis Tier 1 (Minuto 1:15 - 1:30)
-@export var hito_nivel: int = 3
-@export var hito_clics: int = 15
-@export var hito_bajas: int = 8
+# Requisitos de Metamorfosis Tier 1 (Minuto 1:30 - 2:00)
+@export var hito_nivel: int = 5
+@export var hito_clics: int = 30
+@export var hito_bajas: int = 25
 @export var requiere_todos_los_hitos: bool = true
 
-# Requisitos de Mejora 1 - Tier 2 (Nv.7 + 40 clics)
-@export var hito_nivel_tier2: int = 7
-@export var hito_clics_tier2: int = 40
+# Requisitos de Mejora 1 - Tier 2 (Nv.10 + 70 clics)
+@export var hito_nivel_tier2: int = 10
+@export var hito_clics_tier2: int = 70
 
-# Requisitos de Mejora 2 / Ascensión Definitiva - Tier 3 (Nv.11 + 75 clics)
-@export var hito_nivel_tier3: int = 11
-@export var hito_clics_tier3: int = 75
+# Requisitos de Mejora 2 / Ascensión Definitiva - Tier 3 (Nv.15 + 120 clics)
+@export var hito_nivel_tier3: int = 15
+@export var hito_clics_tier3: int = 120
 
-const HITO_NIVEL: int = 3
-const HITO_CLICS: int = 15
-const HITO_BAJAS: int = 8
-const HITO_NIVEL_TIER2: int = 7
-const HITO_CLICS_TIER2: int = 40
-const HITO_NIVEL_TIER3: int = 11
-const HITO_CLICS_TIER3: int = 75
+const HITO_NIVEL: int = 5
+const HITO_CLICS: int = 30
+const HITO_BAJAS: int = 25
+const HITO_NIVEL_TIER2: int = 10
+const HITO_CLICS_TIER2: int = 70
+const HITO_NIVEL_TIER3: int = 15
+const HITO_CLICS_TIER3: int = 120
 
 const MALLAS_CLASE = {
 	"Novato": "res://personaje/player_rookie.glb",
@@ -92,9 +92,9 @@ const STATS_CLASE = {
 		"rol": "Condenado de la Arena",
 		"descripcion": "Gladiador novato que recién ingresa a la arena monumental.",
 		"vida_maxima": 100.0,
-		"dano": 12.0,
+		"dano": 10.0,
 		"rango_ataque": 2.6,
-		"cadencia_ataque": 1.25,
+		"cadencia_ataque": 1.35,
 		"speed_caminar": 3.4,
 		"speed_correr": 5.4
 	},
@@ -103,9 +103,9 @@ const STATS_CLASE = {
 		"rol": "Condenado de la Arena",
 		"descripcion": "Gladiador novato que recién ingresa a la arena monumental.",
 		"vida_maxima": 100.0,
-		"dano": 12.0,
+		"dano": 10.0,
 		"rango_ataque": 2.6,
-		"cadencia_ataque": 1.25,
+		"cadencia_ataque": 1.35,
 		"speed_caminar": 3.4,
 		"speed_correr": 5.4
 	},
@@ -708,6 +708,7 @@ func evolucionar_a(nombre_clase: String):
 			if nuevo_anim != null:
 				personaje_ref.anim = nuevo_anim
 				personaje_ref.animar()
+		_aplicar_visual_tier(personaje_ref, nombre_clase, 1)
 		
 		_emitir_feedback_metamorfosis(nombre_clase)
 		
@@ -761,6 +762,7 @@ func ascender_a_subclase_tier2(nombre_subclase: String):
 	
 	if personaje_ref.has_method("equipar_armas_clase"):
 		personaje_ref.equipar_armas_clase(nombre_subclase)
+	_aplicar_visual_tier(personaje_ref, nombre_subclase, 2)
 	
 	MetaprogresoManager.registrar_subclase_descubierta(nombre_subclase)
 		
@@ -817,6 +819,7 @@ func ascender_a_tier3(nombre_subclase: String):
 
 	if personaje_ref.has_method("equipar_armas_clase"):
 		personaje_ref.equipar_armas_clase(nombre_subclase)
+	_aplicar_visual_tier(personaje_ref, nombre_subclase, 3)
 
 	MetaprogresoManager.registrar_subclase_descubierta(nombre_subclase)
 
@@ -857,6 +860,7 @@ func cambiar_malla_3d(personaje: CharacterBody3D, ruta_malla: String) -> Animati
 	nuevo_modelo.name = "Modelo"
 	nuevo_modelo.transform = transform_base
 	personaje.add_child(nuevo_modelo)
+	AnimadorEntidad.estilizar_entidad_visual(nuevo_modelo, true)
 	
 	var nuevo_anim = AnimadorEntidad.buscar_animation_player(nuevo_modelo)
 	if nuevo_anim == null:
@@ -883,3 +887,254 @@ func _emitir_feedback_metamorfosis(nombre_clase: String):
 		tween.tween_callback(luz.queue_free)
 	else:
 		luz.queue_free()
+
+
+const PALETA_VISUAL_TIER := {
+	"Secutor Radiante": {"accent": Color(0.95, 0.72, 0.16), "core": Color(1.00, 0.86, 0.30)},
+	"Paladín Solar": {"accent": Color(0.95, 0.72, 0.16), "core": Color(1.00, 0.86, 0.30)},
+	"Paladín del Sol Invictus": {"accent": Color(1.00, 0.82, 0.24), "core": Color(1.00, 0.94, 0.45)},
+	"Provocator Sangriento": {"accent": Color(0.88, 0.18, 0.16), "core": Color(1.00, 0.32, 0.24)},
+	"Berserker Sangriento": {"accent": Color(0.88, 0.18, 0.16), "core": Color(1.00, 0.32, 0.24)},
+	"Campeón Augusto de Sangre": {"accent": Color(0.96, 0.14, 0.18), "core": Color(1.00, 0.28, 0.32)},
+	"Velites Balístico": {"accent": Color(0.18, 0.76, 0.96), "core": Color(0.32, 0.92, 1.00)},
+	"Francotirador Astral": {"accent": Color(0.18, 0.76, 0.96), "core": Color(0.32, 0.92, 1.00)},
+	"Centurión Balístico Astral": {"accent": Color(0.36, 0.88, 1.00), "core": Color(0.62, 0.98, 1.00)},
+	"Dimachaerus Espectral": {"accent": Color(0.16, 0.86, 0.56), "core": Color(0.28, 0.96, 0.68)},
+	"Asesino Espectral": {"accent": Color(0.16, 0.86, 0.56), "core": Color(0.28, 0.96, 0.68)},
+	"Sombra del Anfiteatro": {"accent": Color(0.22, 0.95, 0.64), "core": Color(0.45, 1.00, 0.80)},
+	"Taumaturgo del Vacío": {"accent": Color(0.58, 0.28, 0.96), "core": Color(0.76, 0.45, 1.00)},
+	"Pontífice del Vacío Estelar": {"accent": Color(0.68, 0.32, 1.00), "core": Color(0.86, 0.58, 1.00)},
+	"Flamen Volcánico": {"accent": Color(0.96, 0.42, 0.12), "core": Color(1.00, 0.65, 0.22)},
+	"Señor del Magma Imperial": {"accent": Color(1.00, 0.38, 0.08), "core": Color(1.00, 0.72, 0.18)},
+	"Custodio del Núcleo": {"accent": Color(0.22, 0.88, 0.86), "core": Color(0.45, 1.00, 0.95)},
+	"Titán Supremo del Núcleo": {"accent": Color(0.98, 0.86, 0.34), "core": Color(0.38, 1.00, 0.96)},
+}
+
+
+class OrnamentoTierRotator:
+	extends Node3D
+
+	var anillo_exterior: MeshInstance3D = null
+	var anillo_interior: MeshInstance3D = null
+	var orbita_cristales: Node3D = null
+	var cristales: Array[MeshInstance3D] = []
+	var _t: float = 0.0
+
+	func _process(delta: float) -> void:
+		_t += delta
+		if anillo_exterior != null:
+			anillo_exterior.rotation.y += delta * 0.42
+		if anillo_interior != null:
+			anillo_interior.rotation.y -= delta * 0.75
+		if orbita_cristales != null:
+			orbita_cristales.rotation.y += delta * 0.95
+		for i in range(cristales.size()):
+			var c: MeshInstance3D = cristales[i]
+			if c != null:
+				c.position.y = sin(_t * 2.4 + float(i) * (TAU / 3.0)) * 0.09
+				c.rotation.y += delta * 1.4
+				c.rotation.x += delta * 0.6
+
+
+static func _generar_textura_runa_tier(color_runa: Color, es_tier3: bool) -> ImageTexture:
+	var sz: int = 256
+	var img: Image = Image.create(sz, sz, false, Image.FORMAT_RGBA8)
+	var center: float = float(sz - 1) * 0.5
+	for y in range(sz):
+		for x in range(sz):
+			var dx: float = (float(x) - center) / center
+			var dy: float = (float(y) - center) / center
+			var r: float = sqrt(dx * dx + dy * dy)
+			var ang: float = atan2(dy, dx)
+			var alpha: float = 0.0
+			# Anillo exterior sagrado
+			if absf(r - 0.88) < 0.032:
+				alpha = maxf(alpha, clampf(1.0 - absf(r - 0.88) / 0.032, 0.0, 1.0))
+			# Segundo anillo o patrón octogonal Tier 3
+			var r_inner: float = 0.68 if es_tier3 else 0.72
+			if absf(r - r_inner) < 0.022:
+				alpha = maxf(alpha, 0.75 * clampf(1.0 - absf(r - r_inner) / 0.022, 0.0, 1.0))
+			# Muescas rúnicas radiales (8 u 12 según tier)
+			var spokes: float = 12.0 if es_tier3 else 8.0
+			if r > 0.69 and r < 0.92:
+				var tooth: float = absf(sin(ang * spokes * 0.5))
+				if tooth > 0.94:
+					alpha = maxf(alpha, 0.90)
+			# Cuadrado/rombo interior rotado
+			if es_tier3:
+				var diamond_d: float = absf(dx) + absf(dy)
+				if absf(diamond_d - 0.84) < 0.026:
+					alpha = maxf(alpha, 0.72)
+			var col: Color = Color(color_runa.r, color_runa.g, color_runa.b, clampf(alpha, 0.0, 0.92))
+			img.set_pixel(x, y, col)
+	img.generate_mipmaps()
+	return ImageTexture.create_from_image(img)
+
+
+static func _construir_octaedro_cristal() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var top := Vector3(0.0, 0.14, 0.0)
+	var bot := Vector3(0.0, -0.14, 0.0)
+	var ring: Array[Vector3] = [
+		Vector3(0.08, 0.0, 0.0),
+		Vector3(0.0, 0.0, 0.08),
+		Vector3(-0.08, 0.0, 0.0),
+		Vector3(0.0, 0.0, -0.08),
+	]
+	for i in range(4):
+		var p0: Vector3 = ring[i]
+		var p1: Vector3 = ring[(i + 1) % 4]
+		st.add_vertex(top)
+		st.add_vertex(p1)
+		st.add_vertex(p0)
+		st.add_vertex(bot)
+		st.add_vertex(p0)
+		st.add_vertex(p1)
+	st.index()
+	st.generate_normals()
+	return st.commit()
+
+
+static func _duplicar_material_tier(mat_orig: Material, accent_col: Color, core_col: Color, tier: int) -> StandardMaterial3D:
+	if not (mat_orig is StandardMaterial3D):
+		return null
+	var sm := mat_orig as StandardMaterial3D
+	var rname: String = sm.resource_name
+	if not (rname.contains("TierAccent") or rname.contains("TierCore")):
+		return null
+	var dup := sm.duplicate() as StandardMaterial3D
+	dup.resource_name = sm.resource_name
+	dup.next_pass = sm.next_pass
+	if rname.contains("TierAccent"):
+		if dup.albedo_texture != null:
+			dup.albedo_color = accent_col.lightened(0.22)
+		else:
+			dup.albedo_color = dup.albedo_color.lerp(accent_col, 0.72)
+		if tier >= 3:
+			dup.metallic = maxf(dup.metallic, 0.92)
+			dup.roughness = minf(dup.roughness, 0.22)
+			dup.clearcoat_enabled = true
+			dup.clearcoat = 0.80
+	else:
+		dup.albedo_color = core_col
+		dup.emission_enabled = true
+		dup.emission = core_col
+		dup.emission_energy_multiplier = minf(0.95 if tier >= 3 else 0.90, maxf(dup.emission_energy_multiplier, 0.82))
+	return dup
+
+
+static func _aplicar_tintado_tier_recursivo(nodo: Node, accent_col: Color, core_col: Color, tier: int) -> void:
+	if nodo is MeshInstance3D:
+		var mi := nodo as MeshInstance3D
+		if mi.material_override != null:
+			var dup_ovr := _duplicar_material_tier(mi.material_override, accent_col, core_col, tier)
+			if dup_ovr != null:
+				mi.material_override = dup_ovr
+		elif mi.mesh != null:
+			for s_idx in range(mi.mesh.get_surface_count()):
+				var mat_s: Material = mi.get_active_material(s_idx)
+				var dup_s := _duplicar_material_tier(mat_s, accent_col, core_col, tier)
+				if dup_s != null:
+					mi.set_surface_override_material(s_idx, dup_s)
+	for ch: Node in nodo.get_children():
+		_aplicar_tintado_tier_recursivo(ch, accent_col, core_col, tier)
+
+
+static func _aplicar_visual_tier(pj: Node3D, nombre_subclase: String, tier: int) -> void:
+	if pj == null:
+		return
+	var previo: Node = pj.get_node_or_null("OrnamentoTier")
+	if previo != null:
+		pj.remove_child(previo)
+		previo.queue_free()
+
+	if tier <= 1:
+		return
+
+	var paleta: Dictionary = PALETA_VISUAL_TIER.get(nombre_subclase, {
+		"accent": Color(0.92, 0.72, 0.24),
+		"core": Color(0.32, 0.88, 1.00),
+	})
+	var col_accent: Color = paleta["accent"]
+	var col_core: Color = paleta["core"]
+
+	var mod_scale: float = 5.5
+	var modelo: Node = pj.get_node_or_null("Modelo")
+	if modelo != null:
+		if modelo is Node3D:
+			mod_scale = maxf(absf((modelo as Node3D).scale.y), 1.0)
+		_aplicar_tintado_tier_recursivo(modelo, col_accent, col_core, tier)
+
+	# Ornamento no invasivo escalado proporcionalmente al Modelo (CERO OmniLight3D nuevas)
+	var orn := OrnamentoTierRotator.new()
+	orn.name = "OrnamentoTier"
+	pj.add_child(orn)
+
+	var sigilo_sz: float = mod_scale * (0.82 if tier >= 3 else 0.72)
+	var sigilo_quad := QuadMesh.new()
+	sigilo_quad.size = Vector2(sigilo_sz, sigilo_sz)
+	var mat_sigilo := StandardMaterial3D.new()
+	var tex_sigilo: ImageTexture = _generar_textura_runa_tier(col_core, tier >= 3)
+	mat_sigilo.albedo_texture = tex_sigilo
+	mat_sigilo.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat_sigilo.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat_sigilo.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat_sigilo.albedo_color = Color(col_core.r, col_core.g, col_core.b, 0.85)
+	mat_sigilo.emission_enabled = true
+	mat_sigilo.emission = col_core
+	mat_sigilo.emission_energy_multiplier = 0.84 if tier >= 3 else 0.72
+	sigilo_quad.material = mat_sigilo
+
+	var mi_ext := MeshInstance3D.new()
+	mi_ext.name = "SigiloSuelo"
+	mi_ext.mesh = sigilo_quad
+	mi_ext.position = Vector3(0.0, 0.035, 0.0)
+	mi_ext.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
+	mi_ext.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	orn.add_child(mi_ext)
+	orn.anillo_exterior = mi_ext
+
+	if tier >= 3:
+		var sigilo_in := QuadMesh.new()
+		var inner_sz: float = mod_scale * 0.50
+		sigilo_in.size = Vector2(inner_sz, inner_sz)
+		sigilo_in.material = mat_sigilo
+		var mi_int := MeshInstance3D.new()
+		mi_int.name = "SigiloInterior"
+		mi_int.mesh = sigilo_in
+		mi_int.position = Vector3(0.0, 0.042, 0.0)
+		mi_int.rotation_degrees = Vector3(-90.0, 45.0, 0.0)
+		mi_int.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		orn.add_child(mi_int)
+		orn.anillo_interior = mi_int
+
+		var orbita := Node3D.new()
+		orbita.name = "OrbitaCristales"
+		orbita.position = Vector3(0.0, mod_scale * 0.52, 0.0)
+		orn.add_child(orbita)
+		orn.orbita_cristales = orbita
+
+		var mesh_cristal: ArrayMesh = _construir_octaedro_cristal()
+		var mat_cristal := StandardMaterial3D.new()
+		mat_cristal.albedo_color = col_accent
+		mat_cristal.metallic = 0.85
+		mat_cristal.roughness = 0.16
+		mat_cristal.clearcoat_enabled = true
+		mat_cristal.clearcoat = 0.9
+		mat_cristal.emission_enabled = true
+		mat_cristal.emission = col_core
+		mat_cristal.emission_energy_multiplier = 0.88
+
+		var r_orbita: float = mod_scale * 0.34
+		var c_scale: float = mod_scale / 2.4
+		for i in range(3):
+			var ang: float = float(i) * (TAU / 3.0)
+			var c_mi := MeshInstance3D.new()
+			c_mi.name = "CristalTier3_%d" % i
+			c_mi.mesh = mesh_cristal
+			c_mi.material_override = mat_cristal
+			c_mi.scale = Vector3(c_scale, c_scale, c_scale)
+			c_mi.position = Vector3(cos(ang) * r_orbita, 0.0, sin(ang) * r_orbita)
+			orbita.add_child(c_mi)
+			orn.cristales.append(c_mi)

@@ -179,7 +179,7 @@ func perder(motivo: String):
 	if pj == null:
 		pj = get_tree().get_first_node_in_group("player")
 
-	if favor_mgr != null and not favor_mgr.juicio_usado and pj != null:
+	if favor_mgr != null and not favor_mgr.juicio_usado and pj != null and "favor" in favor_mgr and float(favor_mgr.favor) >= 40.0:
 		favor_mgr.intentar_juicio_emperador_al_morir(pj)
 		return
 

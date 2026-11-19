@@ -6,6 +6,7 @@ extends Node3D
 ## e invoca 2 Jefes simultáneos cada 120s.
 
 const AudioManager = preload("res://audio_manager.gd")
+const ArenaColiseo = preload("res://arena_coliseo.gd")
 const ParasitoCursorScript = preload("res://parasito_cursor.gd")
 const CanalizadorVacioScript = preload("res://canalizador_vacio.gd")
 const GolemTesoroScript = preload("res://golem_tesoro.gd")
@@ -24,11 +25,13 @@ const HeraldoClicScript = preload("res://heraldo_clic.gd")
 @export var parca_roja_escena: PackedScene = preload("res://parca_roja.tscn")
 @export var portal_spawn_escena: PackedScene = preload("res://portal_spawn.tscn")
 
-@export var intervalo_oleada: float = 16.0
+@export var intervalo_oleada: float = 12.5
 @export var radio_spawn: float = 26.0
 @export var max_enemigos_concurrentes: int = 55
 
-var _reloj_oleada: float = 22.0
+var _reloj_oleada: float = 13.0
+var _reloj_goteo: float = 4.2
+var _elite_temprano_spawned: bool = false
 var _tiempo_transcurrido: float = 0.0
 var oleada_actual: int = 1
 var hud: Node = null
@@ -147,6 +150,22 @@ func _process(delta):
 				hud.oleada = oleada_actual
 			_generar_oleada(oleada_actual)
 
+		# Goteo continuo de presión entre oleadas
+		_reloj_goteo -= delta
+		if _reloj_goteo <= 0.0:
+			_reloj_goteo = maxf(2.4, 4.4 - float(oleada_actual) * 0.25)
+			var enemigos_activos := get_tree().get_nodes_in_group("enemigos").size()
+			if enemigos_activos < max_enemigos_concurrentes:
+				var extra_goteo := float(maxi(0, oleada_actual - 1)) * 2.5
+				var esc_goteo: PackedScene = espectro_escena
+				if oleada_actual >= 3 and randf() < 0.35:
+					esc_goteo = arquero_escena
+				elif oleada_actual >= 2 and randf() < 0.40:
+					esc_goteo = guardia_escena
+				var cant_goteo := 2 if oleada_actual >= 3 else 1
+				for _g in range(cant_goteo):
+					_spawn_enemigo(esc_goteo, extra_goteo, 0.0, false)
+
 	if modo_abismo:
 		_reloj_abismo_minuto -= delta
 		if _reloj_abismo_minuto <= 0.0:
@@ -160,10 +179,12 @@ func _process(delta):
 			_reloj_abismo_dupla_jefes = 120.0
 			_spawn_dupla_jefes_abismo()
 	else:
-		# Progresión cronológica espaciada de Jefes (cada jefe aparece una sola vez y no se solapan)
+		# Progresión cronológica espaciada de Jefes (incluye Campeón Élite a los 90s)
 		if not _hay_jefe_activo():
 			var tiempo_desde_ultimo = _tiempo_transcurrido - _tiempo_ultimo_jefe
-			if _tiempo_transcurrido >= 180.0 and not _centurion_spawned:
+			if _tiempo_transcurrido >= 90.0 and not _elite_temprano_spawned:
+				_spawn_campeon_temprano()
+			elif _tiempo_transcurrido >= 180.0 and not _centurion_spawned:
 				spawn_centurion()
 			elif _tiempo_transcurrido >= 405.0 and not _mini_jefe_spawned and tiempo_desde_ultimo >= TIEMPO_MINIMO_ENTRE_JEFES:
 				spawn_mini_jefe()
@@ -173,6 +194,21 @@ func _process(delta):
 				spawn_coloso_bronce()
 			elif _tiempo_transcurrido >= 900.0 and not _parca_spawned:
 				spawn_parca_roja()
+
+func _spawn_campeon_temprano() -> void:
+	if _elite_temprano_spawned:
+		return
+	_elite_temprano_spawned = true
+	AudioManager.play("alerta_oleada", 1.35, 2.5)
+	_spawn_enemigo(bruto_escena, 85.0, 0.0, false)
+	for i in range(2):
+		_spawn_enemigo(berserker_escena, 10.0, 0.35 + float(i) * 0.20, false)
+	var pool = get_tree().get_first_node_in_group("damage_numbers")
+	var pj = get_tree().get_first_node_in_group("jugador")
+	if pj == null:
+		pj = get_tree().get_first_node_in_group("player")
+	if pool != null and pj != null and pool.has_method("mostrar_texto"):
+		pool.mostrar_texto(pj.global_position + Vector3(0, 3.0, 0), "⚔️ ¡CAMPEÓN DE LA ARENA HA INGRESADO!", Color(1.0, 0.42, 0.18), 1.5)
 
 func _spawn_dupla_jefes_abismo() -> void:
 	AudioManager.play("jefe_alerta", 1.25, 4.0)
@@ -229,26 +265,29 @@ func _generar_oleada(num: int):
 	var extra_abismo = float(nivel_abismo) * 35.0 if modo_abismo else 0.0
 
 	if num == 1:
-		for i in range(2): _spawn_enemigo(espectro_escena, extra_abismo, i * 0.25)
+		for i in range(6): _spawn_enemigo(espectro_escena, extra_abismo, i * 0.20)
+		for i in range(2): _spawn_enemigo(guardia_escena, extra_abismo, 0.45 + i * 0.35)
 	elif num == 2:
-		for i in range(3): _spawn_enemigo(espectro_escena, extra_abismo, i * 0.2)
-		_spawn_enemigo(guardia_escena, extra_abismo, 0.6)
+		for i in range(6): _spawn_enemigo(espectro_escena, extra_abismo, i * 0.18)
+		for i in range(3): _spawn_enemigo(guardia_escena, extra_abismo, 0.40 + i * 0.25)
+		_spawn_enemigo(arquero_escena, extra_abismo, 0.80)
 	elif num == 3:
-		_spawn_enemigo(arquero_escena, extra_abismo, 0.2)
-		_spawn_enemigo(kamikaze_escena, extra_abismo, 0.4)
-		for i in range(2): _spawn_enemigo(guardia_escena, 2.0 + extra_abismo, 0.6)
-		for i in range(4): _spawn_enemigo(espectro_escena, extra_abismo, 0.8)
+		for i in range(2): _spawn_enemigo(arquero_escena, extra_abismo, 0.20 + i * 0.20)
+		for i in range(2): _spawn_enemigo(kamikaze_escena, extra_abismo, 0.40 + i * 0.20)
+		for i in range(3): _spawn_enemigo(guardia_escena, 4.0 + extra_abismo, 0.60 + i * 0.18)
+		for i in range(7): _spawn_enemigo(espectro_escena, 2.0 + extra_abismo, 0.80 + i * 0.12)
 	elif num == 4:
-		_spawn_enemigo(berserker_escena, extra_abismo, 0.0)
-		for i in range(3): _spawn_enemigo(arquero_escena, 4.0 + extra_abismo, 0.2 + i * 0.15)
-		for i in range(2): _spawn_enemigo(kamikaze_escena, extra_abismo, 0.4 + i * 0.2)
-		for i in range(4): _spawn_enemigo(guardia_escena, 6.0 + extra_abismo, 0.6 + i * 0.15)
-		for i in range(6): _spawn_enemigo(espectro_escena, 4.0 + extra_abismo, 0.8 + i * 0.12)
+		for i in range(2): _spawn_enemigo(berserker_escena, 4.0 + extra_abismo, i * 0.20)
+		for i in range(3): _spawn_enemigo(arquero_escena, 6.0 + extra_abismo, 0.20 + i * 0.15)
+		for i in range(2): _spawn_enemigo(kamikaze_escena, extra_abismo, 0.40 + i * 0.20)
+		for i in range(4): _spawn_enemigo(guardia_escena, 8.0 + extra_abismo, 0.60 + i * 0.15)
+		for i in range(8): _spawn_enemigo(espectro_escena, 5.0 + extra_abismo, 0.80 + i * 0.10)
 	elif num == 5:
-		_spawn_enemigo(bruto_escena, extra_abismo, 0.0)
-		for i in range(2): _spawn_enemigo(berserker_escena, 5.0 + extra_abismo, 0.2 + i * 0.2)
-		for i in range(2): _spawn_enemigo(arquero_escena, 5.0 + extra_abismo, 0.4 + i * 0.2)
-		for i in range(6): _spawn_enemigo(espectro_escena, 5.0 + extra_abismo, 0.6 + i * 0.12)
+		for i in range(2): _spawn_enemigo(bruto_escena, 10.0 + extra_abismo, i * 0.25)
+		for i in range(3): _spawn_enemigo(berserker_escena, 8.0 + extra_abismo, 0.20 + i * 0.18)
+		for i in range(3): _spawn_enemigo(arquero_escena, 8.0 + extra_abismo, 0.40 + i * 0.18)
+		for i in range(2): _spawn_enemigo(kamikaze_escena, extra_abismo, 0.55 + i * 0.20)
+		for i in range(8): _spawn_enemigo(espectro_escena, 6.0 + extra_abismo, 0.65 + i * 0.10)
 	else:
 		var extra = (num - 5) * 6.0 + extra_abismo
 		for i in range(2): _spawn_enemigo(bruto_escena, extra * 1.5, i * 0.2)
@@ -273,13 +312,34 @@ func _spawn_enemigo_especial(tipo: String):
 			nodo.queue_free()
 			return
 
-	var angulo = randf() * TAU
-	var pos = Vector3(cos(angulo) * (radio_spawn * 0.78), 0.0, sin(angulo) * (radio_spawn * 0.78))
-	pos.x = clampf(pos.x, -24.0, 24.0)
-	pos.z = clampf(pos.z, -24.0, 24.0)
+	var pos: Vector3 = _obtener_pos_spawn_cerca_jugador(14.0, 26.0)
 	get_parent().add_child(nodo)
 	nodo.global_position = pos
 	_aplicar_escalado_dificultad(nodo, float(nivel_abismo) * 25.0 if modo_abismo else 0.0)
+
+func _obtener_pos_spawn_cerca_jugador(r_min: float, r_max: float) -> Vector3:
+	var pj: Node3D = get_tree().get_first_node_in_group("jugador") as Node3D if is_inside_tree() else null
+	if pj == null and is_inside_tree():
+		pj = get_tree().get_first_node_in_group("player") as Node3D
+	if pj != null and is_instance_valid(pj):
+		var centro: Vector3 = pj.global_position
+		var rng: RandomNumberGenerator = ArenaColiseo._obtener_rng_run(self)
+		for _i in range(18):
+			var ang: float = rng.randf() * TAU
+			var dist: float = rng.randf_range(r_min, r_max)
+			var raw := Vector3(centro.x + cos(ang) * dist, 0.0, centro.z + sin(ang) * dist)
+			var cand := ArenaColiseo.clamping_y_ajustar_a_suelo(raw, 2.4, 0.0)
+			if Vector2(cand.x - centro.x, cand.z - centro.z).length() < 10.0:
+				continue
+			if ArenaColiseo.esta_en_pendiente(cand.x, cand.z, 0.7):
+				continue
+			if not ArenaColiseo.punto_libre_de_obstaculos(cand, 2.2):
+				continue
+			var m_c: float = ArenaColiseo.apotema_en_pos(cand.x, cand.z)
+			if m_c >= (ArenaColiseo.APOTEMA_FOSO - 1.1) and m_c <= (ArenaColiseo.APOTEMA_FOSO + 0.9):
+				continue
+			return cand
+	return ArenaColiseo.punto_aleatorio(16.0, ArenaColiseo.APOTEMA_EXTERIOR - 2.4, null, 0.0)
 
 func _spawn_enemigo(escena: PackedScene, vida_extra: float, retraso: float = 0.0, es_jefe: bool = false):
 	if escena == null:
@@ -297,10 +357,11 @@ func _spawn_enemigo(escena: PackedScene, vida_extra: float, retraso: float = 0.0
 		if enemigos_activos >= max_enemigos_concurrentes and not es_jefe:
 			return
 
-	var angulo = randf() * TAU
-	var pos = Vector3(cos(angulo) * radio_spawn, 0.0, sin(angulo) * radio_spawn)
-	pos.x = clampf(pos.x, -26.0, 26.0)
-	pos.z = clampf(pos.z, -26.0, 26.0)
+	var pos: Vector3
+	if es_jefe:
+		pos = _obtener_pos_spawn_cerca_jugador(14.0, 22.0)
+	else:
+		pos = _obtener_pos_spawn_cerca_jugador(14.0, 26.0)
 
 	var extra_por_clicks = minf(float(clicks_totales) * 0.85, 160.0)
 	var vida_total = vida_extra + (0.0 if es_jefe else extra_por_clicks)
@@ -327,8 +388,8 @@ func _spawn_enemigo(escena: PackedScene, vida_extra: float, retraso: float = 0.0
 
 ## Calcula el escalado continuo de daño según la oleada alcanzada y los minutos transcurridos
 func calcular_multiplicador_dano_incremental() -> float:
-	var factor_oleada = 1.0 + float(maxi(0, oleada_actual - 1)) * 0.075
-	var factor_tiempo = 1.0 + (_tiempo_transcurrido / 60.0) * 0.08
+	var factor_oleada = 1.0 + float(maxi(0, oleada_actual - 1)) * 0.10
+	var factor_tiempo = 1.0 + (_tiempo_transcurrido / 60.0) * 0.10
 	return factor_oleada * factor_tiempo
 
 func aplicar_escalado_dificultad(enemigo: Node, vida_extra_base: float = 0.0) -> void:
@@ -413,9 +474,11 @@ func _desvanecer_enemigo(e: Node) -> void:
 	if "muerto" in e:
 		e.muerto = true
 	if e is Node3D:
+		var nodo_vis: Node = e.get_node_or_null("Modelo")
+		var objetivo_tw: Node = nodo_vis if nodo_vis != null else e
 		var tw = e.create_tween()
 		tw.set_parallel(true)
-		tw.tween_property(e, "scale", Vector3(0.01, 1.8, 0.01), 0.24).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+		tw.tween_property(objetivo_tw, "scale", Vector3(0.05, 1.5, 0.05), 0.24).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 		tw.chain().tween_callback(e.queue_free)
 	else:
 		e.queue_free()

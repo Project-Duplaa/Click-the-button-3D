@@ -1,6 +1,7 @@
 extends Area3D
 
 const AudioManager = preload("res://audio_manager.gd")
+const ArenaColiseo = preload("res://arena_coliseo.gd")
 
 # Orbe Arcano - Especialidad de la Clase Mago
 # Desarrollado por: Juan Camilo Angulo Camelo
@@ -22,6 +23,7 @@ var _ha_detonado: bool = false
 
 func _ready():
 	add_to_group("proyectiles_jugador")
+	collision_mask = 2 | 8
 	body_entered.connect(_on_body_entered)
 	area_entered.connect(_on_area_entered)
 	AudioManager.play("orbe_lanzar", randf_range(0.9, 1.1))
@@ -55,7 +57,7 @@ func _physics_process(delta):
 		mesh_orbe.rotate_z(delta * 8.0)
 		mesh_orbe.rotate_y(delta * 6.0)
 		
-	if _tiempo >= tiempo_vida:
+	if _tiempo >= tiempo_vida or not ArenaColiseo.esta_dentro(global_position, 0.0):
 		detonar_aoe()
 
 func _on_body_entered(body):

@@ -82,11 +82,11 @@ func _calcular_velocidad_ia(delta: float) -> Vector3:
 	if jugador == null or not is_instance_valid(jugador):
 		return Vector3.ZERO
 
-	var dir = jugador.global_position - global_position
-	dir.y = 0.0
-	var dist = dir.length()
-	if dist > 0.05:
-		dir /= dist
+	var dif_xz := jugador.global_position - global_position
+	dif_xz.y = 0.0
+	var dist := dif_xz.length()
+	var dir: Vector3 = ArenaColiseo.calcular_direccion_persecucion(self, jugador.global_position, _nav_estado, delta)
+	if dir.length_squared() > 0.0025:
 		rotation.y = lerp_angle(rotation.y, atan2(dir.x, dir.z), delta * 8.0)
 
 	_reloj_dash -= delta
@@ -101,7 +101,9 @@ func _calcular_velocidad_ia(delta: float) -> Vector3:
 	_reloj_descarga -= delta
 	if _reloj_descarga <= 0.0:
 		_reloj_descarga = 2.85
-		_disparar_rafaga_espejo(dir)
+		var origen_ref := global_position + Vector3(0.0, 1.35, 0.0)
+		var dir_3d := ((jugador.global_position + Vector3(0.0, 0.9, 0.0)) - origen_ref).normalized()
+		_disparar_rafaga_espejo(dir_3d)
 
 	if _dash_timer > 0.0:
 		_dash_timer = maxf(0.0, _dash_timer - delta)
