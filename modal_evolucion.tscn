@@ -93,14 +93,14 @@ theme_override_constants/separation = 8
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.45, 0.35, 1)
 theme_override_font_sizes/font_size = 18
-text = "⚔️ GUERRERO"
+text = "⚔️ MURMILLO"
 horizontal_alignment = 1
 
 [node name="Rol" type="Label" parent="Control/Panel/Margin/VBox/HBoxCartas/CardGuerrero/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.75, 0.75, 0.75, 1)
 theme_override_font_sizes/font_size = 12
-text = "Tanque / Melee Colosal"
+text = "Coloso de Acero / Baluarte Melee"
 horizontal_alignment = 1
 
 [node name="Desc" type="Label" parent="Control/Panel/Margin/VBox/HBoxCartas/CardGuerrero/VBox"]
@@ -108,11 +108,10 @@ layout_mode = 2
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 12
 text = "• Salud: 160 HP (+60%)
-• Daño Melee: 22 (+83%)
-• Rango: 3.0 m
-• Cadencia: 0.70 s
-• Arma: Espada Kenney
-• Corte 360° y Bloqueo"
+• Daño Melee: 16 (Torbellino 360°)
+• Rango: 3.2 m · Cadencia: 0.65 s
+• Arma: Gran Espada + Escudo
+• Bloqueo Activo (-75% Daño)"
 autowrap_mode = 2
 
 [node name="BtnElegirGuerrero" type="Button" parent="Control/Panel/Margin/VBox/HBoxCartas/CardGuerrero"]
@@ -127,7 +126,7 @@ offset_right = -12.0
 offset_bottom = -12.0
 grow_horizontal = 2
 grow_vertical = 0
-text = "Evolucionar a Guerrero"
+text = "Evolucionar a Murmillo"
 
 [node name="CardCazador" type="Panel" parent="Control/Panel/Margin/VBox/HBoxCartas"]
 layout_mode = 2
@@ -150,14 +149,14 @@ theme_override_constants/separation = 8
 layout_mode = 2
 theme_override_colors/font_color = Color(0.4, 0.95, 0.5, 1)
 theme_override_font_sizes/font_size = 18
-text = "🏹 CAZADOR"
+text = "🏹 SAGITTARIO"
 horizontal_alignment = 1
 
 [node name="Rol" type="Label" parent="Control/Panel/Margin/VBox/HBoxCartas/CardCazador/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.75, 0.75, 0.75, 1)
 theme_override_font_sizes/font_size = 12
-text = "Ranger / Ráfaga Veloz"
+text = "Arquero Imperial / Ráfaga Balística"
 horizontal_alignment = 1
 
 [node name="Desc" type="Label" parent="Control/Panel/Margin/VBox/HBoxCartas/CardCazador/VBox"]
@@ -165,11 +164,10 @@ layout_mode = 2
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 12
 text = "• Salud: 100 HP
-• Daño: 14 (+16%)
-• Rango: 7.5 m (Largo)
-• Cadencia: 0.45 s (Ametralladora)
-• Vel. Carrera: 6.4 m/s
-• Flechas a distancia"
+• Ráfaga 3 Saetas: 7.2 DMG/saeta
+• Rango: 7.5 m · Cadencia: 0.45 s
+• Vel. Carrera: 6.4 m/s (Kiteo)
+• Saetas perforantes en abanico"
 autowrap_mode = 2
 
 [node name="BtnElegirCazador" type="Button" parent="Control/Panel/Margin/VBox/HBoxCartas/CardCazador"]
@@ -184,7 +182,7 @@ offset_right = -12.0
 offset_bottom = -12.0
 grow_horizontal = 2
 grow_vertical = 0
-text = "Evolucionar a Cazador"
+text = "Evolucionar a Sagittario"
 
 [node name="CardMago" type="Panel" parent="Control/Panel/Margin/VBox/HBoxCartas"]
 layout_mode = 2
@@ -207,14 +205,14 @@ theme_override_constants/separation = 8
 layout_mode = 2
 theme_override_colors/font_color = Color(0.55, 0.7, 1.0, 1)
 theme_override_font_sizes/font_size = 18
-text = "🔮 MAGO"
+text = "🔮 ARÚSPICE"
 horizontal_alignment = 1
 
 [node name="Rol" type="Label" parent="Control/Panel/Margin/VBox/HBoxCartas/CardMago/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.75, 0.75, 0.75, 1)
 theme_override_font_sizes/font_size = 12
-text = "Arcanista / Alto Impacto"
+text = "Místico Rúnico / Taumaturgo del Núcleo"
 horizontal_alignment = 1
 
 [node name="Desc" type="Label" parent="Control/Panel/Margin/VBox/HBoxCartas/CardMago/VBox"]
@@ -222,11 +220,10 @@ layout_mode = 2
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 12
 text = "• Salud: 85 HP
-• Daño Mágico: 28 (+133%)
-• Rango: 5.5 m
-• Cadencia: 0.90 s
-• Proyectiles arcanos
-• Cañón de cristal"
+• Orbe Arcano Teledirigido: 17 DMG
+• Rango: 5.5 m · Cadencia: 0.70 s
+• Detonación en Área (3.2m)
+• Destrucción y control en área"
 autowrap_mode = 2
 
 [node name="BtnElegirMago" type="Button" parent="Control/Panel/Margin/VBox/HBoxCartas/CardMago"]
@@ -241,4 +238,4 @@ offset_right = -12.0
 offset_bottom = -12.0
 grow_horizontal = 2
 grow_vertical = 0
-text = "Evolucionar a Mago"
+text = "Evolucionar a Arúspice"

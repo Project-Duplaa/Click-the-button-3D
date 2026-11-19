@@ -19,9 +19,9 @@ func _ready():
 	_apertura_msec = Time.get_ticks_msec()
 	_bloqueado_hasta_msec = _apertura_msec + SELLO_GRACIA_INICIAL_MS
 	
-	btn_guerrero.pressed.connect(func(): _on_seleccionar("Guerrero"))
-	btn_cazador.pressed.connect(func(): _on_seleccionar("Cazador"))
-	btn_mago.pressed.connect(func(): _on_seleccionar("Mago"))
+	btn_guerrero.pressed.connect(func(): _on_seleccionar("Murmillo"))
+	btn_cazador.pressed.connect(func(): _on_seleccionar("Sagittario"))
+	btn_mago.pressed.connect(func(): _on_seleccionar("Arúspice"))
 
 func _on_seleccionar(clase: String):
 	var ahora := Time.get_ticks_msec()

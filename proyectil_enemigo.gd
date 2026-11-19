@@ -3,7 +3,7 @@ extends Area3D
 const AudioManager = preload("res://audio_manager.gd")
 
 @export var rapidez: float = 5.5
-@export var dano: float = 5.0
+@export var dano: float = 11.0
 @export var tiempo_vida: float = 4.0
 
 var direccion: Vector3 = Vector3.FORWARD
@@ -18,7 +18,7 @@ func _ready():
 	body_entered.connect(_on_body_entered)
 	area_entered.connect(_on_area_entered)
 
-func iniciar(origen: Vector3, dir: Vector3, dano_in: float = 5.0, vel_in: float = 5.5):
+func iniciar(origen: Vector3, dir: Vector3, dano_in: float = 11.0, vel_in: float = 5.5):
 	global_position = origen
 	direccion = dir.normalized()
 	dano = dano_in

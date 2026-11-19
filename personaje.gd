@@ -50,7 +50,7 @@ var vida_maxima: float = 100.0
 var vida: float = 100.0
 var dano: float = 12.0
 var rango_ataque: float = 2.6
-var cadencia_ataque: float = 0.85
+var cadencia_ataque: float = 1.25
 var oro: int = 0
 var xp: int = 0
 var xp_siguiente_nivel: int = 25
@@ -74,7 +74,7 @@ var duplicar_proxima_carta: bool = false # La próxima carta de nivel se aplica 
 # CAPA 1: Estadísticas base puras según clase
 var base_vida_maxima: float = 100.0
 var base_dano: float = 12.0
-var base_cadencia_ataque: float = 0.85
+var base_cadencia_ataque: float = 1.25
 var base_rango_ataque: float = 2.6
 var base_speed_caminar: float = 3.4
 var base_speed_correr: float = 5.4
@@ -334,7 +334,7 @@ func _intentar_dash_tactico():
 	if bendiciones_corruptas.has("corrupta_coloso_inamovible"):
 		_spawn_texto_3d("🗿 ¡COLOSO INAMOVIBLE (SIN DASH)!", Color(0.85, 0.72, 0.45))
 		return
-	if subclase_tier2 == "Maestro de Sombras":
+	if subclase_tier2 in ["Dimachaerus Espectral", "Sombra del Anfiteatro", "Maestro de Sombras"]:
 		_crear_senuelo_sombra(global_position)
 	var cd_base = 2.0
 	if bendiciones_run.has("global_dash_frenetico"):
@@ -580,9 +580,9 @@ func _ejecutar_ataque(enemigo: Node3D):
 	var dano_ataque_actual = dano * (mult_critico if es_crit else 1.0) * mult_frenesi * mult_coloso_bajo * mult_usura_oro
 	var bonus_asc = mejoras_arbol.get("hib_ascension", 0) >= 1 or ascension_suprema
 
-	# Mecánicas exclusivas de las 7 Subclases Tier 2
+	# Mecánicas exclusivas de las Subclases Tier 2 y Tier 3
 	match subclase_tier2:
-		"Paladín Solar":
+		"Secutor Radiante", "Paladín del Sol Invictus", "Paladín Solar":
 			accion = "attack-melee-right"
 			_reloj_anim_accion = 0.28
 			if _anim_ctrl != null:
@@ -591,33 +591,40 @@ func _ejecutar_ataque(enemigo: Node3D):
 			_crear_onda_solar(dir, es_crit, dano_ataque_actual)
 			registrar_dano_telemetria("armas", dano_ataque_actual)
 			return
-		"Berserker Sangriento":
+		"Provocator Sangriento", "Campeón Augusto de Sangre", "Berserker Sangriento":
+			var es_t3 = subclase_tier2 in ["Campeón Augusto de Sangre"]
 			var pct_vida_perdida = clampf(1.0 - (vida / maxf(1.0, vida_maxima)), 0.0, 0.95)
-			var mult_berserk = 1.0 + (pct_vida_perdida * 1.5)
+			var factor_berserk = 0.55 if es_t3 else 0.40
+			var mult_berserk = 1.0 + (pct_vida_perdida * factor_berserk)
 			var dano_berserk = dano_ataque_actual * mult_berserk
 			_ejecutar_corte_giratorio_berserker(es_crit, dano_berserk)
-			var curacion_vamp = maxf(2.0, vida_maxima * 0.03)
+			var curacion_vamp = 3.5 if es_t3 else 2.0
 			vida = minf(vida + curacion_vamp, vida_maxima)
 			registrar_dano_telemetria("armas", dano_berserk)
 			return
-		"Francotirador Astral":
+		"Velites Balístico", "Centurión Balístico Astral", "Francotirador Astral":
 			accion = "shoot-bow"
 			_reloj_anim_accion = 0.20
 			if _anim_ctrl != null:
 				_anim_ctrl.reproducir_accion("shoot-bow", 2, 0.05, 1.25)
 			_ejecutar_animacion_procedural_ataque("arco")
-			_disparar_riel_astral(dir, dano_ataque_actual * 1.45, es_crit)
-			registrar_dano_telemetria("armas", dano_ataque_actual * 1.45)
+			var es_t3 = subclase_tier2 in ["Centurión Balístico Astral", "Francotirador Astral"]
+			var mult_riel = 1.20 if es_t3 else 1.15
+			_disparar_riel_astral(dir, dano_ataque_actual * mult_riel, es_crit)
+			registrar_dano_telemetria("armas", dano_ataque_actual * mult_riel)
 			return
-		"Maestro de Sombras":
+		"Dimachaerus Espectral", "Sombra del Anfiteatro", "Maestro de Sombras":
 			accion = "attack-melee-left"
 			_reloj_anim_accion = 0.18
 			if _anim_ctrl != null:
 				_anim_ctrl.reproducir_accion("attack-melee-left", 2, 0.04, 1.4)
-			_disparar_espiral_dagas_sombras(dano_ataque_actual * 0.75, es_crit)
-			registrar_dano_telemetria("armas", dano_ataque_actual * 2.5)
+			var es_t3 = subclase_tier2 in ["Sombra del Anfiteatro", "Maestro de Sombras"]
+			var cant_dagas = 10 if es_t3 else 8
+			var mult_daga = 0.35 if es_t3 else 0.42
+			_disparar_espiral_dagas_sombras(dano_ataque_actual * mult_daga, es_crit, cant_dagas)
+			registrar_dano_telemetria("armas", dano_ataque_actual * mult_daga * float(cant_dagas))
 			return
-		"Archimago del Vacío":
+		"Taumaturgo del Vacío", "Pontífice del Vacío Estelar", "Archimago del Vacío":
 			accion = "cast-magic"
 			_reloj_anim_accion = 0.25
 			if _anim_ctrl != null:
@@ -626,7 +633,7 @@ func _ejecutar_ataque(enemigo: Node3D):
 			_lanzar_orbe_vacio(dir, enemigo, dano_ataque_actual, es_crit)
 			registrar_dano_telemetria("armas", dano_ataque_actual)
 			return
-		"Piromante Cataclísmico":
+		"Flamen Volcánico", "Señor del Magma Imperial", "Piromante Cataclísmico":
 			accion = "cast-magic"
 			_reloj_anim_accion = 0.25
 			if _anim_ctrl != null:
@@ -635,16 +642,18 @@ func _ejecutar_ataque(enemigo: Node3D):
 			_lanzar_meteoro_magma(dir, enemigo, dano_ataque_actual, es_crit)
 			registrar_dano_telemetria("armas", dano_ataque_actual)
 			return
-		"Avatar del Núcleo":
+		"Custodio del Núcleo", "Titán Supremo del Núcleo", "Avatar del Núcleo":
 			accion = "cast-magic"
 			_reloj_anim_accion = 0.22
 			if _anim_ctrl != null:
 				_anim_ctrl.reproducir_accion("cast-magic", 2, 0.05, 1.2)
-			_ejecutar_golpe_avatar_resonancia(dir, dano_ataque_actual, es_crit)
-			registrar_dano_telemetria("armas", dano_ataque_actual * 1.25)
+			var es_t3 = subclase_tier2 in ["Titán Supremo del Núcleo", "Avatar del Núcleo"]
+			var mult_golpe = 1.15 if es_t3 else 1.10
+			_ejecutar_golpe_avatar_resonancia(dir, dano_ataque_actual * mult_golpe, es_crit)
+			registrar_dano_telemetria("armas", dano_ataque_actual * mult_golpe)
 			return
 
-	if clase == "Novato":
+	if clase in ["Novato", "Recluta del Coliseo"]:
 		# Corte melee alternado con barrido en arco frontal (Cleave) y tajo luminoso visible
 		var clip_melee := "attack-melee-right" if _turno_ataque_novato else "attack-melee-left"
 		_turno_ataque_novato = not _turno_ataque_novato
@@ -671,11 +680,11 @@ func _ejecutar_ataque(enemigo: Node3D):
 							e.recibir_dano(dano_melee, es_crit)
 							registrar_dano_telemetria("armas", dano_melee)
 						AudioManager.play("golpe_impacto", randf_range(0.95, 1.15))
-	elif clase == "Guerrero":
+	elif clase in ["Guerrero", "Murmillo"]:
 		# CORTE GIRATORIO MELEE EN ÁREA 360° (Whirlwind)
 		_ejecutar_corte_giratorio_guerrero(false, es_crit, dano_ataque_actual)
-	elif clase == "Mago":
-		# Especialidad Mago: Orbe Arcano teledirigido con detonación en área AOE
+	elif clase in ["Mago", "Arúspice"]:
+		# Especialidad Mago/Arúspice: Orbe Arcano teledirigido con detonación en área AOE
 		accion = "cast-magic"
 		_reloj_anim_accion = 0.28
 		if _anim_ctrl != null:
@@ -695,7 +704,7 @@ func _ejecutar_ataque(enemigo: Node3D):
 				orbe.iniciar(origen, dir_o, dano_ataque_actual, enemigo)
 			registrar_dano_telemetria("armas", dano_ataque_actual * float(cant_orbes))
 	else:
-		# Especialidad Cazador: Disparo múltiple de flechas (Multishot) en abanico
+		# Especialidad Cazador/Sagittario: Disparo múltiple de flechas (Multishot) en abanico
 		accion = "shoot-bow"
 		_reloj_anim_accion = 0.22
 		if _anim_ctrl != null:
@@ -717,7 +726,7 @@ func _ejecutar_ataque(enemigo: Node3D):
 
 		var perforaciones = (1 if nivel < 5 else 2) + (2 if bonus_asc else 0) + perforacion_armas
 		var vel_flecha = 16.0
-		var dano_flecha = dano_ataque_actual * 0.68
+		var dano_flecha = dano_ataque_actual * 0.60
 		var origen = global_position + Vector3(0, 0.9, 0)
 		var proyectil_escena = load("res://proyectil.tscn")
 
@@ -735,7 +744,9 @@ func _ejecutar_ataque(enemigo: Node3D):
 
 func _crear_onda_solar(dir: Vector3, es_crit: bool, dano_onda: float) -> void:
 	AudioManager.play("corte_espada", 1.25)
-	_repeler_enemigos_alrededor(rango_ataque + 1.2, 8.0, dano_onda)
+	var es_t3 = subclase_tier2 in ["Paladín del Sol Invictus", "Paladín Solar"]
+	var r_onda = (rango_ataque + 1.8) if es_t3 else (rango_ataque + 1.2)
+	_repeler_enemigos_alrededor(r_onda, 8.0, dano_onda)
 	_crear_tajo_espada(dir, es_crit or true)
 
 func _ejecutar_corte_giratorio_berserker(es_crit: bool, dano_corte: float) -> void:
@@ -765,11 +776,11 @@ func _disparar_riel_astral(dir: Vector3, dano_riel: float, es_crit: bool) -> voi
 	if impacto_alguno:
 		AudioManager.play("golpe_impacto", 1.3)
 
-func _disparar_espiral_dagas_sombras(dano_daga: float, es_crit: bool) -> void:
+func _disparar_espiral_dagas_sombras(dano_daga: float, es_crit: bool, cant_dagas: int = 8) -> void:
 	AudioManager.play("corte_espada", 1.4)
 	var proyectil_escena = load("res://proyectil.tscn")
 	if proyectil_escena != null and get_parent() != null:
-		var num_dagas = 10 + proyectiles_extra
+		var num_dagas = cant_dagas + proyectiles_extra
 		var origen = global_position + Vector3(0, 0.8, 0)
 		for i in range(num_dagas):
 			var ang = (TAU / float(num_dagas)) * float(i)
@@ -856,8 +867,9 @@ func _crear_vortice_vacio(pos: Vector3) -> void:
 					if e.has_method("aplicar_knockback"):
 						e.aplicar_knockback(hacia * 4.5)
 					if e.has_method("recibir_dano"):
-						e.recibir_dano(dano * 0.25, false)
-						registrar_dano_telemetria("armas", dano * 0.25)
+						var mult_tick = 0.14 if (subclase_tier2 in ["Pontífice del Vacío Estelar", "Archimago del Vacío"]) else 0.16
+						e.recibir_dano(dano * mult_tick, false)
+						registrar_dano_telemetria("armas", dano * mult_tick)
 	, 0.0, 1.0, 2.5)
 	tw.chain().tween_callback(vortice.queue_free)
 
@@ -907,8 +919,9 @@ func _crear_charco_magma(pos: Vector3) -> void:
 		for e in _obtener_todos_los_enemigos():
 			if is_instance_valid(e) and e is Node3D and charco.global_position.distance_to(e.global_position) <= 2.4:
 				if e.has_method("recibir_dano"):
-					e.recibir_dano(dano * 0.30, false)
-					registrar_dano_telemetria("armas", dano * 0.30)
+					var mult_burn = 0.16 if (subclase_tier2 in ["Señor del Magma Imperial", "Piromante Cataclísmico"]) else 0.18
+					e.recibir_dano(dano * mult_burn, false)
+					registrar_dano_telemetria("armas", dano * mult_burn)
 	, 0.0, 1.0, 2.8)
 	tw.chain().tween_callback(charco.queue_free)
 
@@ -1046,11 +1059,15 @@ func _recibir_dano_interno(cantidad: float):
 
 		_parpadear_escudo()
 		_mostrar_feedback_bloqueo(mitigado_total, dano_mitigado)
-		if subclase_tier2 == "Paladín Solar":
-			vida = minf(vida + 4.0, vida_maxima)
-			_repeler_enemigos_alrededor(4.2, 7.5, dano * 1.1)
-			registrar_dano_telemetria("armas", dano * 1.1)
-			_spawn_texto_3d("☀️ ¡NOVA SOLAR! (+4 HP)", Color(1.0, 0.85, 0.2))
+		if subclase_tier2 in ["Secutor Radiante", "Paladín del Sol Invictus", "Paladín Solar"]:
+			var es_t3 = subclase_tier2 in ["Paladín del Sol Invictus", "Paladín Solar"]
+			var curacion = 10.0 if es_t3 else 4.0
+			var mult_nova = 0.85 if es_t3 else 0.75
+			var r_nova = 7.5 if es_t3 else 4.5
+			vida = minf(vida + curacion, vida_maxima)
+			_repeler_enemigos_alrededor(r_nova, 8.5, dano * mult_nova)
+			registrar_dano_telemetria("armas", dano * mult_nova)
+			_spawn_texto_3d("☀️ ¡%s! (+%d HP)" % ["SUPERNOVA SOLAR" if es_t3 else "NOVA SOLAR", int(curacion)], Color(1.0, 0.85, 0.2))
 			AudioManager.play("altar_activado", 1.4)
 		else:
 			var dano_espinas_bloq = mitigado_total * (1.5 if bendiciones_run.has("guerrero_espinas_titan") else 0.4)
@@ -1294,9 +1311,23 @@ func obtener_arquetipo_clase() -> String:
 	return clase_base if clase_base != "Novato" and clase_base != "" else clase
 
 func es_arquetipo(arq: String) -> bool:
-	if arq in ["Cazador", "Arquero"]:
-		return clase in ["Cazador", "Arquero"] or clase_base in ["Cazador", "Arquero"]
-	return clase == arq or clase_base == arq
+	match arq:
+		"Guerrero", "Murmillo":
+			return clase in ["Guerrero", "Murmillo", "Secutor Radiante", "Provocator Sangriento", "Paladín del Sol Invictus", "Campeón Augusto de Sangre", "Paladín Solar", "Berserker Sangriento"] or clase_base in ["Guerrero", "Murmillo"]
+		"Cazador", "Arquero", "Sagittario":
+			return clase in ["Cazador", "Arquero", "Sagittario", "Velites Balístico", "Dimachaerus Espectral", "Centurión Balístico Astral", "Sombra del Anfiteatro", "Francotirador Astral", "Maestro de Sombras"] or clase_base in ["Cazador", "Arquero", "Sagittario"]
+		"Mago", "Arúspice":
+			return clase in ["Mago", "Arúspice", "Taumaturgo del Vacío", "Flamen Volcánico", "Pontífice del Vacío Estelar", "Señor del Magma Imperial", "Archimago del Vacío", "Piromante Cataclísmico"] or clase_base in ["Mago", "Arúspice"]
+		_:
+			return clase == arq or clase_base == arq
+
+func aplicar_mejora_tier2(nombre_mejora: String):
+	subclase_tier2 = nombre_mejora
+	aplicar_clase(nombre_mejora)
+
+func aplicar_subclase_tier3(nombre_subclase: String):
+	subclase_tier2 = nombre_subclase
+	aplicar_clase(nombre_subclase)
 
 func aplicar_subclase_tier2(nombre_subclase: String):
 	subclase_tier2 = nombre_subclase
@@ -1306,98 +1337,158 @@ func aplicar_clase(nombre: String):
 	var ratio_vida_prev = clampf(vida / maxf(1.0, vida_maxima), 0.65, 1.0)
 	clase = nombre
 	match nombre:
-		"Novato":
+		"Novato", "Recluta del Coliseo":
 			clase_base = "Novato"
 			subclase_tier2 = ""
 			base_vida_maxima = 100.0
 			base_dano = 12.0
 			base_rango_ataque = 2.6
-			base_cadencia_ataque = 0.85
+			base_cadencia_ataque = 1.25
 			base_speed_caminar = 3.4
 			base_speed_correr = 5.4
-		"Guerrero":
+		"Guerrero", "Murmillo":
 			clase_base = "Guerrero"
 			subclase_tier2 = ""
 			base_vida_maxima = 160.0
-			base_dano = 22.0
+			base_dano = 16.0
 			base_rango_ataque = 3.2
-			base_cadencia_ataque = 0.70
+			base_cadencia_ataque = 0.65
 			base_speed_caminar = 3.2
 			base_speed_correr = 5.6
-		"Cazador", "Arquero":
+		"Cazador", "Arquero", "Sagittario":
 			clase_base = "Cazador"
 			subclase_tier2 = ""
 			base_vida_maxima = 100.0
-			base_dano = 14.0
+			base_dano = 12.0
 			base_rango_ataque = 7.5
 			base_cadencia_ataque = 0.45
 			base_speed_caminar = 3.8
 			base_speed_correr = 6.4
-		"Mago":
+		"Mago", "Arúspice":
 			clase_base = "Mago"
 			subclase_tier2 = ""
 			base_vida_maxima = 85.0
-			base_dano = 28.0
+			base_dano = 17.0
 			base_rango_ataque = 5.5
-			base_cadencia_ataque = 0.90
+			base_cadencia_ataque = 0.70
 			base_speed_caminar = 3.3
 			base_speed_correr = 5.7
-		"Paladín Solar":
+
+		# TIER 2: Especializaciones del Coliseo
+		"Secutor Radiante":
 			clase_base = "Guerrero"
 			subclase_tier2 = nombre
-			base_vida_maxima = 220.0
-			base_dano = 28.0
-			base_rango_ataque = 3.6
-			base_cadencia_ataque = 0.65
-			bono_run_armadura_plana += 50.0
-		"Berserker Sangriento":
-			clase_base = "Guerrero"
-			subclase_tier2 = nombre
-			base_vida_maxima = 170.0
-			base_dano = 34.0
-			base_rango_ataque = 3.2
-			base_cadencia_ataque = 0.50
-		"Francotirador Astral":
-			clase_base = "Cazador"
-			subclase_tier2 = nombre
-			base_vida_maxima = 130.0
-			base_dano = 26.0
-			base_rango_ataque = 10.0
-			base_cadencia_ataque = 0.40
-			base_speed_caminar = 4.0
-			base_speed_correr = 6.8
-		"Maestro de Sombras":
-			clase_base = "Cazador"
-			subclase_tier2 = nombre
-			base_vida_maxima = 135.0
+			base_vida_maxima = 190.0
 			base_dano = 22.0
-			base_rango_ataque = 6.0
-			base_cadencia_ataque = 0.32
-			bono_run_crit_prob += 0.15
-			base_speed_caminar = 4.2
-			base_speed_correr = 7.0
-		"Archimago del Vacío":
-			clase_base = "Mago"
+			base_rango_ataque = 3.4
+			base_cadencia_ataque = 0.60
+			bono_run_armadura_plana += 30.0
+		"Provocator Sangriento":
+			clase_base = "Guerrero"
+			subclase_tier2 = nombre
+			base_vida_maxima = 165.0
+			base_dano = 19.0
+			base_rango_ataque = 3.2
+			base_cadencia_ataque = 0.48
+		"Velites Balístico":
+			clase_base = "Cazador"
+			subclase_tier2 = nombre
+			base_vida_maxima = 120.0
+			base_dano = 16.0
+			base_rango_ataque = 9.0
+			base_cadencia_ataque = 0.38
+			base_speed_caminar = 3.9
+			base_speed_correr = 6.6
+		"Dimachaerus Espectral":
+			clase_base = "Cazador"
 			subclase_tier2 = nombre
 			base_vida_maxima = 125.0
-			base_dano = 40.0
-			base_rango_ataque = 7.0
-			base_cadencia_ataque = 0.80
-		"Piromante Cataclísmico":
+			base_dano = 15.0
+			base_rango_ataque = 6.0
+			base_cadencia_ataque = 0.34
+			bono_run_crit_prob += 0.10
+			base_speed_caminar = 4.0
+			base_speed_correr = 6.8
+		"Taumaturgo del Vacío":
 			clase_base = "Mago"
 			subclase_tier2 = nombre
-			base_vida_maxima = 130.0
-			base_dano = 46.0
-			base_rango_ataque = 6.5
-			base_cadencia_ataque = 0.82
-		"Avatar del Núcleo":
+			base_vida_maxima = 110.0
+			base_dano = 22.0
+			base_rango_ataque = 6.2
+			base_cadencia_ataque = 0.68
+		"Flamen Volcánico":
+			clase_base = "Mago"
+			subclase_tier2 = nombre
+			base_vida_maxima = 115.0
+			base_dano = 22.0
+			base_rango_ataque = 6.0
+			base_cadencia_ataque = 0.68
+		"Custodio del Núcleo":
 			clase_base = "Novato"
 			subclase_tier2 = nombre
-			base_vida_maxima = 160.0
+			base_vida_maxima = 145.0
+			base_dano = 20.0
+			base_rango_ataque = 4.5
+			base_cadencia_ataque = 0.52
+			bono_subclase_onda_radio_mult = 1.5
+
+		# TIER 3: Ascensión Definitiva
+		"Paladín del Sol Invictus", "Paladín Solar":
+			clase_base = "Guerrero"
+			subclase_tier2 = nombre
+			base_vida_maxima = 250.0
 			base_dano = 32.0
-			base_rango_ataque = 5.0
-			base_cadencia_ataque = 0.60
-			bono_subclase_onda_radio_mult = 2.0
+			base_rango_ataque = 3.8
+			base_cadencia_ataque = 0.52
+			bono_run_armadura_plana += 60.0
+		"Campeón Augusto de Sangre", "Berserker Sangriento":
+			clase_base = "Guerrero"
+			subclase_tier2 = nombre
+			base_vida_maxima = 190.0
+			base_dano = 28.0
+			base_rango_ataque = 3.4
+			base_cadencia_ataque = 0.40
+		"Centurión Balístico Astral", "Francotirador Astral":
+			clase_base = "Cazador"
+			subclase_tier2 = nombre
+			base_vida_maxima = 145.0
+			base_dano = 24.0
+			base_rango_ataque = 11.0
+			base_cadencia_ataque = 0.30
+			base_speed_caminar = 4.2
+			base_speed_correr = 7.0
+		"Sombra del Anfiteatro", "Maestro de Sombras":
+			clase_base = "Cazador"
+			subclase_tier2 = nombre
+			base_vida_maxima = 150.0
+			base_dano = 22.0
+			base_rango_ataque = 6.5
+			base_cadencia_ataque = 0.28
+			bono_run_crit_prob += 0.20
+			base_speed_caminar = 4.4
+			base_speed_correr = 7.2
+		"Pontífice del Vacío Estelar", "Archimago del Vacío":
+			clase_base = "Mago"
+			subclase_tier2 = nombre
+			base_vida_maxima = 140.0
+			base_dano = 32.0
+			base_rango_ataque = 7.5
+			base_cadencia_ataque = 0.62
+		"Señor del Magma Imperial", "Piromante Cataclísmico":
+			clase_base = "Mago"
+			subclase_tier2 = nombre
+			base_vida_maxima = 145.0
+			base_dano = 32.0
+			base_rango_ataque = 7.0
+			base_cadencia_ataque = 0.62
+		"Titán Supremo del Núcleo", "Avatar del Núcleo":
+			clase_base = "Novato"
+			subclase_tier2 = nombre
+			base_vida_maxima = 180.0
+			base_dano = 28.0
+			base_rango_ataque = 5.5
+			base_cadencia_ataque = 0.42
+			bono_subclase_onda_radio_mult = 2.2
 
 	if not es_arquetipo("Guerrero"):
 		if bloqueando:
@@ -1423,37 +1514,6 @@ func aplicar_mejora(tipo_mejora: String, mult_rareza: float = 1.0):
 		vida = minf(vida + 20.0 * mult_rareza * repeticiones, vida_maxima)
 		emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
 
-func equipar_build_test_parca():
-	print(">>> [TEST] Equipando build de supervivencia para testear a La Parca Roja <<<")
-	if clase == "Novato":
-		aplicar_clase("Guerrero")
-	nivel = 15
-	base_vida_maxima = maxf(base_vida_maxima, 280.0)
-	base_dano = maxf(base_dano, 42.0)
-	base_cadencia_ataque = minf(base_cadencia_ataque, 0.35)
-	base_rango_ataque = maxf(base_rango_ataque, 4.0)
-	base_speed_caminar = maxf(base_speed_caminar, 4.2)
-	base_speed_correr = maxf(base_speed_correr, 6.8)
-	reapariciones = 3
-	_muerto_definitivo = false
-	mejoras_arbol["mon_dano"] = 4
-	mejoras_arbol["mon_vida"] = 3
-	mejoras_arbol["mon_vel"] = 3
-	mejoras_arbol["mon_cadencia"] = 3
-	mejoras_arbol["clk_critico"] = 2
-	mejoras_arbol["hib_ascension"] = 1
-	recalcular_stats_incrementales()
-	vida = vida_maxima
-	if has_node("Salud"):
-		var s = get_node("Salud")
-		s.vida = int(vida)
-		if "vida_inicial" in s:
-			s.vida_inicial = int(vida)
-		s.reapariciones = reapariciones
-		s.cambio.emit(s.vida)
-	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
-	AudioManager.play("altar_activado", 1.25, 2.0)
-	_spawn_texto_3d("⚡ ¡BUILD DE SUPERVIVENCIA EQUIPADA!", Color(1.0, 0.88, 0.25))
 
 # ==============================================================================
 # SISTEMA INCREMENTAL: CÁLCULOS EN 4 CAPAS (CLASE + ÁRBOL + BONOS RUN + BENDICIONES)
@@ -1731,6 +1791,10 @@ func recalcular_stats_incrementales():
 	var b_meteoro = int(bendiciones_run.get("meteoro_orbital", 0)) + int(bendiciones_run.get("mago_supernova_arcana", 0))
 	if b_meteoro > 0:
 		bonus_dano_armas_pct += 0.35 * float(b_meteoro)
+
+	var b_celeridad = int(bendiciones_run.get("celeridad_marcial", 0))
+	if b_celeridad > 0:
+		bonus_cadencia_pct += 0.18 * float(b_celeridad)
 
 	var b_pulso = int(bendiciones_run.get("pulso_estatico", 0)) + int(bendiciones_run.get("mago_sobrecarga_cristal", 0))
 	if b_pulso > 0:

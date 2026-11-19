@@ -12,7 +12,7 @@ const MetaprogresoManager = preload("res://metaprogreso_manager.gd")
 @export var tipo_enemigo_id: String = ""
 @export var rapidez: float = 2.85
 @export var vida_maxima: float = 14.0
-@export var dano_ataque: float = 4.5
+@export var dano_ataque: float = 9.0
 @export var cadencia_ataque: float = 1.0
 @export var rango_ataque: float = 1.1
 
@@ -21,7 +21,7 @@ const MetaprogresoManager = preload("res://metaprogreso_manager.gd")
 @export var oro_nemesis_extra: int = 0
 @export var clics_nemesis_extra: int = 0
 
-var dano_contacto: float = 6.0
+var dano_contacto: float = 10.0
 var xp_otorgada: int = 10
 var oro_otorgado: int = 5
 

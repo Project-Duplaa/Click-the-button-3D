@@ -11,7 +11,7 @@ enum Estado { PATRULLAR, ESPERAR, PERSEGUIR, ATACAR, BUSCAR }
 @export var ruta: Array[Vector3] = [Vector3.ZERO, Vector3(0, 0, -6)]
 
 @export var vida_maxima: float = 24.0
-@export var dano_ataque: float = 7.0
+@export var dano_ataque: float = 16.0
 @export var cadencia_ataque: float = 1.1
 
 var estado = Estado.PATRULLAR

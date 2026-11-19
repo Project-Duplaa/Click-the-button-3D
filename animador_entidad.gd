@@ -267,7 +267,7 @@ static func equipar_armas_en_esqueleto(modelo: Node3D, nombre_clase: String, inc
 	var offset_izq := Vector3(0.23, 0.0, 0.02)
 
 	match nombre_clase:
-		"Novato":
+		"Novato", "Recluta del Coliseo":
 			# Bastón taser electrificado de supervivencia (Concept Art: player_rookie.glb)
 			var taser_data := _crear_baston_taser_novato(incluir_particulas)
 			var baston := taser_data["nodo"] as Node3D
@@ -302,7 +302,7 @@ static func equipar_armas_en_esqueleto(modelo: Node3D, nombre_clase: String, inc
 			rod_der.position = Vector3(0.0, -0.22, 0.10)
 			attach_leg_der.add_child(rod_der)
 
-		"Guerrero":
+		"Guerrero", "Murmillo":
 			# Martillo cinético de brecha pesado (Concept Art: player_warrior.glb)
 			var martillo_data := _crear_martillo_cinetico_guerrero(incluir_particulas)
 			var martillo := martillo_data["nodo"] as Node3D
@@ -352,7 +352,7 @@ static func equipar_armas_en_esqueleto(modelo: Node3D, nombre_clase: String, inc
 			var pierna_der := _crear_proteccion_pierna_guerrero()
 			pierna_der.position = Vector3(0.0, -0.22, 0.10)
 			attach_leg_der.add_child(pierna_der)
-		"Cazador", "Arquero":
+		"Cazador", "Arquero", "Sagittario":
 			# Arco tecnológico Sci-Fi (Concept Art: player_archer.glb)
 			var arco_data := _crear_arco_tecnologico_cazador(incluir_particulas)
 			var arco := arco_data["nodo"] as Node3D
@@ -402,7 +402,7 @@ static func equipar_armas_en_esqueleto(modelo: Node3D, nombre_clase: String, inc
 			var rod_der := _crear_rodillera_cazador()
 			rod_der.position = Vector3(0.0, -0.22, 0.10)
 			attach_leg_der.add_child(rod_der)
-		"Mago":
+		"Mago", "Arúspice":
 			# Báculo Cápsula de Plasma Arcano (Concept Art: player_mage.glb)
 			var baston_data := _crear_baston_capsula_mago(incluir_particulas)
 			var baston := baston_data["nodo"] as Node3D
@@ -441,7 +441,7 @@ static func equipar_armas_en_esqueleto(modelo: Node3D, nombre_clase: String, inc
 			var pierna_der := _crear_proteccion_pierna_mago(true)
 			pierna_der.position = Vector3(0.0, -0.22, 0.10)
 			attach_leg_der.add_child(pierna_der)
-		"Paladín Solar":
+		"Secutor Radiante", "Paladín del Sol Invictus", "Paladín Solar":
 			var gran_espada_solar := _crear_gran_espada_paladin()
 			gran_espada_solar.position = offset_der
 			attach_der.add_child(gran_espada_solar)
@@ -451,7 +451,7 @@ static func equipar_armas_en_esqueleto(modelo: Node3D, nombre_clase: String, inc
 			escudo_solar.position = offset_izq
 			attach_izq.add_child(escudo_solar)
 			resultado["izquierda"] = escudo_solar
-		"Berserker Sangriento":
+		"Provocator Sangriento", "Campeón Augusto de Sangre", "Berserker Sangriento":
 			var hacha_der := _crear_hacha_berserker(incluir_particulas)
 			hacha_der.position = offset_der
 			attach_der.add_child(hacha_der)
@@ -462,7 +462,7 @@ static func equipar_armas_en_esqueleto(modelo: Node3D, nombre_clase: String, inc
 			hacha_izq.rotation_degrees = Vector3(0.0, 180.0, 0.0)
 			attach_izq.add_child(hacha_izq)
 			resultado["izquierda"] = hacha_izq
-		"Francotirador Astral":
+		"Velites Balístico", "Centurión Balístico Astral", "Francotirador Astral":
 			var arco_astral := _crear_arco_astral(incluir_particulas)
 			arco_astral.position = offset_izq
 			arco_astral.rotation_degrees = Vector3(0.0, 90.0, 0.0)
@@ -489,7 +489,7 @@ static func equipar_armas_en_esqueleto(modelo: Node3D, nombre_clase: String, inc
 			var rod_der_a := _crear_rodillera_cazador()
 			rod_der_a.position = Vector3(0.0, -0.22, 0.10)
 			attach_leg_der.add_child(rod_der_a)
-		"Maestro de Sombras":
+		"Dimachaerus Espectral", "Sombra del Anfiteatro", "Maestro de Sombras":
 			var daga_der := _crear_daga_sombra(incluir_particulas, false)
 			daga_der.position = offset_der
 			attach_der.add_child(daga_der)
@@ -499,7 +499,7 @@ static func equipar_armas_en_esqueleto(modelo: Node3D, nombre_clase: String, inc
 			daga_izq.position = offset_izq
 			attach_izq.add_child(daga_izq)
 			resultado["izquierda"] = daga_izq
-		"Archimago del Vacío":
+		"Taumaturgo del Vacío", "Pontífice del Vacío Estelar", "Archimago del Vacío":
 			var baston_vacio := _crear_baston_vacio(incluir_particulas)
 			var b_v := baston_vacio["nodo"] as Node3D
 			b_v.position = offset_der
@@ -508,7 +508,7 @@ static func equipar_armas_en_esqueleto(modelo: Node3D, nombre_clase: String, inc
 			resultado["derecha"] = b_v
 			if baston_vacio.has("luz"):
 				resultado["luz_orbe"] = baston_vacio["luz"]
-		"Piromante Cataclísmico":
+		"Flamen Volcánico", "Señor del Magma Imperial", "Piromante Cataclísmico":
 			var baston_piro := _crear_baston_piromante(incluir_particulas)
 			var b_p := baston_piro["nodo"] as Node3D
 			b_p.position = offset_der
@@ -517,7 +517,7 @@ static func equipar_armas_en_esqueleto(modelo: Node3D, nombre_clase: String, inc
 			resultado["derecha"] = b_p
 			if baston_piro.has("luz"):
 				resultado["luz_orbe"] = baston_piro["luz"]
-		"Avatar del Núcleo":
+		"Custodio del Núcleo", "Titán Supremo del Núcleo", "Avatar del Núcleo":
 			var gauntlet := _crear_guantelete_avatar()
 			gauntlet.position = offset_der
 			attach_der.add_child(gauntlet)

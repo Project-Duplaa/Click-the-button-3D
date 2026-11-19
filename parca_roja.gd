@@ -1,23 +1,23 @@
 extends CharacterBody3D
 
 # La Parca Roja - Jefe Final Colosal de Clicklike 3D
-# 5000 HP, velocidad implacable, guadaña de sombra, marcas rojas telegrafiadas, cargas sombrías y proyectiles en abanico.
+# 18000 HP, velocidad implacable, guadaña de sombra, marcas rojas telegrafiadas, cargas sombrías y proyectiles en abanico.
 # Incluye Cristales de Escudo Clicables en órbita, Knockback físico real y desbloqueo del Portal de Ascensión al morir.
 
 signal parca_derrotada
 
 const AudioManager = preload("res://audio_manager.gd")
 
-@export var rapidez: float = 5.6
-@export var vida_maxima: float = 5000.0
-@export var dano_guadana: float = 55.0
-@export var radio_golpe: float = 4.2
-@export var tiempo_telegraph: float = 0.85
+@export var rapidez: float = 6.5
+@export var vida_maxima: float = 42000.0
+@export var dano_guadana: float = 125.0
+@export var radio_golpe: float = 5.0
+@export var tiempo_telegraph: float = 0.65
 
-@export var clics_base_escudo: int = 3
-@export var duracion_vulnerabilidad: float = 9.0
+@export var clics_base_escudo: int = 5
+@export var duracion_vulnerabilidad: float = 8.5
 
-var vida: float = 5000.0
+var vida: float = 42000.0
 var muerto: bool = false
 var jugador: Node3D = null
 var hud: Node = null
@@ -30,6 +30,7 @@ var _reloj_ataque: float = 0.0
 var _esta_telegrafando: bool = false
 var _en_enrage: bool = false
 var _knockback_velocity: Vector3 = Vector3.ZERO
+var _i_frame_timer: float = 0.0
 
 # Estados del Escudo y Golpe de Gracia
 var escudo_activo: bool = true
@@ -82,7 +83,7 @@ func _ready():
 	call_deferred("_conectar_boton_movil")
 
 	print("=====================================================")
-	print("¡LA PARCA ROJA HA DESCENDIDO AL COLISEO! (5000 HP)")
+	print("¡LA PARCA ROJA HA DESCENDIDO AL COLISEO! (18000 HP)")
 	print("🛡️ BARRERA ESPECTRAL DINÁMICA: Clics necesarios: ", clics_para_romper_escudo)
 	print("=====================================================")
 	AudioManager.play("jefe_alerta", 0.65, 3.0)
@@ -207,6 +208,9 @@ func _conectar_boton_movil():
 func _physics_process(delta):
 	if not is_on_floor():
 		velocity += get_gravity() * delta
+
+	if _i_frame_timer > 0.0:
+		_i_frame_timer = maxf(_i_frame_timer - delta, 0.0)
 
 	_anim_ctrl.actualizar(delta)
 	_knockback_velocity = _knockback_velocity.move_toward(Vector3.ZERO, 16.0 * delta)
@@ -512,7 +516,17 @@ func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 		_crear_texto_flotante("🛡️ ¡ESCUDO! (%d Clics al Núcleo)" % (clics_para_romper_escudo - clics_actuales_escudo), false)
 		return
 
-	var dano_final = cantidad * 1.25 * (1.0 + MetaprogresoManager.obtener_bono_bestiario("parca"))
+	if _i_frame_timer > 0.0 and str(fuente) != "ejecucion":
+		return
+	_i_frame_timer = 0.14
+
+	# Armadura natural de la Parca Roja (absorbe 15% del daño base)
+	var dano_final = cantidad * 0.85 * (1.0 + MetaprogresoManager.obtener_bono_bestiario("parca"))
+
+	# TOPE DE DAÑO POR GOLPE: Ningún impacto supera el 4% de la vida máxima
+	var max_dano_por_golpe = vida_maxima * 0.04
+	dano_final = minf(dano_final, max_dano_por_golpe)
+
 	vida = maxf(vida - dano_final, 1.0)
 	_anim_ctrl.disparar_golpe()
 
@@ -520,6 +534,7 @@ func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 
 	if not _en_enrage and vida <= (vida_maxima * 0.3):
 		_en_enrage = true
+		_i_frame_timer = 0.6
 		if luz_roja != null:
 			luz_roja.light_energy = 6.0
 			luz_roja.omni_range = 14.0
