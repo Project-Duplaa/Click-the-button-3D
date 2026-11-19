@@ -104,6 +104,10 @@ func _calcular_clics_necesarios() -> int:
 	return clics_base_escudo + int(pct_perdido * 3.99)
 
 func _crear_escudo_visual():
+	if modelo != null and (modelo.has_meta(&"modelo_oficial_custom") or (modelo.scene_file_path != null and modelo.scene_file_path.contains("parca"))):
+		# El modelo oficial 3D ya integra la Barrera Espectral Dinámica, runas y luces
+		return
+
 	_escudo_mesh = Node3D.new()
 	_escudo_mesh.name = "EscudoParcaVisual"
 

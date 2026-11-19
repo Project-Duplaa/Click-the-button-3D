@@ -31,33 +31,39 @@ func _construir_geometria_procedural():
 		col.position = Vector3(0, 0.5, 0)
 		add_child(col)
 
-	var mesh_i = MeshInstance3D.new()
-	mesh_i.name = "MeshInstance3D"
-	var torus = TorusMesh.new()
-	torus.inner_radius = 0.22
-	torus.outer_radius = 0.52
-	mesh_i.mesh = torus
-	var mat = StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = Color(0.85, 0.15, 0.95)
-	mesh_i.material_override = mat
-	mesh_i.position = Vector3(0, 0.65, 0)
-	add_child(mesh_i)
+	if get_node_or_null("AreaClicDirecto") == null:
+		var area_clic = Area3D.new()
+		area_clic.name = "AreaClicDirecto"
+		area_clic.input_ray_pickable = true
+		var col_a = CollisionShape3D.new()
+		var sph_a = SphereShape3D.new()
+		sph_a.radius = 0.75
+		col_a.shape = sph_a
+		col_a.position = Vector3(0, 0.65, 0)
+		area_clic.add_child(col_a)
+		area_clic.input_event.connect(func(_cam, ev, _pos, _norm, _idx):
+			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+				recibir_clic_directo()
+		)
+		add_child(area_clic)
 
-	var area_clic = Area3D.new()
-	area_clic.name = "AreaClicDirecto"
-	area_clic.input_ray_pickable = true
-	var col_a = CollisionShape3D.new()
-	var sph_a = SphereShape3D.new()
-	sph_a.radius = 0.75
-	col_a.shape = sph_a
-	col_a.position = Vector3(0, 0.65, 0)
-	area_clic.add_child(col_a)
-	area_clic.input_event.connect(func(_cam, ev, _pos, _norm, _idx):
-		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			recibir_clic_directo()
-	)
-	add_child(area_clic)
+	# Si ya existe un modelo 3D detallado (por ejemplo desde la escena .tscn), no agregar el toroide procedural
+	if get_node_or_null("ModeloVisual") != null or get_node_or_null("enemigo_parasito_cursor") != null:
+		return
+
+	if get_node_or_null("MeshInstance3D") == null:
+		var mesh_i = MeshInstance3D.new()
+		mesh_i.name = "MeshInstance3D"
+		var torus = TorusMesh.new()
+		torus.inner_radius = 0.22
+		torus.outer_radius = 0.52
+		mesh_i.mesh = torus
+		var mat = StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.albedo_color = Color(0.85, 0.15, 0.95)
+		mesh_i.material_override = mat
+		mesh_i.position = Vector3(0, 0.65, 0)
+		add_child(mesh_i)
 
 func _calcular_velocidad_ia(delta: float) -> Vector3:
 	if boton_objetivo == null or not is_instance_valid(boton_objetivo):

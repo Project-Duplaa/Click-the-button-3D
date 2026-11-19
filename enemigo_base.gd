@@ -195,7 +195,10 @@ func morir() -> void:
 	tw.tween_property(self, "scale", _escala_base * 1.35, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_property(self, "position:y", position.y + 0.4, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
-	FortunaManager.soltar_drops(get_parent(), global_position, tipo_enemigo_id)
+	if Engine.has_singleton("FortunaManager") or (get_tree() and get_tree().root and get_tree().root.has_node("FortunaManager")):
+		var fm = get_tree().root.get_node("FortunaManager") if (get_tree() and get_tree().root and get_tree().root.has_node("FortunaManager")) else Engine.get_singleton("FortunaManager")
+		if fm and fm.has_method("soltar_drops"):
+			fm.soltar_drops(get_parent(), global_position, tipo_enemigo_id)
 
 	if jugador != null and is_instance_valid(jugador):
 		var xp_calculada = int(ceil(float(xp_otorgada) * mult_xp_chasis))
