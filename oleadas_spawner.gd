@@ -297,26 +297,33 @@ func _spawn_enemigo_especial(tipo: String):
 	nodo.global_position = pos
 	_aplicar_escalado_dificultad(nodo, float(nivel_abismo) * 25.0 if modo_abismo else 0.0)
 
-func _spawn_enemigo(escena: PackedScene, vida_extra: float, retraso: float = 0.0, es_jefe: bool = false, permitir_despeje: bool = true):
+func _spawn_enemigo(escena: PackedScene, vida_extra: float, retraso: float = 0.0, es_jefe: bool = false, permitir_despeje: bool = true) -> void:
 	if escena == null:
 		return
 
-	var gen_inicio: int = _generacion_despeje
+	if retraso > 0.0:
+		var gen_inicio: int = _generacion_despeje
+		var timer = get_tree().create_timer(retraso)
+		timer.timeout.connect(func():
+			if not is_inside_tree():
+				return
+			# Cancelar rezagados de oleada si se despejó la arena para un jefe durante el retraso
+			if not es_jefe and (gen_inicio != _generacion_despeje or hay_jefe_activo()):
+				return
+			var enemigos_activos = get_tree().get_nodes_in_group("enemigos").size()
+			if enemigos_activos >= max_enemigos_concurrentes and not es_jefe:
+				return
+			_ejecutar_spawn_instancia(escena, vida_extra, es_jefe, permitir_despeje)
+		)
+		return
+
 	var enemigos_activos = get_tree().get_nodes_in_group("enemigos").size()
 	if enemigos_activos >= max_enemigos_concurrentes and not es_jefe:
 		return
 
-	if retraso > 0.0:
-		await get_tree().create_timer(retraso).timeout
-		if not is_inside_tree():
-			return
-		# Cancelar rezagados de oleada si se despejó la arena para un jefe durante el retraso
-		if not es_jefe and (gen_inicio != _generacion_despeje or hay_jefe_activo()):
-			return
-		enemigos_activos = get_tree().get_nodes_in_group("enemigos").size()
-		if enemigos_activos >= max_enemigos_concurrentes and not es_jefe:
-			return
+	_ejecutar_spawn_instancia(escena, vida_extra, es_jefe, permitir_despeje)
 
+func _ejecutar_spawn_instancia(escena: PackedScene, vida_extra: float, es_jefe: bool, permitir_despeje: bool) -> void:
 	var angulo = randf() * TAU
 	var pos = Vector3(cos(angulo) * radio_spawn, 0.0, sin(angulo) * radio_spawn)
 	pos.x = clampf(pos.x, -26.0, 26.0)

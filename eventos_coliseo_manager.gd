@@ -430,35 +430,39 @@ func _erupcionar_geyser_solar() -> void:
 	anillo_aviso.global_position = pos
 	_anillos_geyser_activos.append(anillo_aviso)
 
-	await get_tree().create_timer(1.3).timeout
-	_anillos_geyser_activos.erase(anillo_aviso)
-	if not is_instance_valid(anillo_aviso):
-		return
-	anillo_aviso.queue_free()
+	var timer = get_tree().create_timer(1.3)
+	timer.timeout.connect(func():
+		_anillos_geyser_activos.erase(anillo_aviso)
+		if is_instance_valid(anillo_aviso):
+			anillo_aviso.queue_free()
 
-	# Abortar erupción/daño de forma segura si un jefe entró durante el telegrafiado
-	if not is_inside_tree() or _hay_jefe_activo():
-		return
+		# Abortar erupción/daño de forma segura si un jefe entró durante el telegrafiado
+		if not is_inside_tree() or _hay_jefe_activo():
+			return
 
-	# 2. Erupción activa de fuego
-	AudioManager.play("alerta_oleada", 1.6, 2.0)
-	BunkerVisualKit.spawn_shockwave_ring(arena, pos, 0.5, 3.2, Color(1.0, 0.55, 0.15), 0.45)
+		# 2. Erupción activa de fuego
+		AudioManager.play("alerta_oleada", 1.6, 2.0)
+		BunkerVisualKit.spawn_shockwave_ring(arena, pos, 0.5, 3.2, Color(1.0, 0.55, 0.15), 0.45)
 
-	# Comprobar si el Botón Móvil cruza el géiser -> Entra inmediatamente en Frenesí
-	var boton = get_tree().get_first_node_in_group("boton_movil")
-	if boton != null and is_instance_valid(boton) and pos.distance_to(boton.global_position) <= 2.5:
-		if boton.has_method("_iniciar_frenesi_sobrecarga"):
-			boton._iniciar_frenesi_sobrecarga()
-			_anunciar_mutador("⚡ ¡NÚCLEO CATALIZADO POR EL GÉISER!", "Sobrecarga de Frenesí activada instantáneamente", Color(1.0, 0.85, 0.2))
+		# Comprobar si el Botón Móvil cruza el géiser -> Entra inmediatamente en Frenesí
+		var boton = get_tree().get_first_node_in_group("boton_movil")
+		if boton != null and is_instance_valid(boton) and pos.distance_to(boton.global_position) <= 2.5:
+			if boton.has_method("_iniciar_frenesi_sobrecarga"):
+				boton._iniciar_frenesi_sobrecarga()
+				_anunciar_mutador("⚡ ¡NÚCLEO CATALIZADO POR EL GÉISER!", "Sobrecarga de Frenesí activada instantáneamente", Color(1.0, 0.85, 0.2))
 
-	# Dañar a enemigos y jugador
-	for e in get_tree().get_nodes_in_group("enemigos"):
-		if e is Node3D and is_instance_valid(e) and pos.distance_to(e.global_position) <= 2.5:
-			if e.has_method("recibir_dano"):
-				e.recibir_dano(42.0, true)
-	if pj != null and is_instance_valid(pj) and pos.distance_to(pj.global_position) <= 2.4:
-		if pj.has_method("recibir_dano"):
-			pj.recibir_dano(12.0)
+		# Dañar a enemigos y jugador
+		for e in get_tree().get_nodes_in_group("enemigos"):
+			if e is Node3D and is_instance_valid(e) and pos.distance_to(e.global_position) <= 2.5:
+				if e.has_method("recibir_dano"):
+					e.recibir_dano(42.0, true)
+		var pj_actual = get_tree().get_first_node_in_group("jugador")
+		if pj_actual == null:
+			pj_actual = get_tree().get_first_node_in_group("player")
+		if pj_actual != null and is_instance_valid(pj_actual) and pos.distance_to(pj_actual.global_position) <= 2.4:
+			if pj_actual.has_method("recibir_dano"):
+				pj_actual.recibir_dano(12.0)
+	)
 
 # ==============================================================================
 # MERCADER DEL VACÍO (CORRUPT BLESSINGS)
