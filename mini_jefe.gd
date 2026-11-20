@@ -44,8 +44,9 @@ var _escudo_anillo_suelo: MeshInstance3D = null
 
 var _escala_base: Vector3 = Vector3.ONE
 var _anim_ctrl: AnimadorEntidad = AnimadorEntidad.new()
+var _decal_ataque: ThreatDecal3D = null
 
-@onready var telegraph_mesh: MeshInstance3D = $TelegraphSuelo
+@onready var telegraph_mesh: MeshInstance3D = $TelegraphSuelo if has_node("TelegraphSuelo") else null
 @onready var modelo: Node3D = $Modelo if has_node("Modelo") else null
 
 func _ready():
@@ -64,6 +65,10 @@ func _ready():
 
 	if telegraph_mesh != null:
 		telegraph_mesh.visible = false
+		telegraph_mesh.queue_free()
+		telegraph_mesh = null
+	_decal_ataque = BunkerVisualKit.create_threat_decal(self, "DecalAtaqueGladiador")
+	_decal_ataque.configurar_circulo(rango_ataque + 1.2, Color(0.88, 0.24, 0.12, 1.0), Color(1.0, 0.64, 0.16, 1.0), Color(1.0, 0.88, 0.42, 1.0))
 
 	_crear_escudo_hierro_visual()
 	call_deferred("_conectar_boton_movil")
@@ -216,38 +221,46 @@ func _physics_process(delta):
 
 	move_and_slide()
 
+func _exit_tree() -> void:
+	if _decal_ataque != null and is_instance_valid(_decal_ataque):
+		_decal_ataque.cancelar()
+
 func _iniciar_ataque_telegrafiado():
 	_esta_telegrafando = true
 	_posicion_ataque_telegraph = global_position
 
-	if telegraph_mesh != null:
-		telegraph_mesh.visible = true
-		telegraph_mesh.scale = Vector3(0.2, 1.0, 0.2)
-		var tw = create_tween()
-		tw.tween_property(telegraph_mesh, "scale", Vector3(1.0, 1.0, 1.0), tiempo_telegraph).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	if _decal_ataque != null and is_instance_valid(_decal_ataque):
+		_decal_ataque.configurar_circulo(rango_ataque + 1.2, Color(0.88, 0.24, 0.12, 1.0), Color(1.0, 0.64, 0.16, 1.0), Color(1.0, 0.88, 0.42, 1.0))
+		_decal_ataque.iniciar_cuenta_regresiva(tiempo_telegraph, false)
 
 	get_tree().create_timer(tiempo_telegraph).timeout.connect(_ejecutar_golpe_telegrafiado)
 
 func _ejecutar_golpe_telegrafiado():
-	if telegraph_mesh != null:
-		telegraph_mesh.visible = false
 	if muerto or not _esta_telegrafando:
 		_esta_telegrafando = false
+		if _decal_ataque != null and is_instance_valid(_decal_ataque):
+			_decal_ataque.cancelar()
 		return
+	var en_area := false
+	if is_instance_valid(jugador) and jugador is Node3D:
+		if _decal_ataque != null and is_instance_valid(_decal_ataque):
+			en_area = _decal_ataque.punto_en_area(jugador.global_position)
+		else:
+			en_area = global_position.distance_to(jugador.global_position) <= (rango_ataque + 1.2)
+	if _decal_ataque != null and is_instance_valid(_decal_ataque):
+		_decal_ataque.cancelar()
 	_esta_telegrafando = false
 	_reloj_ataque = 1.4
 	_anim_ctrl.reproducir_accion("attack-melee-right", 2, 0.08, 1.0)
 
 	AudioManager.play("danio_jugador", 0.8)
 
-	if is_instance_valid(jugador) and jugador is Node3D:
-		var dist = global_position.distance_to(jugador.global_position)
-		if dist <= rango_ataque + 1.2:
-			if jugador.has_method("recibir_dano"):
-				jugador.recibir_dano(dano_golpe)
-			elif jugador.has_node("Salud"):
-				jugador.get_node("Salud").recibir_golpe(int(dano_golpe))
-			_sacudir_camara(0.35)
+	if en_area and is_instance_valid(jugador) and jugador is Node3D:
+		if jugador.has_method("recibir_dano"):
+			jugador.recibir_dano(dano_golpe)
+		elif jugador.has_node("Salud"):
+			jugador.get_node("Salud").recibir_golpe(int(dano_golpe))
+		_sacudir_camara(0.35)
 
 func _on_boton_click(_total_clicks: int):
 	if vida <= 0.0:
@@ -277,7 +290,10 @@ func _on_boton_click(_total_clicks: int):
 
 func _romper_muralla():
 	_muralla_activa = false
+	_esta_telegrafando = false
 	_aturdido = true
+	if _decal_ataque != null and is_instance_valid(_decal_ataque):
+		_decal_ataque.cancelar()
 	if _escudo_hierro_mesh != null:
 		_escudo_hierro_mesh.visible = false
 
@@ -367,6 +383,8 @@ func morir():
 	if muerto:
 		return
 	muerto = true
+	if _decal_ataque != null and is_instance_valid(_decal_ataque):
+		_decal_ataque.cancelar()
 	if hud != null and hud.has_method("ocultar_barra_jefe"):
 		hud.ocultar_barra_jefe()
 

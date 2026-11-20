@@ -21,6 +21,7 @@ var vida_extra: float = 0.0
 var _tiempo: float = 0.0
 var _spawneado: bool = false
 var _factor_escala: float = 1.0
+var _onda_bullet_clear_emitida: bool = false
 
 @onready var anillo_exterior: MeshInstance3D = $AnilloExterior
 @onready var anillo_interior: MeshInstance3D = $AnilloInterior
@@ -50,21 +51,41 @@ func preparar_spawn(escena: PackedScene, vida_adicional: float = 0.0, jefe: bool
 		else:
 			color_portal = Color(1.0, 0.22, 0.32, 1.0) # Carmesí advertencia estándar
 
+	# Si preparar_spawn() fue invocado después de add_child(), sincronizar aspecto y onda dorada
+	if is_inside_tree():
+		_aplicar_color()
+		var tw_re := create_tween()
+		tw_re.tween_property(self, "scale", Vector3.ONE * _factor_escala, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		if es_jefe:
+			AudioManager.play("jefe_alerta", 1.0, 1.0)
+			_emitir_onda_bullet_clear_jefe()
+
 func _ready():
+	add_to_group("portal_spawn")
 	_aplicar_color()
 	
 	# Inicia pequeño y hace pop elástico
 	scale = Vector3(0.01, 0.01, 0.01)
 	
-	# Sonido de apertura
+	# Sonido de apertura y Onda Expansiva Dorada ("Bullet Clear") para Jefes
 	if es_jefe:
 		AudioManager.play("jefe_alerta", 1.0, 1.0)
+		_emitir_onda_bullet_clear_jefe()
 	else:
 		AudioManager.play("portal_spawn", randf_range(0.95, 1.1), -3.0)
 	
 	var tween = create_tween()
 	var escala_final = Vector3.ONE * _factor_escala
 	tween.tween_property(self, "scale", escala_final, 0.32).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+static func emitir_onda_bullet_clear(arena: Node, origen: Vector3, radio_max: float = 34.0) -> Dictionary:
+	return BunkerVisualKit.emitir_onda_bullet_clear(arena, origen, radio_max)
+
+func _emitir_onda_bullet_clear_jefe() -> void:
+	if _onda_bullet_clear_emitida or not is_inside_tree() or get_parent() == null:
+		return
+	_onda_bullet_clear_emitida = true
+	BunkerVisualKit.emitir_onda_bullet_clear(get_parent(), global_position, 34.0)
 
 func _process(delta: float):
 	_tiempo += delta
@@ -98,6 +119,16 @@ func _process(delta: float):
 	# Disparar aparición del enemigo al terminar el tiempo de telegrafo
 	if not _spawneado and _tiempo >= duracion_telegrafo:
 		_ejecutar_spawn_enemigo()
+
+func esta_pendiente_jefe() -> bool:
+	return es_jefe and not _spawneado and not is_queued_for_deletion()
+
+func cancelar_portal() -> void:
+	_spawneado = true
+	set_process(false)
+	if is_in_group("portal_spawn"):
+		remove_from_group("portal_spawn")
+	queue_free()
 
 func _ejecutar_spawn_enemigo():
 	_spawneado = true

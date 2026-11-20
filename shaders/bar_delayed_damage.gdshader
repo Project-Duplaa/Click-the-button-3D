@@ -4,6 +4,8 @@ uniform float hp_ratio : hint_range(0.0, 1.0) = 1.0;
 uniform float trail_ratio : hint_range(0.0, 1.0) = 1.0;
 uniform float shield_ratio : hint_range(0.0, 1.0) = 0.0;
 uniform int segment_notches : hint_range(0, 8) = 0;
+uniform float phase_mark_1 : hint_range(0.0, 1.0) = 0.0;
+uniform float phase_mark_2 : hint_range(0.0, 1.0) = 0.0;
 
 uniform vec4 color_bg : source_color = vec4(0.07, 0.02, 0.04, 0.96);
 uniform vec4 color_hp_top : source_color = vec4(0.98, 0.32, 0.42, 1.0);
@@ -49,7 +51,7 @@ void fragment() {
 		}
 	}
 
-	// 4. Optional brass boss phase dividers (e.g. 25%, 50%, 75%)
+	// 4. Optional brass boss phase dividers (uniform segment_notches o umbrales exactos 60% / 25%)
 	if (segment_notches > 1) {
 		float step_x = 1.0 / float(segment_notches);
 		for (int i = 1; i < 8; i++) {
@@ -59,6 +61,20 @@ void fragment() {
 			if (dist_tick < 0.004 && (y < 0.32 || y > 0.68)) {
 				col = mix(col, border_color.rgb, 0.9);
 			}
+		}
+	}
+	if (phase_mark_1 > 0.01 && phase_mark_1 < 0.99) {
+		float d1 = abs(x - phase_mark_1);
+		if (d1 < 0.0045) {
+			float strength1 = (y < 0.30 || y > 0.70) ? 0.96 : 0.48;
+			col = mix(col, vec3(1.0, 0.88, 0.45), strength1);
+		}
+	}
+	if (phase_mark_2 > 0.01 && phase_mark_2 < 0.99) {
+		float d2 = abs(x - phase_mark_2);
+		if (d2 < 0.0045) {
+			float strength2 = (y < 0.30 || y > 0.70) ? 0.98 : 0.55;
+			col = mix(col, vec3(1.0, 0.42, 0.24), strength2);
 		}
 	}
 

@@ -26,17 +26,41 @@ func _ready():
 			child.queue_free()
 	_actualizar_aspecto()
 
-func iniciar(nuevo_tipo: int, nuevo_valor: int):
+func iniciar(nuevo_tipo: int, nuevo_valor: int) -> void:
 	tipo = nuevo_tipo as TipoDrop
 	valor = nuevo_valor
-	if not is_inside_tree():
-		await ready
-	_actualizar_aspecto()
+	if is_inside_tree():
+		_actualizar_aspecto()
+
+static var _mat_destello_iman: StandardMaterial3D = null
 
 func forzar_atraccion(objetivo: Node3D):
+	if recogido or objetivo == null or not is_instance_valid(objetivo):
+		return
 	jugador = objetivo
 	radio_atraccion = 9999.0
-	velocidad_iman = maxf(velocidad_iman * 2.2, 22.0)
+	velocidad_iman = maxf(velocidad_iman * 2.2, 24.0)
+
+func animar_destello_iman() -> void:
+	if recogido or not is_inside_tree():
+		return
+	var mesh_inst := get_node_or_null("MeshInstance3D") as MeshInstance3D
+	if mesh_inst != null:
+		if _mat_destello_iman == null:
+			_mat_destello_iman = StandardMaterial3D.new()
+			_mat_destello_iman.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			_mat_destello_iman.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			_mat_destello_iman.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+			_mat_destello_iman.albedo_color = Color(1.0, 0.90, 0.35, 0.65)
+		mesh_inst.material_overlay = _mat_destello_iman
+	var esc_base := scale
+	var tw := create_tween()
+	tw.tween_property(self, "scale", esc_base * 1.48, 0.09).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(self, "scale", esc_base, 0.15).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_callback(func():
+		if is_instance_valid(mesh_inst):
+			mesh_inst.material_overlay = null
+	)
 
 static var _mats_aspecto: Dictionary = {}
 

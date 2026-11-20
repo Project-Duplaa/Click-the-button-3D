@@ -79,8 +79,8 @@ var personaje_padre: CharacterBody3D = null
 var camara_3d: Camera3D = null
 
 var tier_actual: int = 1
-var clase_base_actual: String = "Guerrero"
-var opciones_activas: Array[String] = ["Guerrero", "Cazador", "Mago"]
+var clase_base_actual: String = "Murmillo"
+var opciones_activas: Array[String] = ["Murmillo", "Sagittario", "Arúspice"]
 
 var _tiempo_abierto: float = 0.0
 var _tiempo_desbloqueo_confirmacion: float = COOLDOWN_CONFIRMACION
@@ -307,6 +307,7 @@ func _actualizar_modelo_3d_en_burbuja(nombre_clase: String, col_clase: Color):
 	pivote_modelo_preview.add_child(_modelo_preview_instancia)
 
 	AnimadorEntidad.equipar_armas_en_esqueleto(_modelo_preview_instancia, nombre_clase, true)
+	AnimadorEntidad.aplicar_identidad_visual_clase(_modelo_preview_instancia, nombre_clase, true)
 
 	_anim_preview_ctrl = AnimadorEntidad.new(_modelo_preview_instancia)
 	if _anim_preview_ctrl != null and _anim_preview_ctrl.esta_listo():

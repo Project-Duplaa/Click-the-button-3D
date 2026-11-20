@@ -17,6 +17,10 @@ enum EstadoFSM {
 }
 
 signal metamorfosis_disponible()
+signal mejora_tier2_disponible()
+signal ascension_tier3_disponible()
+signal hito_evolucion_disponible(tier: int, titulo: String, subtitulo: String)
+signal progreso_evolucion_actualizado(tier_objetivo: int, texto_progreso: String, listo: bool)
 signal clase_evolucionada(nombre_clase: String, stats: Dictionary)
 signal mejora_tier2_completada(nombre_mejora: String, stats: Dictionary)
 signal subclase_ascendida(nombre_subclase: String, stats: Dictionary)
@@ -420,6 +424,8 @@ const OPCIONES_TIER3 = {
 	"Arúspice": ["Pontífice del Vacío Estelar", "Señor del Magma Imperial", "Titán Supremo del Núcleo"]
 }
 
+@export var forzar_modal_2d_fallback: bool = false
+
 var estado_actual: EstadoFSM = EstadoFSM.NOVATO
 var total_clics_acumulados: int = 0
 var subclase_activa: String = ""
@@ -427,6 +433,9 @@ var mejora_tier2_activa: String = ""
 var personaje_ref: CharacterBody3D = null
 var modal_instancia: Node = null
 var tier_menu_activo: int = 1
+var _ultimo_progreso_tier: int = -1
+var _ultimo_progreso_texto: String = ""
+var _ultimo_progreso_listo: bool = false
 
 func _ready():
 	add_to_group("evolucion_manager")
@@ -434,9 +443,13 @@ func _ready():
 	if get_parent() is CharacterBody3D:
 		configurar_con_personaje(get_parent() as CharacterBody3D)
 
+func _exit_tree():
+	_limpiar_modal_actual(true)
+
 func configurar_con_personaje(personaje: CharacterBody3D):
 	personaje_ref = personaje
 	call_deferred("_vincular_eventos_externos")
+	call_deferred("emitir_progreso_evolucion", true)
 
 func _obtener_tree() -> SceneTree:
 	if is_inside_tree():
@@ -533,6 +546,82 @@ func obtener_texto_progreso_evolucion() -> String:
 		return "👑 " + subclase_activa
 	return ""
 
+func obtener_estado_progreso_compacto() -> Dictionary:
+	var nivel_actual: int = int(personaje_ref.nivel) if personaje_ref != null else 1
+	var bajas_actuales: int = int(personaje_ref.bajas) if personaje_ref != null else 0
+	var clics_reales: int = maxi(total_clics_acumulados, int(personaje_ref.clics_totales) if personaje_ref != null else 0)
+
+	match estado_actual:
+		EstadoFSM.NOVATO:
+			var listo_t1: bool = puede_evolucionar()
+			var txt_t1: String = "✨ T1 LISTA [V]" if listo_t1 else "T1: Nv.%d/%d · %d/%d⚡ · %d/%d💀" % [
+				nivel_actual, hito_nivel, clics_reales, hito_clics, bajas_actuales, hito_bajas
+			]
+			return {"tier_objetivo": 1, "texto": txt_t1, "listo": listo_t1}
+		EstadoFSM.DISPONIBLE, EstadoFSM.METAMORFOSIS:
+			return {"tier_objetivo": 1, "texto": "✨ T1 LISTA [V]", "listo": true}
+		EstadoFSM.EVOLUCIONADO:
+			var listo_t2: bool = puede_ascender_tier2()
+			var txt_t2: String = "👑 T2 LISTA [V]" if listo_t2 else "T2: Nv.%d/%d · %d/%d⚡" % [
+				nivel_actual, hito_nivel_tier2, clics_reales, hito_clics_tier2
+			]
+			return {"tier_objetivo": 2, "texto": txt_t2, "listo": listo_t2}
+		EstadoFSM.ASCENSION_T2_LISTA:
+			return {"tier_objetivo": 2, "texto": "👑 T2 LISTA [V]", "listo": true}
+		EstadoFSM.ASCENDIDO_TIER_2:
+			var listo_t3: bool = puede_ascender_tier3()
+			var txt_t3: String = "🌟 T3 LISTA [V]" if listo_t3 else "T3: Nv.%d/%d · %d/%d⚡" % [
+				nivel_actual, hito_nivel_tier3, clics_reales, hito_clics_tier3
+			]
+			return {"tier_objetivo": 3, "texto": txt_t3, "listo": listo_t3}
+		EstadoFSM.ASCENSION_T3_LISTA:
+			return {"tier_objetivo": 3, "texto": "🌟 T3 LISTA [V]", "listo": true}
+		_:
+			return {"tier_objetivo": 0, "texto": "", "listo": false}
+
+func emitir_progreso_evolucion(forzar: bool = false) -> void:
+	var info: Dictionary = obtener_estado_progreso_compacto()
+	var tier_obj: int = int(info.get("tier_objetivo", 0))
+	var texto: String = str(info.get("texto", ""))
+	var listo: bool = bool(info.get("listo", false))
+	if not forzar and tier_obj == _ultimo_progreso_tier and texto == _ultimo_progreso_texto and listo == _ultimo_progreso_listo:
+		return
+	_ultimo_progreso_tier = tier_obj
+	_ultimo_progreso_texto = texto
+	_ultimo_progreso_listo = listo
+	emit_signal("progreso_evolucion_actualizado", tier_obj, texto, listo)
+
+func tiene_evolucion_pendiente() -> int:
+	if estado_actual == EstadoFSM.DISPONIBLE or estado_actual == EstadoFSM.METAMORFOSIS or (estado_actual == EstadoFSM.NOVATO and puede_evolucionar()):
+		return 1
+	if estado_actual == EstadoFSM.ASCENSION_T2_LISTA or (estado_actual == EstadoFSM.EVOLUCIONADO and puede_ascender_tier2()):
+		return 2
+	if estado_actual == EstadoFSM.ASCENSION_T3_LISTA or (estado_actual == EstadoFSM.ASCENDIDO_TIER_2 and puede_ascender_tier3()):
+		return 3
+	return 0
+
+## Reabre la rueda 3D o modal 2D si el jugador tiene una evolución disponible o pendiente
+func reabrir_evolucion_pendiente() -> bool:
+	if estado_actual == EstadoFSM.NOVATO and puede_evolucionar():
+		disparar_metamorfosis()
+		return true
+	if estado_actual == EstadoFSM.DISPONIBLE or estado_actual == EstadoFSM.METAMORFOSIS:
+		abrir_modal_evolucion(1)
+		return true
+	if estado_actual == EstadoFSM.EVOLUCIONADO and puede_ascender_tier2():
+		disparar_ascension_tier2()
+		return true
+	if estado_actual == EstadoFSM.ASCENSION_T2_LISTA:
+		abrir_modal_evolucion(2)
+		return true
+	if estado_actual == EstadoFSM.ASCENDIDO_TIER_2 and puede_ascender_tier3():
+		disparar_ascension_tier3()
+		return true
+	if estado_actual == EstadoFSM.ASCENSION_T3_LISTA:
+		abrir_modal_evolucion(3)
+		return true
+	return false
+
 func _evaluar_hito_evolucion():
 	if estado_actual == EstadoFSM.NOVATO and puede_evolucionar():
 		disparar_metamorfosis()
@@ -540,6 +629,7 @@ func _evaluar_hito_evolucion():
 		disparar_ascension_tier2()
 	elif estado_actual == EstadoFSM.ASCENDIDO_TIER_2 and puede_ascender_tier3():
 		disparar_ascension_tier3()
+	emitir_progreso_evolucion()
 
 func disparar_metamorfosis():
 	if estado_actual != EstadoFSM.NOVATO:
@@ -548,6 +638,8 @@ func disparar_metamorfosis():
 	estado_actual = EstadoFSM.DISPONIBLE
 	tier_menu_activo = 1
 	emit_signal("metamorfosis_disponible")
+	emit_signal("hito_evolucion_disponible", 1, "✨ METAMORFOSIS TIER 1 DISPONIBLE", "Elige tu clase de la Arena · Clic o [V]")
+	emitir_progreso_evolucion()
 	
 	AudioManager.play("altar_activado", 1.25, 2.0)
 	if personaje_ref != null and personaje_ref.has_method("_spawn_texto_3d"):
@@ -561,6 +653,9 @@ func disparar_ascension_tier2():
 	
 	estado_actual = EstadoFSM.ASCENSION_T2_LISTA
 	tier_menu_activo = 2
+	emit_signal("mejora_tier2_disponible")
+	emit_signal("hito_evolucion_disponible", 2, "👑 ASCENSIÓN TIER 2 DISPONIBLE", "Especializa %s en la Arena · Clic o [V]" % _obtener_arquetipo_base_personaje())
+	emitir_progreso_evolucion()
 	
 	AudioManager.play("altar_activado", 1.35, 2.0)
 	if personaje_ref != null and personaje_ref.has_method("_spawn_texto_3d"):
@@ -574,6 +669,9 @@ func disparar_ascension_tier3():
 		
 	estado_actual = EstadoFSM.ASCENSION_T3_LISTA
 	tier_menu_activo = 3
+	emit_signal("ascension_tier3_disponible")
+	emit_signal("hito_evolucion_disponible", 3, "🌟 ASCENSIÓN DEFINITIVA TIER 3 DISPONIBLE", "Desata la forma suprema de %s · Clic o [V]" % _obtener_arquetipo_base_personaje())
+	emitir_progreso_evolucion()
 	
 	AudioManager.play("altar_activado", 1.45, 2.5)
 	if personaje_ref != null and personaje_ref.has_method("_spawn_texto_3d"):
@@ -609,24 +707,48 @@ func forzar_rueda_tier3():
 		estado_actual = EstadoFSM.ASCENDIDO_TIER_2
 		disparar_ascension_tier3()
 
-func abrir_modal_evolucion(tier: int = 1):
+## Método público de depuración para probar el modal 2D de respaldo en Tier 1, Tier 2 o Tier 3
+func forzar_modal_2d_evolucion(tier: int = 1, clase_base_override: String = ""):
+	if tier <= 1:
+		estado_actual = EstadoFSM.NOVATO
+	else:
+		if personaje_ref != null and is_instance_valid(personaje_ref) and clase_base_override != "":
+			if "clase_base" in personaje_ref:
+				personaje_ref.clase_base = clase_base_override
+			if "clase" in personaje_ref:
+				personaje_ref.clase = clase_base_override
+		estado_actual = EstadoFSM.EVOLUCIONADO if tier == 2 else EstadoFSM.ASCENDIDO_TIER_2
+	abrir_modal_evolucion(tier, true)
+
+func abrir_modal_evolucion(tier: int = 1, forzar_2d: bool = false):
 	tier_menu_activo = tier
-	if modal_instancia != null and is_instance_valid(modal_instancia):
-		if modal_instancia.has_method("configurar_modo_tier"):
-			var base_clase = _obtener_arquetipo_base_personaje()
-			modal_instancia.configurar_modo_tier(tier, base_clase)
-		if modal_instancia.has_method("abrir"):
-			modal_instancia.abrir()
-		return
-	
 	if tier == 1:
 		estado_actual = EstadoFSM.METAMORFOSIS
 	elif tier == 2:
 		estado_actual = EstadoFSM.ASCENSION_T2_LISTA
 	else:
 		estado_actual = EstadoFSM.ASCENSION_T3_LISTA
-	
-	if personaje_ref != null and is_instance_valid(personaje_ref):
+
+	var usar_solo_2d: bool = forzar_2d or forzar_modal_2d_fallback
+	var base_clase: String = _obtener_arquetipo_base_personaje()
+
+	if modal_instancia != null and is_instance_valid(modal_instancia):
+		if usar_solo_2d and not (modal_instancia is CanvasLayer):
+			if modal_instancia.has_method("cerrar"):
+				modal_instancia.cerrar()
+			modal_instancia = null
+		else:
+			if modal_instancia.has_signal("evolucion_seleccionada") and not modal_instancia.evolucion_seleccionada.is_connected(_on_clase_elegida_en_modal):
+				modal_instancia.evolucion_seleccionada.connect(_on_clase_elegida_en_modal)
+			elif modal_instancia.has_signal("clase_seleccionada") and not modal_instancia.clase_seleccionada.is_connected(_on_clase_elegida_en_modal):
+				modal_instancia.clase_seleccionada.connect(_on_clase_elegida_en_modal)
+			if modal_instancia.has_method("configurar_modo_tier"):
+				modal_instancia.configurar_modo_tier(tier, base_clase)
+			if modal_instancia.has_method("abrir"):
+				modal_instancia.abrir()
+			return
+
+	if not usar_solo_2d and personaje_ref != null and is_instance_valid(personaje_ref):
 		var radial = personaje_ref.get_node_or_null("EvolucionRadial")
 		if radial == null:
 			var escena_radial = load("res://evolucion_radial.tscn")
@@ -637,7 +759,6 @@ func abrir_modal_evolucion(tier: int = 1):
 				radial.personaje_padre = personaje_ref
 		if radial != null:
 			modal_instancia = radial
-			var base_clase = _obtener_arquetipo_base_personaje()
 			if radial.has_method("configurar_modo_tier"):
 				radial.configurar_modo_tier(tier, base_clase)
 			if not radial.evolucion_seleccionada.is_connected(_on_clase_elegida_en_modal):
@@ -645,14 +766,43 @@ func abrir_modal_evolucion(tier: int = 1):
 			radial.abrir()
 			return
 
-	var escena_modal = load("res://modal_evolucion.tscn")
-	if escena_modal != null:
+	var tree = _obtener_tree()
+	if tree == null or tree.root == null:
+		return
+
+	var modal_existente = tree.root.get_node_or_null("ModalEvolucionFallback")
+	if modal_existente != null and is_instance_valid(modal_existente):
+		modal_instancia = modal_existente
+	else:
+		var escena_modal = load("res://modal_evolucion.tscn")
+		if escena_modal == null:
+			return
 		modal_instancia = escena_modal.instantiate()
-		var tree = _obtener_tree()
-		if tree != null and tree.root != null:
-			tree.root.add_child(modal_instancia)
-			if modal_instancia.has_signal("clase_seleccionada"):
-				modal_instancia.clase_seleccionada.connect(_on_clase_elegida_en_modal)
+		modal_instancia.name = "ModalEvolucionFallback"
+		tree.root.add_child(modal_instancia)
+
+	if modal_instancia.has_signal("clase_seleccionada"):
+		if not modal_instancia.clase_seleccionada.is_connected(_on_clase_elegida_en_modal):
+			modal_instancia.clase_seleccionada.connect(_on_clase_elegida_en_modal)
+	if modal_instancia.has_method("configurar_modo_tier"):
+		modal_instancia.configurar_modo_tier(tier, base_clase)
+	if modal_instancia.has_method("abrir"):
+		modal_instancia.abrir()
+	return
+
+func _limpiar_modal_actual(diferir_remocion: bool = false):
+	if modal_instancia == null or not is_instance_valid(modal_instancia):
+		modal_instancia = null
+		return
+	if modal_instancia.has_method("cerrar"):
+		modal_instancia.cerrar()
+	if modal_instancia is CanvasLayer:
+		if modal_instancia.has_signal("clase_seleccionada") and modal_instancia.clase_seleccionada.is_connected(_on_clase_elegida_en_modal):
+			modal_instancia.clase_seleccionada.disconnect(_on_clase_elegida_en_modal)
+		if not diferir_remocion and modal_instancia.get_parent() != null:
+			modal_instancia.get_parent().remove_child(modal_instancia)
+		modal_instancia.queue_free()
+	modal_instancia = null
 
 func _obtener_arquetipo_base_personaje() -> String:
 	if personaje_ref == null:
@@ -664,12 +814,7 @@ func _obtener_arquetipo_base_personaje() -> String:
 	return "Murmillo"
 
 func _on_clase_elegida_en_modal(nombre_opcion: String):
-	if modal_instancia != null and is_instance_valid(modal_instancia):
-		if modal_instancia.has_method("cerrar"):
-			modal_instancia.cerrar()
-		elif modal_instancia is CanvasLayer:
-			modal_instancia.queue_free()
-		modal_instancia = null
+	_limpiar_modal_actual()
 	var tree = _obtener_tree()
 	if tree != null:
 		tree.paused = false
@@ -833,6 +978,7 @@ func ascender_a_tier3(nombre_subclase: String):
 	emit_signal("subclase_ascendida", subclase_activa, datos_t3)
 	emit_signal("evolucion_tier3_completada", subclase_activa)
 	emit_signal("evolucion_completada", subclase_activa)
+	emitir_progreso_evolucion()
 
 func cambiar_malla_3d(personaje: CharacterBody3D, ruta_malla: String) -> AnimationPlayer:
 	if not ResourceLoader.exists(ruta_malla):

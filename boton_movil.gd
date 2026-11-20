@@ -846,19 +846,21 @@ func _ejecutar_teletransporte_seguro():
 	_en_teletransporte = true
 	var tw = create_tween()
 	tw.tween_property(self, "scale", Vector3(0.08, 0.08, 0.08), 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	await tw.finished
-	if not is_instance_valid(self) or not is_inside_tree():
-		return
+	tw.finished.connect(func():
+		if not is_instance_valid(self) or not is_inside_tree():
+			_en_teletransporte = false
+			return
 
-	indice_ruta = (indice_ruta + randi_range(2, 4)) % ruta.size()
-	if indice_ruta == 0:
-		indice_ruta = 1
-	global_position = ruta[indice_ruta]
+		indice_ruta = (indice_ruta + randi_range(2, 4)) % ruta.size()
+		if indice_ruta == 0:
+			indice_ruta = 1
+		global_position = ruta[indice_ruta]
 
-	var tw_pop = create_tween()
-	tw_pop.tween_property(self, "scale", Vector3.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	_detonar_onda_choque(false, false, false)
-	_en_teletransporte = false
+		var tw_pop = create_tween()
+		tw_pop.tween_property(self, "scale", Vector3.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_detonar_onda_choque(false, false, false)
+		_en_teletransporte = false
+	)
 
 func _detonar_onda_choque(es_supernova: bool, es_perfecto: bool = false, es_sobrecarga_termica: bool = false):
 	var bonus_onda: Dictionary = {}

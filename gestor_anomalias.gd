@@ -10,11 +10,32 @@ const AnomaliaEscena = preload("res://anomalia_click.tscn")
 @export var intervalo_min: float = 12.0
 @export var intervalo_max: float = 16.0
 @export var max_anomalias_simultaneas: int = 2
+@export var pausar_en_jefes: bool = true
 
 var _reloj_spawn: float = 8.0
 
 func _ready():
 	_reloj_spawn = 6.0
+
+func _hay_jefe_activo(spawner: Node) -> bool:
+	if spawner != null and is_instance_valid(spawner) and spawner.has_method("hay_jefe_activo"):
+		if bool(spawner.hay_jefe_activo()):
+			return true
+	var tree := get_tree()
+	if tree == null:
+		return false
+	for grupo in ["jefes", "bosses"]:
+		for n in tree.get_nodes_in_group(grupo):
+			if is_instance_valid(n) and not n.is_queued_for_deletion():
+				var esta_muerto := ("muerto" in n and bool(n.muerto))
+				var tiene_vida := (not ("vida" in n) or float(n.vida) > 0.0)
+				if not esta_muerto and tiene_vida:
+					return true
+	for p in tree.get_nodes_in_group("portal_spawn"):
+		if is_instance_valid(p) and not p.is_queued_for_deletion() and ("es_jefe" in p and bool(p.es_jefe)):
+			if not ("_spawneado" in p) or not bool(p._spawneado):
+				return true
+	return false
 
 func _process(delta: float):
 	var spawner = get_parent().get_node_or_null("OleadasSpawner")
@@ -29,6 +50,9 @@ func _process(delta: float):
 			en_partida = spawner.en_partida
 			
 	if not en_partida:
+		return
+
+	if pausar_en_jefes and _hay_jefe_activo(spawner):
 		return
 		
 	_reloj_spawn -= delta

@@ -285,12 +285,13 @@ func equipar_armas_clase(nombre_clase: String) -> void:
 	if mod == null:
 		return
 	var armas: Dictionary = AnimadorEntidad.equipar_armas_en_esqueleto(mod, nombre_clase, true)
+	AnimadorEntidad.aplicar_identidad_visual_clase(mod, nombre_clase, true)
 	_arma_der_ref = armas.get("derecha", null)
 	_arma_izq_ref = armas.get("izquierda", null)
 	_luz_orbe_ref = armas.get("luz_orbe", null)
-	_preview_baston = _arma_der_ref if nombre_clase in ["Mago", "Archimago del Vacío", "Piromante Cataclísmico"] else null
-	_preview_espada = _arma_der_ref if nombre_clase in ["Guerrero", "Paladín Solar", "Berserker Sangriento"] else null
-	_preview_arco = _arma_izq_ref if nombre_clase in ["Cazador", "Arquero", "Francotirador Astral", "Maestro de Sombras"] else null
+	_preview_baston = _arma_der_ref if nombre_clase in ["Mago", "Arúspice", "Taumaturgo del Vacío", "Flamen Volcánico", "Pontífice del Vacío Estelar", "Señor del Magma Imperial", "Archimago del Vacío", "Piromante Cataclísmico"] else null
+	_preview_espada = _arma_der_ref if nombre_clase in ["Guerrero", "Murmillo", "Secutor Radiante", "Provocator Sangriento", "Paladín del Sol Invictus", "Campeón Augusto de Sangre", "Paladín Solar", "Berserker Sangriento"] else null
+	_preview_arco = _arma_izq_ref if nombre_clase in ["Cazador", "Arquero", "Sagittario", "Velites Balístico", "Dimachaerus Espectral", "Centurión Balístico Astral", "Sombra del Anfiteatro", "Francotirador Astral", "Maestro de Sombras"] else null
 
 func _bootstrap_core_systems():
 	var tree = _obtener_tree()
@@ -1302,7 +1303,7 @@ func mostrar_preview_clase(nombre_clase: String):
 	var clase_mostrar := nombre_clase if not nombre_clase.is_empty() else clase
 	equipar_armas_clase(clase_mostrar)
 	if _escudo_visual != null:
-		_escudo_visual.visible = (nombre_clase in ["Guerrero", "Paladín Solar"] or (es_arquetipo("Guerrero") and bloqueando))
+		_escudo_visual.visible = (nombre_clase in ["Guerrero", "Murmillo", "Secutor Radiante", "Paladín del Sol Invictus", "Paladín Solar"] or (es_arquetipo("Guerrero") and bloqueando))
 
 func _asegurar_armas_preview():
 	equipar_armas_clase(clase)
