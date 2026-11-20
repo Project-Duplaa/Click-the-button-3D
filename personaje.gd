@@ -1,6 +1,7 @@
 extends CharacterBody3D
 
 const AudioManager = preload("res://audio_manager.gd")
+const ArenaColiseo = preload("res://arena_coliseo.gd")
 const EvolucionManager = preload("res://evolucion_manager.gd")
 const ArbolMejorasDatos = preload("res://arbol_mejoras_datos.gd")
 const MetaprogresoManager = preload("res://metaprogreso_manager.gd")
@@ -48,12 +49,12 @@ var ultimo_atacante_nombre: String = "Gladiador Rival"
 var _estado_juicio_emperador: bool = false
 var vida_maxima: float = 100.0
 var vida: float = 100.0
-var dano: float = 12.0
+var dano: float = 10.0
 var rango_ataque: float = 2.6
-var cadencia_ataque: float = 1.25
+var cadencia_ataque: float = 1.35
 var oro: int = 0
 var xp: int = 0
-var xp_siguiente_nivel: int = 25
+var xp_siguiente_nivel: int = 48
 var nivel: int = 1
 var bajas: int = 0
 
@@ -73,8 +74,8 @@ var duplicar_proxima_carta: bool = false # La próxima carta de nivel se aplica 
 
 # CAPA 1: Estadísticas base puras según clase
 var base_vida_maxima: float = 100.0
-var base_dano: float = 12.0
-var base_cadencia_ataque: float = 1.25
+var base_dano: float = 10.0
+var base_cadencia_ataque: float = 1.35
 var base_rango_ataque: float = 2.6
 var base_speed_caminar: float = 3.4
 var base_speed_correr: float = 5.4
@@ -120,7 +121,7 @@ var vidas_base: int = 1
 var bonus_vidas_arbol: int = 0
 @export var reapariciones: int = 0 # 0 reapariciones = 1 vida base al inicio (modo roguelike hardcore incremental)
 @export var invulnerable_tiempo: float = 2.0
-@export var punto_reaparicion: Vector3 = Vector3(0, 0.5, 0)
+@export var punto_reaparicion: Vector3 = Vector3(0.0, 0.0, 3.0)
 var _reloj_invulnerable: float = 0.0
 var _muerto_definitivo: bool = false
 var _cooldown_ultimo_aliento: float = 0.0
@@ -238,6 +239,7 @@ func obtener_vidas_maximas() -> int:
 func _ready():
 	add_to_group("jugador")
 	add_to_group("player")
+	ArenaColiseo.configurar_cuerpo_terreno(self, false, false)
 	if camara == null and get_viewport() != null:
 		camara = get_viewport().get_camera_3d()
 
@@ -428,6 +430,8 @@ func _physics_process(delta):
 
 	velocity.x = avance.x + empuje.x
 	velocity.z = avance.z + empuje.z
+	if is_on_floor():
+		velocity.y = minf(velocity.y, 0.0)
 
 	if direction.length() > 0:
 		basis = Basis.looking_at(direction)
@@ -569,10 +573,17 @@ func _obtener_enemigo_cercano() -> Node3D:
 	return mas_cercano
 
 func _ejecutar_ataque(enemigo: Node3D):
-	var dir = (enemigo.global_position - global_position).normalized()
-	dir.y = 0.0
-	if dir.length() > 0.01:
+	var origen_disp := global_position + Vector3(0.0, 0.9, 0.0)
+	var objetivo_disp := enemigo.global_position + Vector3(0.0, 0.9, 0.0)
+	var dif_3d := objetivo_disp - origen_disp
+	var dir_3d := dif_3d.normalized() if dif_3d.length_squared() > 0.001 else Vector3.FORWARD
+	var dir = Vector3(dir_3d.x, 0.0, dir_3d.z)
+	if dir.length_squared() > 0.001:
+		dir = dir.normalized()
 		basis = Basis.looking_at(dir)
+	else:
+		dir = -global_transform.basis.z.normalized()
+		dir.y = 0.0
 
 	var es_crit = FortunaManager.tirar(prob_critico)
 	var mult_frenesi = 1.0 + float(_frenesi_clic_stacks) * frenesi_clic_pct_por_stack
@@ -631,7 +642,7 @@ func _ejecutar_ataque(enemigo: Node3D):
 			if _anim_ctrl != null:
 				_anim_ctrl.reproducir_accion("cast-magic", 2, 0.05, 1.1)
 			_ejecutar_animacion_procedural_ataque("mago")
-			_lanzar_orbe_vacio(dir, enemigo, dano_ataque_actual, es_crit)
+			_lanzar_orbe_vacio(dir_3d, enemigo, dano_ataque_actual, es_crit)
 			registrar_dano_telemetria("armas", dano_ataque_actual)
 			return
 		"Flamen Volcánico", "Señor del Magma Imperial", "Piromante Cataclísmico":
@@ -640,7 +651,7 @@ func _ejecutar_ataque(enemigo: Node3D):
 			if _anim_ctrl != null:
 				_anim_ctrl.reproducir_accion("cast-magic", 2, 0.05, 1.1)
 			_ejecutar_animacion_procedural_ataque("mago")
-			_lanzar_meteoro_magma(dir, enemigo, dano_ataque_actual, es_crit)
+			_lanzar_meteoro_magma(dir_3d, enemigo, dano_ataque_actual, es_crit)
 			registrar_dano_telemetria("armas", dano_ataque_actual)
 			return
 		"Custodio del Núcleo", "Titán Supremo del Núcleo", "Avatar del Núcleo":
@@ -700,7 +711,7 @@ func _ejecutar_ataque(enemigo: Node3D):
 			for i in range(cant_orbes):
 				var orbe = orbe_escena.instantiate()
 				var origen = global_position + Vector3(0, 0.9, 0)
-				var dir_o = dir.rotated(Vector3.UP, deg_to_rad(inicio_orbe + i * paso_orbe)).normalized()
+				var dir_o = dir_3d.rotated(Vector3.UP, deg_to_rad(inicio_orbe + i * paso_orbe)).normalized()
 				get_parent().add_child(orbe)
 				orbe.iniciar(origen, dir_o, dano_ataque_actual, enemigo)
 			registrar_dano_telemetria("armas", dano_ataque_actual * float(cant_orbes))
@@ -735,7 +746,7 @@ func _ejecutar_ataque(enemigo: Node3D):
 			var angulo_inicio = -((cant_flechas - 1) * angulo_paso) * 0.5
 			for i in range(cant_flechas):
 				var angulo = angulo_inicio + (i * angulo_paso)
-				var dir_flecha = dir.rotated(Vector3.UP, deg_to_rad(angulo)).normalized()
+				var dir_flecha = dir_3d.rotated(Vector3.UP, deg_to_rad(angulo)).normalized()
 				var p = proyectil_escena.instantiate()
 				get_parent().add_child(p)
 				if "rebotes_restantes" in p:
@@ -849,7 +860,7 @@ func _crear_vortice_vacio(pos: Vector3) -> void:
 	mat.emission_energy_multiplier = 3.2
 	vortice.material_override = mat
 	get_parent().add_child(vortice)
-	vortice.global_position = Vector3(pos.x, 0.15, pos.z)
+	vortice.global_position = ArenaColiseo.clamping_y_ajustar_a_suelo(pos, 1.5, 0.14)
 	var tick_state := [0.0]
 	var tw = vortice.create_tween()
 	tw.tween_method(func(_v):
@@ -907,7 +918,7 @@ func _crear_charco_magma(pos: Vector3) -> void:
 	mat.emission_energy_multiplier = 2.5
 	charco.material_override = mat
 	get_parent().add_child(charco)
-	charco.global_position = Vector3(pos.x, 0.02, pos.z)
+	charco.global_position = ArenaColiseo.clamping_y_ajustar_a_suelo(pos, 1.5, 0.03)
 	var tick_state := [0.0]
 	var tw = charco.create_tween()
 	tw.tween_method(func(_v):
@@ -1188,15 +1199,15 @@ func registrar_baja():
 			clics_disponibles += 1
 			clics_totales += 1
 		vida = minf(vida + vida_por_baja, vida_maxima)
-	ganar_xp(6)
-	recoger_drop(0, 3)
+	ganar_xp(3)
+	recoger_drop(0, 2)
 	if evolucion_manager != null and evolucion_manager.has_method("notificar_baja"):
 		evolucion_manager.notificar_baja()
 
 func subir_nivel():
 	xp = max(0, xp - xp_siguiente_nivel)
 	nivel += 1
-	xp_siguiente_nivel = int(round(float(xp_siguiente_nivel) * 1.30 + 10.0))
+	xp_siguiente_nivel = int(round(float(xp_siguiente_nivel) * 1.32 + 18.0))
 
 	# Escalado de especialidades por clase / arquetipo al subir nivel
 	if es_arquetipo("Cazador"):
@@ -1212,7 +1223,7 @@ func subir_nivel():
 		base_cadencia_ataque = maxf(0.45, base_cadencia_ataque * 0.96)
 
 	recalcular_stats_incrementales()
-	vida = minf(vida + maxf(20.0, vida_maxima * 0.25), vida_maxima)
+	vida = minf(vida + maxf(8.0, vida_maxima * 0.10), vida_maxima)
 	AudioManager.play("altar_activado", 1.35, 0.0)
 	var dop = get_tree().get_first_node_in_group("audio_dopamina") if is_inside_tree() else null
 	if dop != null and dop.has_method("reproducir_acorde_nivel"):
@@ -1341,10 +1352,14 @@ func aplicar_clase(nombre: String):
 		"Novato", "Recluta del Coliseo":
 			clase_base = "Novato"
 			subclase_tier2 = ""
+			var orn_prev := get_node_or_null("OrnamentoTier")
+			if orn_prev != null:
+				remove_child(orn_prev)
+				orn_prev.queue_free()
 			base_vida_maxima = 100.0
-			base_dano = 12.0
+			base_dano = 10.0
 			base_rango_ataque = 2.6
-			base_cadencia_ataque = 1.25
+			base_cadencia_ataque = 1.35
 			base_speed_caminar = 3.4
 			base_speed_correr = 5.4
 		"Guerrero", "Murmillo":

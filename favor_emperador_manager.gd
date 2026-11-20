@@ -20,6 +20,7 @@ class_name FavorEmperadorManager
 ##    - Recompensas: Denarios, Oro, +25 Favor y un Cofre de Gladiador.
 
 const AudioManager = preload("res://audio_manager.gd")
+const ArenaColiseo = preload("res://arena_coliseo.gd")
 const BunkerVisualKit = preload("res://bunker_visual_kit.gd")
 const CofreGladiadorScript = preload("res://cofre_gladiador.gd")
 
@@ -29,7 +30,7 @@ signal pulgar_emperador_resuelto(salvado: bool, prob: float)
 signal contrato_actualizado(datos: Dictionary)
 signal contrato_completado(titulo: String, desc_recompensa: String)
 
-@export var favor: float = 15.0
+@export var favor: float = 0.0
 var en_locura_coliseo: bool = false
 var juicio_usado: bool = false
 
@@ -199,7 +200,7 @@ func notificar_dano_jugador(_cantidad: float) -> void:
 # ==============================================================================
 
 func intentar_juicio_emperador_al_morir(pj: Node) -> bool:
-	if juicio_usado or pj == null:
+	if juicio_usado or pj == null or favor < 40.0:
 		return false
 	juicio_usado = true
 
@@ -262,10 +263,17 @@ func _lanzar_regalos_grada() -> void:
 	AudioManager.play("altar_activado", 1.25)
 	var cant_regalos = randi_range(2, 3)
 
+	var pj: Node3D = get_tree().get_first_node_in_group("jugador") as Node3D if get_tree() != null else null
 	for i in range(cant_regalos):
 		var angulo = randf() * TAU
-		var pos_inicio = Vector3(cos(angulo) * 28.0, 4.5, sin(angulo) * 28.0)
-		var pos_destino = Vector3(randf_range(-14.0, 14.0), 0.15, randf_range(-14.0, 14.0))
+		var pos_inicio = Vector3(cos(angulo) * 50.0, 8.0, sin(angulo) * 50.0)
+		var pos_destino: Vector3
+		if pj != null and is_instance_valid(pj):
+			var a_dest: float = randf() * TAU
+			var d_dest: float = randf_range(6.0, 16.0)
+			pos_destino = ArenaColiseo.clamping_y_ajustar_a_suelo(pj.global_position + Vector3(cos(a_dest) * d_dest, 0.0, sin(a_dest) * d_dest), 2.2, 0.25)
+		else:
+			pos_destino = ArenaColiseo.punto_aleatorio(8.0, 38.0, null, 0.25)
 
 		var tipo_drop = 0 if randf() < 0.70 else 2 # 0: Oro, 2: Corazón
 		_crear_proyectil_regalo(pos_inicio, pos_destino, tipo_drop)
@@ -302,8 +310,7 @@ func _crear_proyectil_regalo(inicio: Vector3, destino: Vector3, tipo_drop: int) 
 	tw.chain().tween_callback(func():
 		if not is_instance_valid(nodo_regalo):
 			return
-		var pos_final = nodo_regalo.global_position
-		pos_final.y = 0.2
+		var pos_final = ArenaColiseo.clamping_y_ajustar_a_suelo(nodo_regalo.global_position, 1.4, 0.30)
 		nodo_regalo.queue_free()
 
 		# Instanciar drop real al impactar el suelo
@@ -388,7 +395,7 @@ func _completar_contrato_activo() -> void:
 		var cofre = CofreGladiadorScript.new()
 		get_parent().add_child(cofre)
 		var offset = Vector3(randf_range(-3.5, 3.5), 0.0, randf_range(-3.5, 3.5)).normalized() * 3.0
-		cofre.global_position = pj.global_position + offset
+		cofre.global_position = ArenaColiseo.clamping_y_ajustar_a_suelo(pj.global_position + offset, 1.8, 0.0)
 
 	# Notificar a LogrosManager si implementa la función
 	var logros = get_tree().get_first_node_in_group("logros_manager")

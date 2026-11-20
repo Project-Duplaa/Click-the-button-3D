@@ -1,0 +1,27 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://canalizador_vacio.gd" id="1_canal"]
+[ext_resource type="PackedScene" path="res://assets/modelos/enemigo_canalizador_vacio.glb" id="2_mod"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_canal"]
+radius = 0.6
+height = 2.2
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_orbe"]
+radius = 0.75
+
+[node name="CanalizadorVacio" type="CharacterBody3D"]
+script = ExtResource("1_canal")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+shape = SubResource("CapsuleShape3D_canal")
+
+[node name="Modelo" parent="." instance=ExtResource("2_mod")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="OrbeVacioClicable" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.85, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="OrbeVacioClicable"]
+shape = SubResource("SphereShape3D_orbe")

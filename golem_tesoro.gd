@@ -16,10 +16,10 @@ func _ready() -> void:
 	xp_otorgada = 45
 	oro_otorgado = 35
 	add_to_group("golems_tesoro")
-	_construir_geometria_procedural()
+	_asegurar_componentes()
 	super._ready()
 
-func _construir_geometria_procedural():
+func _asegurar_componentes():
 	if get_node_or_null("CollisionShape3D") == null:
 		var col = CollisionShape3D.new()
 		col.name = "CollisionShape3D"
@@ -29,124 +29,29 @@ func _construir_geometria_procedural():
 		col.position = Vector3(0, 0.7, 0)
 		add_child(col)
 
-	# Chasis hexagonal blindado principal (MeshInstance3D raíz visual)
-	var cuerpo := BunkerVisualKit.make_cylinder(
-		self,
-		"MeshInstance3D",
-		0.56,
-		0.64,
-		0.48,
-		BunkerVisualKit.get_chassis_mat(),
-		Vector3(0.0, 0.58, 0.0),
-		6
-	)
+	var modelo = get_node_or_null("Modelo")
+	if modelo == null:
+		var escena_mod = load("res://assets/modelos/enemigo_golem_tesoro.glb") as PackedScene
+		if escena_mod:
+			modelo = escena_mod.instantiate()
+			modelo.name = "Modelo"
+			add_child(modelo)
 
-	# Anillo hazard dorado/acero alrededor del chasis
-	var mat_hazard := BunkerVisualKit.create_hazard_stripes_material(
-		BunkerVisualKit.COL_VAULT_GOLD,
-		BunkerVisualKit.COL_CARBON_STEEL,
-		8.0
-	)
-	BunkerVisualKit.make_cylinder(
-		cuerpo,
-		"CollarinHazardDron",
-		0.60,
-		0.62,
-		0.14,
-		mat_hazard,
-		Vector3(0.0, 0.02, 0.0),
-		6
-	)
-
-	# Bahía superior de lingotes / núcleo energético dorado
-	_mat_nucleo_dorado = BunkerVisualKit.make_emissive_mat(
-		BunkerVisualKit.COL_VAULT_GOLD,
-		2.4,
-		BunkerVisualKit.COL_VAULT_GOLD,
-		0.88,
-		0.18
-	)
-	BunkerVisualKit.make_cylinder(
-		cuerpo,
-		"NucleoCargaDorada",
-		0.38,
-		0.44,
-		0.34,
-		_mat_nucleo_dorado,
-		Vector3(0.0, 0.34, 0.0),
-		6
-	)
-	for i in range(3):
-		var z_off: float = -0.18 + float(i) * 0.18
-		BunkerVisualKit.make_box(
-			cuerpo,
-			"LingoteDorado_%d" % i,
-			Vector3(0.46, 0.12, 0.12),
-			_mat_nucleo_dorado,
-			Vector3(0.0, 0.54, z_off)
+	if get_node_or_null("AreaPinataDorada") == null:
+		var area_clic = Area3D.new()
+		area_clic.name = "AreaPinataDorada"
+		area_clic.input_ray_pickable = true
+		var col_a = CollisionShape3D.new()
+		var sph_a = SphereShape3D.new()
+		sph_a.radius = 1.1
+		col_a.shape = sph_a
+		col_a.position = Vector3(0, 0.8, 0)
+		area_clic.add_child(col_a)
+		area_clic.input_event.connect(func(_cam, ev, _pos, _norm, _idx):
+			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+				_golpear_pinata_clic()
 		)
-
-	# 4 brazos diagonales de titanio con micro-turbinas inferiores cian
-	var mat_turbina := BunkerVisualKit.make_emissive_mat(
-		BunkerVisualKit.COL_CYAN_ELECTRIC,
-		2.5
-	)
-	for i in range(4):
-		var ang: float = (TAU * 0.25) * float(i) + PI * 0.25
-		var dir := Vector3(cos(ang), 0.0, sin(ang))
-		BunkerVisualKit.make_box(
-			cuerpo,
-			"BrazoDron_%d" % i,
-			Vector3(0.14, 0.10, 0.42),
-			BunkerVisualKit.get_titanium_mat(),
-			dir * 0.56 + Vector3(0.0, -0.05, 0.0),
-			Vector3(0.0, -rad_to_deg(ang) + 90.0, 0.0)
-		)
-		BunkerVisualKit.make_cylinder(
-			cuerpo,
-			"CarcasaTurbina_%d" % i,
-			0.16,
-			0.18,
-			0.20,
-			BunkerVisualKit.get_armor_grey_mat(),
-			dir * 0.72 + Vector3(0.0, -0.10, 0.0),
-			10
-		)
-		BunkerVisualKit.make_cylinder(
-			cuerpo,
-			"ToberaCian_%d" % i,
-			0.12,
-			0.14,
-			0.08,
-			mat_turbina,
-			dir * 0.72 + Vector3(0.0, -0.22, 0.0),
-			10
-		)
-
-	# Baliza superior giratoria
-	_baliza_superior = BunkerVisualKit.make_torus(
-		cuerpo,
-		"BalizaSuperior",
-		0.22,
-		0.28,
-		BunkerVisualKit.make_emissive_mat(BunkerVisualKit.COL_VAULT_GOLD, 2.2),
-		Vector3(0.0, 0.68, 0.0)
-	)
-
-	var area_clic = Area3D.new()
-	area_clic.name = "AreaPinataDorada"
-	area_clic.input_ray_pickable = true
-	var col_a = CollisionShape3D.new()
-	var sph_a = SphereShape3D.new()
-	sph_a.radius = 0.98
-	col_a.shape = sph_a
-	col_a.position = Vector3(0, 0.8, 0)
-	area_clic.add_child(col_a)
-	area_clic.input_event.connect(func(_cam, ev, _pos, _norm, _idx):
-		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			_golpear_pinata_clic()
-	)
-	add_child(area_clic)
+		add_child(area_clic)
 
 func _process(delta: float) -> void:
 	if muerto:
@@ -170,9 +75,13 @@ func _calcular_velocidad_ia(delta: float) -> Vector3:
 	if dir_huida.length_squared() < 0.01:
 		dir_huida = Vector3.FORWARD
 	dir_huida = dir_huida.normalized()
-	# Si se acerca al borde de la arena, girar 90 grados para no acorralarse solo
-	if absf(global_position.x) > 21.0 or absf(global_position.z) > 21.0:
-		dir_huida = dir_huida.rotated(Vector3.UP, deg_to_rad(105.0))
+	# Evitar quedar atrapado en muros del dodecágono girando tangencialmente por la pasarela
+	if ArenaColiseo.apotema_en_pos(global_position.x, global_position.z) > ArenaColiseo.APOTEMA_EXTERIOR - 3.5:
+		var inward: Vector3 = ArenaColiseo.obtener_normal_pared_cercana(global_position)
+		var tang: Vector3 = Vector3(-inward.z, 0.0, inward.x).normalized()
+		if dir_huida.dot(tang) < 0.0:
+			tang = -tang
+		dir_huida = (tang * 0.72 + inward * 0.28).normalized()
 	return dir_huida * rapidez
 
 func _golpear_pinata_clic():

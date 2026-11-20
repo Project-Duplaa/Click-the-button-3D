@@ -6,6 +6,8 @@ extends Area3D
 ## Al desbloquearse transmuta en esmeralda radiante y activa el Obelisco del Abismo Carmesí (+5.5m)
 ## para que el jugador elija entre ascender triunfante o entrar en Modo Abismo Infinito (x4 Recompensas).
 
+const ArenaColiseo = preload("res://arena_coliseo.gd")
+
 @export var portal_abierto: bool = false
 
 var _label_info: Label3D = null
@@ -18,6 +20,65 @@ func _ready():
 	body_entered.connect(_al_entrar)
 	_configurar_componentes_visuales()
 	_actualizar_estado_visual()
+	call_deferred("_reubicar_salida_aleatoria_run")
+
+func _reubicar_salida_aleatoria_run() -> void:
+	ArenaColiseo._asegurar_cache()
+	var rng: RandomNumberGenerator = ArenaColiseo._obtener_rng_run(self)
+	var caras_validas: Array[int] = [0, 1, 2, 3, 9, 10, 11]
+	var elegido := Vector3.ZERO
+	var rad_dir := Vector3.FORWARD
+	var tang_dir := Vector3.RIGHT
+
+	for _intento in range(32):
+		var idx_k: int = int(caras_validas[int(rng.randi() % caras_validas.size())])
+		var theta: float = float(idx_k) * (TAU / float(ArenaColiseo.NUM_LADOS))
+		var n := Vector2(sin(theta), -cos(theta))
+		var t := Vector2(cos(theta), sin(theta))
+		var r_wall: float = ArenaColiseo.APOTEMA_EXTERIOR - 3.6
+		var lat: float = rng.randf_range(-6.0, 6.0)
+		var cand := Vector3(n.x * r_wall + t.x * lat, 0.0, n.y * r_wall + t.y * lat)
+		if not ArenaColiseo.esta_dentro(cand, 2.4):
+			continue
+		if ArenaColiseo.esta_en_pendiente(cand.x, cand.z, 1.0):
+			continue
+		if not ArenaColiseo.punto_libre_de_obstaculos(cand, 3.2):
+			continue
+		elegido = ArenaColiseo.clamping_y_ajustar_a_suelo(cand, 2.4, 0.0)
+		rad_dir = Vector3(n.x, 0.0, n.y).normalized()
+		tang_dir = Vector3(t.x, 0.0, t.y).normalized()
+		break
+
+	if elegido == Vector3.ZERO:
+		var excl_fb: Array[Vector2] = [Vector2(0.0, 0.0)]
+		elegido = ArenaColiseo.punto_seguro_con_exclusiones(ArenaColiseo.APOTEMA_FOSO + 2.5, ArenaColiseo.APOTEMA_EXTERIOR - 3.0, excl_fb, 12.0, rng, 0.0, false, false)
+		rad_dir = Vector3(elegido.x, 0.0, elegido.z).normalized()
+		if rad_dir.length_squared() < 0.01:
+			rad_dir = Vector3.FORWARD
+		tang_dir = Vector3(-rad_dir.z, 0.0, rad_dir.x)
+
+	global_position = elegido
+	rotation.y = atan2(-elegido.x, -elegido.z)
+
+	var parent_node: Node = get_parent()
+	if parent_node != null:
+		var deco: Node = parent_node.get_node_or_null("DecoracionesArena")
+		if deco != null:
+			var bl: Node3D = deco.get_node_or_null("Salida_BarreraL") as Node3D
+			var br: Node3D = deco.get_node_or_null("Salida_BarreraR") as Node3D
+			var sc: Node3D = deco.get_node_or_null("Salida_Caja") as Node3D
+			if bl != null:
+				var p_bl: Vector3 = ArenaColiseo.clamping_y_ajustar_a_suelo(elegido - tang_dir * 2.3 + rad_dir * 0.4, 2.0, 0.0)
+				bl.global_position = p_bl
+				bl.rotation.y = atan2(-p_bl.x, -p_bl.z) - 0.25
+			if br != null:
+				var p_br: Vector3 = ArenaColiseo.clamping_y_ajustar_a_suelo(elegido + tang_dir * 2.3 + rad_dir * 0.4, 2.0, 0.0)
+				br.global_position = p_br
+				br.rotation.y = atan2(-p_br.x, -p_br.z) + 0.25
+			if sc != null:
+				var p_sc: Vector3 = ArenaColiseo.clamping_y_ajustar_a_suelo(elegido + tang_dir * 3.1 - rad_dir * 0.6, 2.0, 0.0)
+				sc.global_position = p_sc
+				sc.rotation.y = atan2(-p_sc.x, -p_sc.z) + 0.5
 
 func _configurar_componentes_visuales():
 	_mesh_portal = get_node_or_null("MeshInstance3D")
@@ -92,7 +153,7 @@ func _activar_obelisco_abismo():
 	_obelisco_abismo = Area3D.new()
 	_obelisco_abismo.name = "ObeliscoAbismoCarmesi"
 	get_parent().add_child(_obelisco_abismo)
-	_obelisco_abismo.global_position = global_position + Vector3(5.5, 0.0, 0.0)
+	_obelisco_abismo.global_position = ArenaColiseo.punto_aleatorio(11.0, 20.0, ArenaColiseo._obtener_rng_run(self), 0.0)
 
 	var col = CollisionShape3D.new()
 	var box_col = BoxShape3D.new()

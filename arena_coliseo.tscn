@@ -20,6 +20,12 @@
 [ext_resource type="PackedScene" uid="uid://bd83eiixt0i5f" path="res://assets/modelos/prop_acid_puddle.glb" id="18_acid"]
 [ext_resource type="PackedScene" uid="uid://33hqq7tpi7vp" path="res://assets/modelos/prop_cable_ramp.glb" id="19_cable"]
 [ext_resource type="PackedScene" uid="uid://dv6x70fnfl6jh" path="res://assets/modelos/prop_wall_transformer.glb" id="20_transformer"]
+[ext_resource type="Script" path="res://arena_coliseo.gd" id="21_arena_script"]
+[ext_resource type="Script" path="res://ambiente_industrial_pbr.gd" id="22_ambiente"]
+[ext_resource type="Shader" path="res://shaders/industrial_steel_floor.gdshader" id="23_shader_floor"]
+[ext_resource type="Texture2D" path="res://assets/texturas_pbr/floor_micro_normal.png" id="24_tex_micro_n"]
+[ext_resource type="Texture2D" path="res://assets/texturas_pbr/grate_industrial_normal.png" id="25_tex_grate_n"]
+[ext_resource type="Texture2D" path="res://assets/texturas_pbr/grate_industrial_orm.png" id="26_tex_grate_orm"]
 
 [sub_resource type="StandardMaterial3D" id="MatArenaPiso"]
 albedo_color = Color(0.72, 0.75, 0.8, 1)
@@ -38,8 +44,18 @@ albedo_color = Color(0.12, 0.14, 0.17, 1)
 metallic = 0.4
 roughness = 0.6
 
+[sub_resource type="ShaderMaterial" id="ShaderMatPiso"]
+render_priority = 0
+shader = ExtResource("23_shader_floor")
+shader_parameter/micro_normal_tex = ExtResource("24_tex_micro_n")
+shader_parameter/grate_normal_tex = ExtResource("25_tex_grate_n")
+shader_parameter/grate_orm_tex = ExtResource("26_tex_grate_orm")
+shader_parameter/plate_size = 4.0
+shader_parameter/micro_uv_scale = 0.38
+shader_parameter/normal_strength = 1.15
+
 [sub_resource type="PlaneMesh" id="MeshPiso"]
-material = SubResource("MatArenaPiso")
+material = SubResource("ShaderMatPiso")
 size = Vector2(64, 64)
 
 [sub_resource type="BoxShape3D" id="ColPiso"]
@@ -92,6 +108,7 @@ material = SubResource("MatCornisaTecho")
 size = Vector3(72, 2.2, 1.6)
 
 [node name="ArenaColiseo" type="Node3D"]
+script = ExtResource("21_arena_script")
 
 [node name="Piso" type="StaticBody3D" parent="."]
 
@@ -117,10 +134,10 @@ shape = SubResource("ColNucleoCentral")
 
 [node name="LuzRadioactivaCentral" type="OmniLight3D" parent="NucleoBioEstatico"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 0)
-light_color = Color(0.15, 0.95, 0.35, 1)
-light_energy = 3.2
+light_color = Color(0, 0.9, 1, 1)
+light_energy = 3.8
 shadow_enabled = false
-omni_range = 12.0
+omni_range = 14.5
 omni_attenuation = 1.15
 
 [node name="AnilloRejillas" type="Node3D" parent="."]
@@ -1001,3 +1018,6 @@ omni_range = 4.0
 
 [node name="SE_Lockers" parent="AmbientacionIntermedia" instance=ExtResource("16_lockers")]
 transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, 15.5, 0, 9.5)
+
+[node name="AmbienteIndustrialPBR" type="Node3D" parent="."]
+script = ExtResource("22_ambiente")

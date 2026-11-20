@@ -5,6 +5,7 @@ extends Node
 ## Conecta la XP ganada directamente con pj.ganar_xp() para asegurar la subida de nivel.
 
 const AudioManager = preload("res://audio_manager.gd")
+const ArenaColiseo = preload("res://arena_coliseo.gd")
 const AnomaliaEscena = preload("res://anomalia_click.tscn")
 
 @export var intervalo_min: float = 12.0
@@ -66,9 +67,7 @@ func _intentar_spawn_anomalia():
 		return
 		
 	var anomalia = AnomaliaEscena.instantiate()
-	var rx = randf_range(-22.0, 22.0)
-	var rz = randf_range(-22.0, 22.0)
-	var pos = Vector3(rx, 0.0, rz)
+	var pos: Vector3 = ArenaColiseo.punto_aleatorio(10.0, 48.0, null, 0.5)
 	
 	get_parent().add_child(anomalia)
 	anomalia.global_position = pos

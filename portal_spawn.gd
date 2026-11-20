@@ -8,6 +8,7 @@ extends Node3D
 # ==============================================================================
 
 const AudioManager = preload("res://audio_manager.gd")
+const ArenaColiseo = preload("res://arena_coliseo.gd")
 
 signal enemigo_spawneado(enemigo: Node3D)
 
@@ -63,6 +64,7 @@ func preparar_spawn(escena: PackedScene, vida_adicional: float = 0.0, jefe: bool
 func _ready():
 	add_to_group("portal_spawn")
 	_aplicar_color()
+	global_position = ArenaColiseo.clamping_y_ajustar_a_suelo(global_position, 1.5, 0.0)
 	
 	# Inicia pequeño y hace pop elástico
 	scale = Vector3(0.01, 0.01, 0.01)
@@ -146,10 +148,13 @@ func _ejecutar_spawn_enemigo():
 				enemigo.vida_maxima += vida_extra
 				enemigo.vida = enemigo.vida_maxima
 			
-		# Animación de emergencia suave para que emerja de la grieta
-		enemigo.scale = Vector3(0.05, 0.05, 0.05)
-		var t_enemigo = enemigo.create_tween()
-		t_enemigo.tween_property(enemigo, "scale", Vector3.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		# Animación de emergencia suave sobre la malla visual (protege física Jolt del root CharacterBody3D)
+		var mod_visual := enemigo.get_node_or_null("Modelo") as Node3D
+		if mod_visual != null:
+			var esc_orig := mod_visual.scale
+			mod_visual.scale = esc_orig * 0.08
+			var t_enemigo = enemigo.create_tween()
+			t_enemigo.tween_property(mod_visual, "scale", esc_orig, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		
 		emit_signal("enemigo_spawneado", enemigo)
 	

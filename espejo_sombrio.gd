@@ -36,6 +36,7 @@ func _ready() -> void:
 	dano_contacto = 18.0 * mult_dmg
 	rapidez = 4.2 * mult_vel
 
+	_asegurar_componentes()
 	super._ready()
 	add_to_group("jefes")
 	add_to_group("bosses")
@@ -54,6 +55,25 @@ func _ready() -> void:
 		add_child(_lbl_hp)
 	_actualizar_label_hp()
 
+func _asegurar_componentes() -> void:
+	if get_node_or_null("CollisionShape3D") == null:
+		var col = CollisionShape3D.new()
+		col.name = "CollisionShape3D"
+		var cap = CapsuleShape3D.new()
+		cap.radius = 0.55
+		cap.height = 2.4
+		col.shape = cap
+		col.position = Vector3(0.0, 1.2, 0.0)
+		add_child(col)
+
+	var modelo = get_node_or_null("Modelo")
+	if modelo == null:
+		var escena_mod = load("res://assets/modelos/jefe_espejo_sombrio.glb") as PackedScene
+		if escena_mod != null:
+			modelo = escena_mod.instantiate()
+			modelo.name = "Modelo"
+			add_child(modelo)
+
 func _actualizar_label_hp() -> void:
 	if _lbl_hp != null:
 		_lbl_hp.text = "🪞 EL ESPEJO SOMBRÍO\n[%d / %d HP]" % [maxi(0, int(ceil(vida))), int(ceil(vida_maxima))]
@@ -62,11 +82,11 @@ func _calcular_velocidad_ia(delta: float) -> Vector3:
 	if jugador == null or not is_instance_valid(jugador):
 		return Vector3.ZERO
 
-	var dir = jugador.global_position - global_position
-	dir.y = 0.0
-	var dist = dir.length()
-	if dist > 0.05:
-		dir /= dist
+	var dif_xz := jugador.global_position - global_position
+	dif_xz.y = 0.0
+	var dist := dif_xz.length()
+	var dir: Vector3 = ArenaColiseo.calcular_direccion_persecucion(self, jugador.global_position, _nav_estado, delta)
+	if dir.length_squared() > 0.0025:
 		rotation.y = lerp_angle(rotation.y, atan2(dir.x, dir.z), delta * 8.0)
 
 	_reloj_dash -= delta
@@ -81,7 +101,9 @@ func _calcular_velocidad_ia(delta: float) -> Vector3:
 	_reloj_descarga -= delta
 	if _reloj_descarga <= 0.0:
 		_reloj_descarga = 2.85
-		_disparar_rafaga_espejo(dir)
+		var origen_ref := global_position + Vector3(0.0, 1.35, 0.0)
+		var dir_3d := ((jugador.global_position + Vector3(0.0, 0.9, 0.0)) - origen_ref).normalized()
+		_disparar_rafaga_espejo(dir_3d)
 
 	if _dash_timer > 0.0:
 		_dash_timer = maxf(0.0, _dash_timer - delta)

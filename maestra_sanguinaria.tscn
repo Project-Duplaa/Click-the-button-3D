@@ -1,7 +1,7 @@
 [gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://maestra_sanguinaria.gd" id="1_maestra"]
-[ext_resource type="PackedScene" uid="uid://dblr6mpl25scn" path="res://assets/modelos/simbionte_espinoso.glb" id="2_modelo"]
+[ext_resource type="PackedScene" uid="uid://dpas8ljx6dwab" path="res://assets/modelos/jefe_maestra_sanguinaria.glb" id="2_modelo"]
 
 [sub_resource type="CapsuleShape3D" id="CapsulaMaestra"]
 radius = 0.7
@@ -15,10 +15,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 0)
 shape = SubResource("CapsulaMaestra")
 
 [node name="Modelo" parent="." instance=ExtResource("2_modelo")]
-transform = Transform3D(1.4, 0, 0, 0, 1.4, 0, 0, 0, 1.4, 0, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 
 [node name="LuzMaestra" type="OmniLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 0)
-light_color = Color(0.85, 0.15, 0.55, 1)
-light_energy = 1.15
-omni_range = 5.0
+light_color = Color(0.95, 0.1, 0.25, 1)
+light_energy = 1.5
+omni_range = 6.0

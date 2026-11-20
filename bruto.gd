@@ -1,5 +1,7 @@
 extends CharacterBody3D
 
+const ArenaColiseo = preload("res://arena_coliseo.gd")
+
 @export var rapidez: float = 1.5
 @export var vida_maxima: float = 220.0
 @export var dano_ataque: float = 36.0
@@ -20,6 +22,7 @@ var knockback_vel: Vector3 = Vector3.ZERO
 var resistencia_knockback: float = 0.60
 var _stun_timer: float = 0.0
 var marca_conductiva_timer: float = 0.0
+var _nav_estado: Dictionary = {}
 
 @onready var anim = $Modelo/AnimationPlayer if has_node("Modelo/AnimationPlayer") else null
 @onready var modelo = $Modelo if has_node("Modelo") else null
@@ -27,6 +30,7 @@ var marca_conductiva_timer: float = 0.0
 func _ready():
 	add_to_group("enemies")
 	add_to_group("enemigos")
+	ArenaColiseo.configurar_cuerpo_terreno(self, false, true)
 	vida = vida_maxima
 	if modelo != null:
 		_escala_base = modelo.scale
@@ -80,17 +84,17 @@ func _physics_process(delta):
 			_anim_ctrl.reproducir_accion("attack-melee-right", 2, 0.08, 0.9)
 			_golpe_contundente()
 	else:
-		ir_a(jugador.global_position)
+		ir_a(jugador.global_position, delta)
 
 	velocity.x += knockback_vel.x
 	velocity.z += knockback_vel.z
+	if is_on_floor():
+		velocity.y = minf(velocity.y, 0.0)
 	move_and_slide()
 
-func ir_a(destino: Vector3):
-	var hacia = destino - global_position
-	hacia.y = 0.0
-	if hacia.length_squared() > 0.01:
-		var dir = hacia.normalized()
+func ir_a(destino: Vector3, delta: float = 0.016):
+	var dir = ArenaColiseo.calcular_direccion_persecucion(self, destino, _nav_estado, delta)
+	if dir.length_squared() > 0.0025:
 		var mult_colapso = 1.0
 		var b_movil = get_tree().get_first_node_in_group("boton_movil")
 		if b_movil != null and "en_colapso" in b_movil and b_movil.en_colapso:

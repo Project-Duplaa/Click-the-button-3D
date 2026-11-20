@@ -7,6 +7,7 @@ extends CharacterBody3D
 signal parca_derrotada
 
 const AudioManager = preload("res://audio_manager.gd")
+const ArenaColiseo = preload("res://arena_coliseo.gd")
 
 @export var rapidez: float = 6.5
 @export var vida_maxima: float = 42000.0
@@ -55,6 +56,7 @@ var _luz_escudo: OmniLight3D = null
 
 var _escala_base: Vector3 = Vector3.ONE
 var _anim_ctrl: AnimadorEntidad = AnimadorEntidad.new()
+var _nav_estado: Dictionary = {}
 
 # Controlador de 3 Fases y Stagger + Peligros Fase 2 (Cuchillas Espectrales Orbitales)
 var _fase_ctrl: JefeFaseController = null
@@ -73,6 +75,7 @@ func _ready():
 	add_to_group("enemies")
 	add_to_group("jefes")
 	add_to_group("bosses")
+	ArenaColiseo.configurar_cuerpo_terreno(self, true, true)
 	vida = vida_maxima
 	if modelo != null:
 		_escala_base = modelo.scale
@@ -126,6 +129,10 @@ func _calcular_clics_necesarios() -> int:
 	return clics_base_escudo + int(pct_perdido * 3.99)
 
 func _crear_escudo_visual():
+	if modelo != null and (modelo.has_meta(&"modelo_oficial_custom") or (modelo.scene_file_path != null and modelo.scene_file_path.contains("parca"))):
+		# El modelo oficial 3D ya integra la Barrera Espectral Dinámica, runas y luces
+		return
+
 	_escudo_mesh = Node3D.new()
 	_escudo_mesh.name = "EscudoParcaVisual"
 
@@ -301,15 +308,19 @@ func _physics_process(delta):
 		elif dist <= radio_golpe and _reloj_ataque <= 0.001:
 			_iniciar_corte_guadana(tiempo_actual_telegraph)
 		else:
-			var dir_mov = dir.normalized()
+			var dir_mov = ArenaColiseo.calcular_direccion_persecucion(self, jugador.global_position, _nav_estado, delta)
 			velocity.x = dir_mov.x * vel_actual + _knockback_velocity.x
 			velocity.z = dir_mov.z * vel_actual + _knockback_velocity.z
+			if dir_mov.length_squared() > 0.01:
+				look_at(global_position + dir_mov, Vector3.UP)
 			_anim_ctrl.actualizar_locomocion(Vector2(velocity.x, velocity.z).length(), _en_enrage, is_on_floor(), vel_actual)
 	else:
 		velocity.x = _knockback_velocity.x
 		velocity.z = _knockback_velocity.z
 		_anim_ctrl.actualizar_locomocion(0.0, false, is_on_floor(), rapidez)
 
+	if is_on_floor():
+		velocity.y = minf(velocity.y, 0.0)
 	move_and_slide()
 
 func _iniciar_carga_sombria():
@@ -412,6 +423,8 @@ func _disparar_ondas_guadana():
 	for ang in angulos:
 		var dir_rot = dir_base.rotated(Vector3.UP, deg_to_rad(ang))
 		var p = escena_proyectil.instantiate()
+		if "seguir_terreno" in p:
+			p.seguir_terreno = true
 		get_parent().add_child(p)
 		var pos_inicio = global_position + Vector3(0, 1.4, 0) + dir_rot * 1.5
 		p.iniciar(pos_inicio, dir_rot, 22.0, 6.2)
@@ -529,7 +542,7 @@ func _invocar_sombras_guardianas():
 		var e = escena_espectro.instantiate()
 		get_parent().add_child(e)
 		var offset = Vector3(randf_range(-4.0, 4.0), 0.0, randf_range(-4.0, 4.0))
-		e.global_position = global_position + offset
+		e.global_position = ArenaColiseo.clamping_y_ajustar_a_suelo(global_position + offset, 1.5, 0.0)
 		if "rapidez" in e:
 			e.rapidez *= 1.15
 

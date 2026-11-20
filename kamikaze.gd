@@ -5,6 +5,7 @@ extends CharacterBody3D
 # Incluye física real de Knockback acumulativo (_knockback_velocity) para poder repelerlo con ondas de clic.
 
 const AudioManager = preload("res://audio_manager.gd")
+const ArenaColiseo = preload("res://arena_coliseo.gd")
 
 @export var rapidez: float = 3.2
 @export var vida_maxima: float = 16.0
@@ -24,6 +25,7 @@ var _knockback_velocity: Vector3 = Vector3.ZERO
 
 var _escala_base: Vector3 = Vector3.ONE
 var _anim_ctrl: AnimadorEntidad = AnimadorEntidad.new()
+var _nav_estado: Dictionary = {}
 
 @onready var modelo: Node3D = $Modelo if has_node("Modelo") else null
 @onready var nucleo_fuego: MeshInstance3D = $NucleoFuego
@@ -34,6 +36,7 @@ func _ready():
 	add_to_group("enemigos")
 	add_to_group("enemies")
 	add_to_group("kamikazes")
+	ArenaColiseo.configurar_cuerpo_terreno(self, true, true)
 	vida = vida_maxima
 	if modelo != null:
 		_escala_base = modelo.scale
@@ -96,13 +99,15 @@ func _physics_process(delta):
 		if dist <= 2.2:
 			_iniciar_mecha()
 		else:
-			var dir = dif.normalized()
+			var dir = ArenaColiseo.calcular_direccion_persecucion(self, pos_jugador, _nav_estado, delta)
 			velocity.x = dir.x * rapidez + _knockback_velocity.x
 			velocity.z = dir.z * rapidez + _knockback_velocity.z
-			if dif.length_squared() > 0.01:
+			if dir.length_squared() > 0.01:
 				basis = Basis.looking_at(dir)
 			_anim_ctrl.actualizar_locomocion(Vector2(velocity.x, velocity.z).length(), true, is_on_floor(), rapidez)
 
+	if is_on_floor():
+		velocity.y = minf(velocity.y, 0.0)
 	move_and_slide()
 
 func _iniciar_mecha():

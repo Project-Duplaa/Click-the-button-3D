@@ -12,6 +12,7 @@ class_name EventosColiseoManager
 ## 4. Sistema Némesis: Recompensa de venganza por el enemigo que eliminó al jugador en la run previa.
 
 const AudioManager = preload("res://audio_manager.gd")
+const ArenaColiseo = preload("res://arena_coliseo.gd")
 const BunkerVisualKit = preload("res://bunker_visual_kit.gd")
 const MetaprogresoManager = preload("res://metaprogreso_manager.gd")
 const CatalogoBendiciones = preload("res://catalogo_bendiciones.gd")
@@ -86,8 +87,6 @@ func _capturar_referencias_escena() -> void:
 		_luz_base_color = _luz_dir.light_color
 		_luz_base_energy = _luz_dir.light_energy
 
-	# Spawnea el Monolito secreto al norte de la arena
-	_crear_monolito_campeon_caido()
 	_conectar_spawner_jefes()
 
 func _conectar_spawner_jefes() -> void:
@@ -163,6 +162,8 @@ func _despachar_eventos_diferidos() -> void:
 		_nemesis_pendiente = false
 		_comprobar_y_spawnear_nemesis()
 
+=======
+>>>>>>> origin/main
 func _verificar_tormento_inicial() -> void:
 	var nivel_tormento: int = 0
 	var logros = get_tree().get_first_node_in_group("logros_manager")
@@ -176,8 +177,8 @@ func _verificar_tormento_inicial() -> void:
 		establecer_mutador("escarcha")
 
 func _process(delta: float) -> void:
+	var spawner = get_tree().get_first_node_in_group("oleadas_spawner")
 	if not _partida_iniciada:
-		var spawner = get_tree().get_first_node_in_group("oleadas_spawner")
 		if spawner != null and "partida_iniciada" in spawner and spawner.partida_iniciada:
 			_partida_iniciada = true
 			_conectar_spawner_jefes()
@@ -198,6 +199,12 @@ func _process(delta: float) -> void:
 		_reloj_gracia_post_jefe = GRACIA_POST_JEFE_EVENTOS
 
 	_tiempo_transcurrido += delta
+
+	# Despliegue tardío del Monolito del Campeón Caído (Oleada 4+ o 90s)
+	if not _monolito_spawned:
+		var ol_actual: int = int(spawner.oleada_actual) if (spawner != null and "oleada_actual" in spawner) else 1
+		if _tiempo_transcurrido >= 90.0 or ol_actual >= 4:
+			_crear_monolito_campeon_caido()
 
 	# 1. Progresión cronológica de Mutadores (diferidos durante duelos de jefe o gracia post-jefe)
 	var bloquear_disruptivos: bool = jefe_activo or _reloj_gracia_post_jefe > 0.0
@@ -334,12 +341,11 @@ func _aplicar_paleta_entorno(bg: Color, ambient: Color, dir_light: Color, dir_en
 		tw_l.tween_property(_luz_dir, "light_energy", dir_energy, 2.0)
 
 func _spawnea_cristales_escarcha() -> void:
-	var posiciones := [
-		Vector3(-12.0, 0.0, -8.0),
-		Vector3(12.0, 0.0, -8.0),
-		Vector3(0.0, 0.0, 10.0)
-	]
-	for pos in posiciones:
+	var rng: RandomNumberGenerator = ArenaColiseo._obtener_rng_run(self)
+	var excl: Array[Vector2] = [Vector2(0.0, 0.0)]
+	for _i in range(5):
+		var pos: Vector3 = ArenaColiseo.punto_seguro_con_exclusiones(14.0, 45.0, excl, 14.0, rng, 0.0, false, true)
+		excl.append(Vector2(pos.x, pos.z))
 		var cristal = _crear_cristal_refraccion(pos)
 		_cristales_escarcha.append(cristal)
 
@@ -353,7 +359,8 @@ func _crear_cristal_refraccion(pos: Vector3) -> Node3D:
 			cristal.configurar_cristal(self, 35.0)
 	get_parent().add_child(cristal)
 	cristal.add_to_group("rompibles")
-	cristal.global_position = pos
+	cristal.collision_layer = 1 | 8
+	cristal.global_position = ArenaColiseo.clamping_y_ajustar_a_suelo(pos, 1.5, 0.0)
 
 	var col := CollisionShape3D.new()
 	var cyl := CylinderShape3D.new()
@@ -419,10 +426,12 @@ func _erupcionar_geyser_solar() -> void:
 	var pj = get_tree().get_first_node_in_group("jugador")
 	if pj == null:
 		pj = get_tree().get_first_node_in_group("player")
-	var centro = pj.global_position if (pj != null and is_instance_valid(pj)) else Vector3.ZERO
-	var pos = centro + Vector3(randf_range(-8.0, 8.0), 0.05, randf_range(-8.0, 8.0))
-	pos.x = clampf(pos.x, -22.0, 22.0)
-	pos.z = clampf(pos.z, -22.0, 22.0)
+	var pos: Vector3
+	if pj != null and is_instance_valid(pj):
+		var centro: Vector3 = pj.global_position
+		pos = ArenaColiseo.clamping_y_ajustar_a_suelo(centro + Vector3(randf_range(-11.0, 11.0), 0.0, randf_range(-11.0, 11.0)), 2.4, 0.04)
+	else:
+		pos = ArenaColiseo.punto_aleatorio(8.0, 45.0, null, 0.04)
 
 	# 1. Anillo de advertencia telegrafiada
 	var anillo_aviso = BunkerVisualKit.create_hazard_ground_ring(2.2, Color(1.0, 0.45, 0.1), Color(1.0, 0.15, 0.1), 0.75, 0.95, 0.4)
@@ -488,7 +497,17 @@ func invocar_mercader_vacio(forzar_debug: bool = false) -> void:
 	_nodo_mercader = Node3D.new()
 	_nodo_mercader.name = "MercaderDelVacio"
 	arena.add_child(_nodo_mercader)
-	_nodo_mercader.global_position = Vector3(0.0, 0.0, -6.0)
+	var pj_m: Node3D = get_tree().get_first_node_in_group("jugador") as Node3D
+	if pj_m == null:
+		pj_m = get_tree().get_first_node_in_group("player") as Node3D
+	var rng_m: RandomNumberGenerator = ArenaColiseo._obtener_rng_run(self)
+	var pos_m: Vector3 = ArenaColiseo.punto_aleatorio(10.0, 18.0, rng_m, 0.0)
+	if pj_m != null and is_instance_valid(pj_m):
+		var a_m: float = rng_m.randf() * TAU
+		var d_m: float = rng_m.randf_range(10.0, 16.0)
+		var cand_m := pj_m.global_position + Vector3(cos(a_m) * d_m, 0.0, sin(a_m) * d_m)
+		pos_m = ArenaColiseo.clamping_y_ajustar_a_suelo(cand_m, 2.4, 0.0)
+	_nodo_mercader.global_position = pos_m
 
 	var altar_mesh = MeshInstance3D.new()
 	var box = BoxMesh.new()
@@ -650,9 +669,7 @@ func activar_monolito_evento() -> void:
 		if pj == null:
 			pj = get_tree().get_first_node_in_group("player")
 		if pj != null and is_instance_valid(pj):
-			var destino: Vector3 = pj.global_position + Vector3(0.0, 0.0, -6.5)
-			destino.x = clampf(destino.x, -20.0, 20.0)
-			destino.z = clampf(destino.z, -20.0, 20.0)
+			var destino: Vector3 = ArenaColiseo.clamping_y_ajustar_a_suelo(pj.global_position + Vector3(0.0, 0.0, -6.5), 2.5, 0.0)
 			_nodo_monolito.global_position = destino
 		BunkerVisualKit.spawn_shockwave_ring(get_parent(), _nodo_monolito.global_position, 0.8, 5.0, Color(0.75, 0.25, 1.0), 0.45)
 		_anunciar_mutador("🗿 MONOLITO DEL CAMPEÓN CAÍDO INVOCADO", "Destrúyelo para liberar al Espejo Sombrío", Color(0.85, 0.45, 1.0))
@@ -675,7 +692,8 @@ func _crear_monolito_campeon_caido() -> void:
 			_nodo_monolito.configurar_monolito(self, 600.0)
 	arena.add_child(_nodo_monolito)
 	_nodo_monolito.add_to_group("rompibles")
-	_nodo_monolito.global_position = Vector3(0.0, 0.0, -17.0)
+	_nodo_monolito.collision_layer = ArenaColiseo.LAYER_MUROS_OBSTACULOS
+	_nodo_monolito.global_position = ArenaColiseo.punto_seguro_con_exclusiones(14.0, 34.0, [Vector2(0.0, 0.0)], 8.0, ArenaColiseo._obtener_rng_run(self), 0.0, false, false)
 
 	var col = CollisionShape3D.new()
 	var box_col = BoxShape3D.new()
@@ -743,13 +761,18 @@ func _spawn_jefe_espejo_sombrio(pos: Vector3) -> void:
 	BunkerVisualKit.emitir_onda_bullet_clear(get_parent(), pos, 34.0)
 	BunkerVisualKit.spawn_shockwave_ring(get_parent(), pos, 1.0, 8.5, Color(0.75, 0.20, 0.95), 0.5)
 
-	var jefe = CharacterBody3D.new()
-	jefe.name = "EspejoSombrio"
-	var scr_esp = load("res://espejo_sombrio.gd")
-	if scr_esp != null:
-		jefe.set_script(scr_esp)
-		if jefe.has_method("configurar_espejo"):
-			jefe.configurar_espejo(self)
+	var escena_espejo = load("res://espejo_sombrio.tscn") as PackedScene
+	var jefe: CharacterBody3D = null
+	if escena_espejo != null:
+		jefe = escena_espejo.instantiate() as CharacterBody3D
+	else:
+		jefe = CharacterBody3D.new()
+		var scr_esp = load("res://espejo_sombrio.gd")
+		if scr_esp != null:
+			jefe.set_script(scr_esp)
+
+	if jefe.has_method("configurar_espejo"):
+		jefe.configurar_espejo(self)
 	get_parent().add_child(jefe)
 	jefe.add_to_group("jefes")
 	jefe.add_to_group("enemigos")
@@ -759,29 +782,6 @@ func _spawn_jefe_espejo_sombrio(pos: Vector3) -> void:
 	jefe.set_meta("tipo_enemigo_id", "espejo_sombrio")
 	jefe.set_meta("vida_maxima", 850.0)
 	jefe.set_meta("vida", 850.0)
-
-	# Instanciar modelo .glb idéntico al jugador con sombreado de obsidiana
-	var escena_modelo = load("res://personaje/player_rookie.glb")
-	if escena_modelo != null:
-		var mod = escena_modelo.instantiate() as Node3D
-		jefe.add_child(mod)
-		mod.scale = Vector3.ONE * 2.6
-		var mat_sombra = StandardMaterial3D.new()
-		mat_sombra.albedo_color = Color(0.06, 0.04, 0.12)
-		mat_sombra.emission_enabled = true
-		mat_sombra.emission = Color(0.68, 0.18, 0.95)
-		mat_sombra.emission_energy_multiplier = 3.2
-		for ch in mod.find_children("*", "MeshInstance3D", true, false):
-			if ch is MeshInstance3D:
-				ch.material_override = mat_sombra
-
-	var col = CollisionShape3D.new()
-	var cap = CapsuleShape3D.new()
-	cap.radius = 0.5
-	cap.height = 2.0
-	col.shape = cap
-	col.position = Vector3(0, 1.0, 0)
-	jefe.add_child(col)
 
 	_anunciar_mutador("💀 ¡EL ESPEJO SOMBRÍO HA SIDO LIBERADO!", "El reflejo maldito del campeón imita tus habilidades", Color(0.85, 0.25, 1.0))
 
@@ -823,7 +823,17 @@ func _comprobar_y_spawnear_nemesis(forzar_debug: bool = false) -> void:
 	if escena != null:
 		var enemigo = escena.instantiate() as CharacterBody3D
 		get_parent().add_child(enemigo)
-		enemigo.global_position = Vector3(randf_range(-15.0, 15.0), 0.0, randf_range(-15.0, 15.0))
+		var pj_n: Node3D = get_tree().get_first_node_in_group("jugador") as Node3D
+		if pj_n == null:
+			pj_n = get_tree().get_first_node_in_group("player") as Node3D
+		var pos_nem: Vector3
+		if pj_n != null and is_instance_valid(pj_n):
+			var a_n: float = randf() * TAU
+			var d_n: float = randf_range(16.0, 26.0)
+			pos_nem = ArenaColiseo.clamping_y_ajustar_a_suelo(pj_n.global_position + Vector3(cos(a_n) * d_n, 0.0, sin(a_n) * d_n), 2.4, 0.0)
+		else:
+			pos_nem = ArenaColiseo.punto_aleatorio(18.0, 40.0, null, 0.0)
+		enemigo.global_position = pos_nem
 		enemigo.scale = Vector3.ONE * 1.55
 
 		var oro_ex: int = int(ceil(float(oro_rob) * 0.50))

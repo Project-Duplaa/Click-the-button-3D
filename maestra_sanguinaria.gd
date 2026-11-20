@@ -7,6 +7,7 @@ extends CharacterBody3D
 signal jefe_derrotado
 
 const AudioManager = preload("res://audio_manager.gd")
+const ArenaColiseo = preload("res://arena_coliseo.gd")
 
 @export var rapidez: float = 4.85
 @export var vida_maxima: float = 10500.0
@@ -39,6 +40,7 @@ var _angulo_cristales: float = 0.0
 
 var _escala_base: Vector3 = Vector3.ONE
 var _anim_ctrl: AnimadorEntidad = AnimadorEntidad.new()
+var _nav_estado: Dictionary = {}
 
 @onready var modelo: Node3D = $Modelo if has_node("Modelo") else null
 @onready var luz_arco: OmniLight3D = $LuzMaestra
@@ -48,6 +50,7 @@ func _ready():
 	add_to_group("enemies")
 	add_to_group("jefes")
 	add_to_group("bosses")
+	ArenaColiseo.configurar_cuerpo_terreno(self, true, true)
 	vida = vida_maxima
 	if modelo != null:
 		_escala_base = modelo.scale
@@ -93,6 +96,7 @@ func _invocar_cristales_escudo():
 		var area = Area3D.new()
 		area.name = "CristalSanguinario_%d" % i
 		area.add_to_group("cristal_jefe")
+		area.collision_layer = 1 | 8
 		area.input_ray_pickable = true
 		var col = CollisionShape3D.new()
 		var sph = SphereShape3D.new()
@@ -195,7 +199,7 @@ func _physics_process(delta):
 			velocity.x = dir_huida.x * vel_actual + _knockback_velocity.x
 			velocity.z = dir_huida.z * vel_actual + _knockback_velocity.z
 		elif dist > (distancia_kiting + 4.0):
-			var dir_acercar = hacia_jugador.normalized()
+			var dir_acercar = ArenaColiseo.calcular_direccion_persecucion(self, jugador.global_position, _nav_estado, delta)
 			velocity.x = dir_acercar.x * (vel_actual * 0.7) + _knockback_velocity.x
 			velocity.z = dir_acercar.z * (vel_actual * 0.7) + _knockback_velocity.z
 		else:
@@ -208,6 +212,8 @@ func _physics_process(delta):
 		velocity.z = _knockback_velocity.z
 		_anim_ctrl.actualizar_locomocion(0.0, false, is_on_floor(), rapidez)
 
+	if is_on_floor():
+		velocity.y = minf(velocity.y, 0.0)
 	move_and_slide()
 
 func _disparar_rafaga(dir_frente: Vector3):
@@ -217,20 +223,26 @@ func _disparar_rafaga(dir_frente: Vector3):
 	if escena_flecha == null:
 		return
 
+	var dir_pitch: Vector3 = dir_frente
+	if is_instance_valid(jugador):
+		var origen_base := global_position + Vector3(0, 1.8, 0)
+		var objetivo_3d := jugador.global_position + Vector3(0, 0.9, 0)
+		if origen_base.distance_squared_to(objetivo_3d) > 0.01:
+			dir_pitch = (objetivo_3d - origen_base).normalized()
+
 	var angulos = [-16.0, 0.0, 16.0]
 	for ang in angulos:
-		var dir_rot = dir_frente.rotated(Vector3.UP, deg_to_rad(ang))
+		var dir_rot = dir_pitch.rotated(Vector3.UP, deg_to_rad(ang))
 		var f = escena_flecha.instantiate()
 		get_parent().add_child(f)
-		var pos_inicio = global_position + Vector3(0, 1.8, 0) + dir_rot * 1.2
+		var pos_inicio = global_position + Vector3(0, 1.8, 0) + Vector3(dir_rot.x, 0.0, dir_rot.z).normalized() * 1.2
 		f.iniciar(pos_inicio, dir_rot, dano_flecha, 7.5)
 
 func _iniciar_lluvia_flechas():
 	_esta_canalizando = true
 	_clics_tormenta = 0
 	_reloj_lluvia = 8.5
-	_pos_lluvia_objetivo = jugador.global_position
-	_pos_lluvia_objetivo.y = 0.05
+	_pos_lluvia_objetivo = ArenaColiseo.clamping_y_ajustar_a_suelo(jugador.global_position, 1.6, 0.05)
 
 	AudioManager.play("alerta_oleada", 1.5, 2.0)
 	_crear_texto_flotante("⚡ ¡PULSA EL NÚCLEO (0/%d) PARA DISIPAR!" % _clics_necesarios_tormenta, true)

@@ -5,6 +5,7 @@ extends Area3D
 ## Compatible con Godot 4.6
 
 const AudioManager = preload("res://audio_manager.gd")
+const ArenaColiseo = preload("res://arena_coliseo.gd")
 
 @export var rapidez: float = 16.0
 @export var dano: float = 15.0
@@ -19,6 +20,7 @@ var _tiempo: float = 0.0
 
 func _ready():
 	add_to_group("proyectil")
+	collision_mask = 2 | 8
 	body_entered.connect(_on_body_entered)
 	area_entered.connect(_on_area_entered)
 	_crear_malla_si_no_existe()
@@ -77,7 +79,7 @@ func iniciar(origen: Vector3, dir: Vector3, dano_in: float, rapidez_in: float = 
 func _physics_process(delta: float):
 	global_position += direccion * rapidez * delta
 	_tiempo += delta
-	if _tiempo >= tiempo_vida:
+	if _tiempo >= tiempo_vida or not ArenaColiseo.esta_dentro(global_position, 0.0) or global_position.y < ArenaColiseo.obtener_altura_suelo(global_position.x, global_position.z) - 0.15:
 		queue_free()
 
 func _on_body_entered(body: Node):
@@ -111,9 +113,8 @@ func _procesar_impacto(target: Node):
 			rebotes_restantes -= 1
 			var nuevo_objetivo = _buscar_siguiente_enemigo(target)
 			if nuevo_objetivo != null:
-				direccion = (nuevo_objetivo.global_position - global_position).normalized()
-				direccion.y = 0.0
-				if direccion.length_squared() > 0.001:
+				direccion = (nuevo_objetivo.global_position + Vector3(0.0, 0.9, 0.0) - global_position).normalized()
+				if direccion.length_squared() > 0.001 and absf(direccion.dot(Vector3.UP)) < 0.999:
 					look_at(global_position + direccion, Vector3.UP)
 				return
 				

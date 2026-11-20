@@ -8,6 +8,7 @@ signal activado(id_altar: int)
 
 const AudioManager = preload("res://audio_manager.gd")
 const Kit = preload("res://bunker_visual_kit.gd")
+const ArenaColiseo = preload("res://arena_coliseo.gd")
 
 const RADIO_PROXIMIDAD: float = 4.5
 const ALTURA_NUCLEO_BASE: float = 2.02
@@ -15,6 +16,7 @@ const ALTURA_NUCLEO_BASE: float = 2.02
 @export var id_altar: int = 1
 @export var nombre_altar: String = "Altar de la Resonancia"
 
+var desbloqueado: bool = true
 var activo: bool = false
 var _reloj_flotacion: float = 0.0
 var _reloj_pulso: float = 0.0
@@ -42,6 +44,7 @@ var _mat_ring_outer: StandardMaterial3D = null
 
 func _ready():
 	add_to_group("altares_runicos")
+	global_position = ArenaColiseo.clamping_y_ajustar_a_suelo(global_position, 1.6, 0.0)
 	input_ray_pickable = true
 	body_entered.connect(_on_body_entered)
 	body_exited.connect(_on_body_exited)
@@ -127,6 +130,8 @@ func _inicializar_visual_bunker() -> void:
 		Kit.apply_tactical_label_style(etiqueta_altar, 28, Color(0.88, 0.92, 0.98))
 
 func _physics_process(delta: float):
+	if not desbloqueado:
+		return
 	_reloj_pulso += delta
 
 	# Verificar proximidad real al jugador (4.5 m)
@@ -134,7 +139,7 @@ func _physics_process(delta: float):
 	if pj == null:
 		pj = get_tree().get_first_node_in_group("jugador") as Node3D
 	if pj != null and is_instance_valid(pj):
-		_jugador_cerca = global_position.distance_to(pj.global_position) <= RADIO_PROXIMIDAD
+		_jugador_cerca = global_position.distance_to(pj.global_position) <= RADIO_PROXIMIDAD and absf(global_position.y - pj.global_position.y) <= 1.25
 	else:
 		_jugador_cerca = false
 
@@ -242,8 +247,36 @@ func _on_mouse_entered() -> void:
 func _on_mouse_exited() -> void:
 	_mouse_hover = false
 
+func establecer_sellado() -> void:
+	desbloqueado = false
+	activo = false
+	visible = false
+	input_ray_pickable = false
+	set_deferred("monitoring", false)
+	set_deferred("monitorable", false)
+
+func desbloquear_terminal() -> void:
+	if desbloqueado:
+		return
+	desbloqueado = true
+	visible = true
+	input_ray_pickable = true
+	set_deferred("monitoring", true)
+	set_deferred("monitorable", true)
+	if pedestal != null:
+		pedestal.scale = Vector3(0.1, 0.1, 0.1)
+		var tw_desp := create_tween()
+		tw_desp.tween_property(pedestal, "scale", Vector3.ONE, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	var fx_parent: Node = get_parent() if get_parent() != null else self
+	Kit.spawn_shockwave_ring(fx_parent, global_position, 0.65, 3.8, Kit.COL_PLASMA_ORANGE, 0.45)
+	AudioManager.play("altar_activado", 1.15)
+	var pool_dano = get_tree().get_first_node_in_group("damage_numbers") if get_tree() != null else null
+	if pool_dano != null and pool_dano.has_method("mostrar_texto"):
+		pool_dano.mostrar_texto(global_position + Vector3(0, 2.2, 0), "⚡ ¡TERMINAL %02d DESPLEGADA!" % id_altar, Kit.COL_PLASMA_ORANGE, 1.2)
+	_actualizar_etiqueta()
+
 func _on_body_entered(body: Node3D):
-	if activo:
+	if not desbloqueado or activo:
 		return
 	if body.is_in_group("player") or body.is_in_group("jugador"):
 		_jugador_cerca = true
@@ -254,13 +287,13 @@ func _on_body_exited(body: Node3D):
 		_jugador_cerca = false
 
 func _on_area_entered(area: Area3D):
-	if activo:
+	if not desbloqueado or activo:
 		return
 	if area.is_in_group("boton_movil"):
 		activar_altar("Paso del Núcleo Móvil")
 
 func _on_input_event(_cam: Camera3D, event: InputEvent, _pos: Vector3, _norm: Vector3, _shape: int):
-	if activo:
+	if not desbloqueado or activo:
 		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		if not _jugador_cerca:
@@ -275,7 +308,7 @@ func _mostrar_aviso_lejos():
 		pool_dano.mostrar_texto(global_position + Vector3(0, 2.0, 0), "¡Acércate al Altar para activarlo!", Color(1.0, 0.4, 0.4), 1.1)
 
 func activar_altar(_motivo: String = ""):
-	if activo:
+	if not desbloqueado or activo:
 		return
 	activo = true
 	_actualizar_etiqueta()

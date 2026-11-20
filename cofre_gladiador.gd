@@ -6,6 +6,7 @@ class_name CofreGladiador
 ## Puede otorgar 1, 3 o 5 recompensas ("¡JACKPOT x5!" al 3% base escalado por suerte).
 
 const ESCENA_DROP = preload("res://drop_item.tscn")
+const ArenaColiseo = preload("res://arena_coliseo.gd")
 
 const STATS_COFRE := [
 	{"id": "dano", "titulo": "⚔️ Filo Mortal"},
@@ -262,7 +263,7 @@ func _soltar_chorro_pickups(cantidad: int) -> void:
 		var ang: float = FortunaManager.rng.randf() * TAU
 		var dist: float = FortunaManager.rng.randf_range(0.8, 2.3)
 		get_parent().add_child(item)
-		item.global_position = global_position + Vector3(cos(ang) * dist, 0.5, sin(ang) * dist)
+		item.global_position = ArenaColiseo.clamping_y_ajustar_a_suelo(global_position + Vector3(cos(ang) * dist, 0.0, sin(ang) * dist), 1.4, 0.45)
 		if item.has_method("iniciar"):
 			var tipo_drop: int = 0 if i % 3 != 0 else 1
 			if i == total_items - 1 and cantidad >= 3:

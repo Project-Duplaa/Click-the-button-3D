@@ -8,21 +8,22 @@ height = 3.8
 radius = 0.6
 
 [sub_resource type="StandardMaterial3D" id="MatFuegoSiren"]
-albedo_color = Color(1, 0.12, 0.12, 1)
+albedo_color = Color(1, 0.72, 0.25, 1)
 emission_enabled = true
-emission = Color(1, 0.1, 0.1, 1)
-emission_energy_multiplier = 5.0
+emission = Color(1, 0.52, 0.1, 1)
+emission_energy_multiplier = 4.2
 
 [sub_resource type="SphereMesh" id="MeshFuegoSiren"]
 material = SubResource("MatFuegoSiren")
-radius = 0.18
-height = 0.36
+radius = 0.2
+height = 0.38
 
 [node name="PilarAntorcha" type="StaticBody3D"]
+collision_layer = 3
 script = ExtResource("1_antorcha")
-energia_base = 2.0
-rango_luz = 7.5
-color_fuego = Color(1, 0.12, 0.12, 1)
+energia_base = 2.45
+rango_luz = 9.2
+color_fuego = Color(1, 0.56, 0.14, 1)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.9, 0)
@@ -31,12 +32,12 @@ shape = SubResource("ColisionPilar")
 [node name="ModeloBeacon" parent="." instance=ExtResource("2_beacon")]
 
 [node name="OmniLight3D" type="OmniLight3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 0)
-light_color = Color(1, 0.12, 0.12, 1)
-light_energy = 2.0
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.55, 0)
+light_color = Color(1, 0.56, 0.14, 1)
+light_energy = 2.45
 shadow_enabled = false
-omni_range = 7.5
-omni_attenuation = 1.1
+omni_range = 9.2
+omni_attenuation = 1.05
 
 [node name="FuegoMesh" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.42, 0)

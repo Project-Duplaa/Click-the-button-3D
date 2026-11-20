@@ -226,6 +226,10 @@ static func spawn_shockwave_ring(
 
 	parent.add_child(ring, true)
 	var floor_y := pos.y + 0.035 if absf(pos.y) < 0.02 else pos.y
+	if parent.is_inside_tree() and parent.get_tree() != null:
+		var arena := parent.get_tree().get_first_node_in_group("arena_coliseo")
+		if arena != null and arena.has_method("altura_suelo_en"):
+			floor_y = float(arena.call("altura_suelo_en", pos.x, pos.z)) + 0.035
 	ring.global_position = Vector3(pos.x, floor_y, pos.z)
 	var start_r := maxf(radio_inicio, 0.05)
 	var end_r := maxf(radio_fin, start_r + 0.1)

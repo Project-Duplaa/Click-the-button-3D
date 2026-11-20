@@ -7,6 +7,7 @@ extends CharacterBody3D
 signal jefe_derrotado
 
 const AudioManager = preload("res://audio_manager.gd")
+const ArenaColiseo = preload("res://arena_coliseo.gd")
 
 @export var rapidez: float = 3.2
 @export var vida_maxima: float = 22000.0
@@ -53,6 +54,7 @@ var _escudo_anillo_suelo: MeshInstance3D = null
 var _escala_base: Vector3 = Vector3.ONE
 var _anim_ctrl: AnimadorEntidad = AnimadorEntidad.new()
 var _decal_pisada: ThreatDecal3D = null
+var _nav_estado: Dictionary = {}
 
 @onready var modelo: Node3D = $Modelo if has_node("Modelo") else null
 @onready var telegraph_mesh: MeshInstance3D = $TelegraphPisada if has_node("TelegraphPisada") else null
@@ -63,6 +65,7 @@ func _ready():
 	add_to_group("enemies")
 	add_to_group("jefes")
 	add_to_group("bosses")
+	ArenaColiseo.configurar_cuerpo_terreno(self, false, true)
 	vida = vida_maxima
 	if modelo != null:
 		_escala_base = modelo.scale
@@ -262,15 +265,19 @@ func _physics_process(delta):
 		if dist <= radio_pisada and _reloj_ataque <= 0.001:
 			_iniciar_pisada_telegrafiada()
 		else:
-			var dir_mov = dir.normalized()
+			var dir_mov = ArenaColiseo.calcular_direccion_persecucion(self, jugador.global_position, _nav_estado, delta)
 			velocity.x = dir_mov.x * vel_actual + _knockback_velocity.x
 			velocity.z = dir_mov.z * vel_actual + _knockback_velocity.z
+			if dir_mov.length_squared() > 0.01:
+				look_at(global_position + dir_mov, Vector3.UP)
 			_anim_ctrl.actualizar_locomocion(Vector2(velocity.x, velocity.z).length(), _en_enrage, is_on_floor(), vel_actual)
 	else:
 		velocity.x = _knockback_velocity.x
 		velocity.z = _knockback_velocity.z
 		_anim_ctrl.actualizar_locomocion(0.0, false, is_on_floor(), rapidez)
 
+	if is_on_floor():
+		velocity.y = minf(velocity.y, 0.0)
 	move_and_slide()
 
 func _iniciar_pisada_telegrafiada():

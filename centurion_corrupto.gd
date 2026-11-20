@@ -7,6 +7,7 @@ extends CharacterBody3D
 signal jefe_derrotado
 
 const AudioManager = preload("res://audio_manager.gd")
+const ArenaColiseo = preload("res://arena_coliseo.gd")
 
 @export var rapidez: float = 3.65
 @export var vida_maxima: float = 1750.0
@@ -46,6 +47,7 @@ var _ultimo_seg_stagger_hud: int = -1
 var _escala_base: Vector3 = Vector3.ONE
 var _anim_ctrl: AnimadorEntidad = AnimadorEntidad.new()
 var _decal_ataque: ThreatDecal3D = null
+var _nav_estado: Dictionary = {}
 
 @onready var modelo: Node3D = $Modelo if has_node("Modelo") else null
 @onready var telegraph_mesh: MeshInstance3D = $TelegraphSuelo if has_node("TelegraphSuelo") else null
@@ -56,6 +58,7 @@ func _ready():
 	add_to_group("enemies")
 	add_to_group("jefes")
 	add_to_group("bosses")
+	ArenaColiseo.configurar_cuerpo_terreno(self, false, true)
 	vida = vida_maxima
 	if modelo != null:
 		_escala_base = modelo.scale
@@ -164,15 +167,19 @@ func _physics_process(delta):
 		if dist <= rango_ataque and _reloj_ataque <= 0.001:
 			_iniciar_ataque_telegrafiado()
 		else:
-			var dir_mov = dir.normalized()
+			var dir_mov = ArenaColiseo.calcular_direccion_persecucion(self, jugador.global_position, _nav_estado, delta)
 			velocity.x = dir_mov.x * vel_actual + _knockback_velocity.x
 			velocity.z = dir_mov.z * vel_actual + _knockback_velocity.z
+			if dir_mov.length_squared() > 0.01:
+				look_at(global_position + dir_mov, Vector3.UP)
 			_anim_ctrl.actualizar_locomocion(Vector2(velocity.x, velocity.z).length(), _grito_activo, is_on_floor(), vel_actual)
 	else:
 		velocity.x = _knockback_velocity.x
 		velocity.z = _knockback_velocity.z
 		_anim_ctrl.actualizar_locomocion(0.0, false, is_on_floor(), rapidez)
 
+	if is_on_floor():
+		velocity.y = minf(velocity.y, 0.0)
 	move_and_slide()
 
 func _invocar_cristales_escudo():
@@ -182,6 +189,7 @@ func _invocar_cristales_escudo():
 		var area = Area3D.new()
 		area.name = "CristalEscudo_%d" % i
 		area.add_to_group("cristal_jefe")
+		area.collision_layer = 1 | 8
 		area.input_ray_pickable = true
 		var col = CollisionShape3D.new()
 		var sph = SphereShape3D.new()

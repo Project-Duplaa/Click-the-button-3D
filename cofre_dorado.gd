@@ -7,6 +7,7 @@ extends Area3D
 signal abierto
 
 const AudioManager = preload("res://audio_manager.gd")
+const ArenaColiseo = preload("res://arena_coliseo.gd")
 
 @export var oro_directo: int = 150
 @export var xp_directa: int = 120
@@ -206,7 +207,7 @@ func abrir_cofre():
 			get_parent().add_child(d)
 			var ang = randf() * TAU
 			var dist = randf_range(1.5, 4.5)
-			d.global_position = global_position + Vector3(cos(ang) * dist, 0.2, sin(ang) * dist)
+			d.global_position = ArenaColiseo.clamping_y_ajustar_a_suelo(global_position + Vector3(cos(ang) * dist, 0.0, sin(ang) * dist), 1.4, 0.35)
 			if d.has_method("iniciar"):
 				d.iniciar(randi() % 2, randi_range(10, 25))
 				

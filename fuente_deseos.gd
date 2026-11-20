@@ -7,6 +7,7 @@ class_name FuenteDeseos
 
 const MAX_USOS: int = 5
 const ESCENA_DROP = preload("res://drop_item.tscn")
+const ArenaColiseo = preload("res://arena_coliseo.gd")
 
 const STATS_DESEO := [
 	{"id": "dano", "titulo": "⚔️ Filo Mortal"},
@@ -281,7 +282,7 @@ func _otorgar_lluvia_oro(pj: Node3D) -> void:
 			var ang: float = (TAU / 8.0) * float(i) + FortunaManager.rng.randf_range(-0.2, 0.2)
 			var dist: float = FortunaManager.rng.randf_range(1.3, 2.4)
 			get_parent().add_child(item)
-			item.global_position = global_position + Vector3(cos(ang) * dist, 0.5, sin(ang) * dist)
+			item.global_position = ArenaColiseo.clamping_y_ajustar_a_suelo(global_position + Vector3(cos(ang) * dist, 0.0, sin(ang) * dist), 1.4, 0.45)
 			if item.has_method("iniciar"):
 				item.iniciar(0, 10)
 	AudioManager.play("jackpot", 1.12)

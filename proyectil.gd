@@ -1,5 +1,7 @@
 extends Area3D
 
+const ArenaColiseo = preload("res://arena_coliseo.gd")
+
 var direccion: Vector3 = Vector3.FORWARD
 var rapidez: float = 16.0
 var dano: float = 14.0
@@ -10,6 +12,7 @@ var rebotes_restantes: int = 0
 var _enemigos_golpeados: Array = []
 
 func _ready():
+	collision_mask = 2 | 8
 	body_entered.connect(_on_body_entered)
 	area_entered.connect(_on_area_entered)
 	if es_critico:
@@ -32,7 +35,7 @@ func iniciar(pos_origen: Vector3, dir: Vector3, dano_in: float, vel: float = 16.
 func _physics_process(delta):
 	global_position += direccion * rapidez * delta
 	tiempo_vida -= delta
-	if tiempo_vida <= 0.0:
+	if tiempo_vida <= 0.0 or not ArenaColiseo.esta_dentro(global_position, 0.0) or global_position.y < ArenaColiseo.obtener_altura_suelo(global_position.x, global_position.z) - 0.15:
 		queue_free()
 
 func _on_area_entered(area: Area3D):
@@ -64,11 +67,12 @@ func _on_body_entered(body):
 			var siguiente = _buscar_objetivo_rebote(body)
 			if siguiente != null:
 				rebotes_restantes -= 1
-				var dir_rebote = (siguiente.global_position - global_position)
-				dir_rebote.y = 0.0
+				var dir_rebote = (siguiente.global_position + Vector3(0.0, 0.9, 0.0) - global_position)
 				if dir_rebote.length_squared() > 0.001:
 					direccion = dir_rebote.normalized()
 					tiempo_vida = maxf(tiempo_vida, 1.2)
+					if is_inside_tree() and absf(direccion.dot(Vector3.UP)) < 0.999:
+						look_at(global_position + direccion, Vector3.UP)
 				return
 
 		if perforaciones > 0:

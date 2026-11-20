@@ -248,8 +248,8 @@ func _construir_decoracion_3d_rueda():
 
 func _inicializar_escenario_preview_burbuja():
 	if camara_preview != null:
-		camara_preview.look_at_from_position(Vector3(0.0, 0.35, 0.96), Vector3(0.0, 0.28, 0.0), Vector3.UP)
-		camara_preview.fov = 39.0
+		camara_preview.look_at_from_position(Vector3(0.0, 0.390, 1.340), Vector3(0.0, 0.305, 0.0), Vector3.UP)
+		camara_preview.fov = 34.0
 
 	if pivote_modelo_preview != null and _pedestal_preview == null:
 		_pedestal_preview = MeshInstance3D.new()
@@ -275,7 +275,7 @@ func _actualizar_modelo_3d_en_burbuja(nombre_clase: String, col_clase: Color):
 
 	if luz_clase_preview != null:
 		luz_clase_preview.light_color = col_clase.lightened(0.15)
-		luz_clase_preview.light_energy = 3.2
+		luz_clase_preview.light_energy = 2.0
 
 	if panel_preview_3d != null:
 		var sb = StyleBoxFlat.new()
@@ -303,10 +303,11 @@ func _actualizar_modelo_3d_en_burbuja(nombre_clase: String, col_clase: Color):
 
 	_modelo_preview_instancia = escena_malla.instantiate()
 	_modelo_preview_instancia.name = "HeroePreview3D"
-	_modelo_preview_instancia.rotation_degrees = Vector3(0.0, 165.0, 0.0)
+	_modelo_preview_instancia.rotation_degrees = Vector3(0.0, 18.0, 0.0)
 	pivote_modelo_preview.add_child(_modelo_preview_instancia)
 
 	AnimadorEntidad.equipar_armas_en_esqueleto(_modelo_preview_instancia, nombre_clase, true)
+	AnimadorEntidad.estilizar_entidad_visual(_modelo_preview_instancia, true)
 	AnimadorEntidad.aplicar_identidad_visual_clase(_modelo_preview_instancia, nombre_clase, true)
 
 	_anim_preview_ctrl = AnimadorEntidad.new(_modelo_preview_instancia)
