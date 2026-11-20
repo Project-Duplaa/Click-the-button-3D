@@ -631,17 +631,18 @@ func _exit_tree():
 	if Engine.time_scale != 1.0:
 		Engine.time_scale = 1.0
 
-func _ejecutar_golpe_gracia_final():
+func _ejecutar_golpe_gracia_final() -> void:
 	vida = 0.0
 	_sacudir_camara(0.7)
 
 	Engine.time_scale = 0.15
-	await get_tree().create_timer(0.15, true, false, true).timeout
-	Engine.time_scale = 1.0
-	if not is_instance_valid(self) or not is_inside_tree():
-		return
-
-	morir()
+	var timer = get_tree().create_timer(0.15, true, false, true)
+	timer.timeout.connect(func():
+		Engine.time_scale = 1.0
+		if not is_instance_valid(self) or not is_inside_tree():
+			return
+		morir()
+	)
 
 func morir():
 	if muerto:
