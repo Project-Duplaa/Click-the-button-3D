@@ -45,6 +45,7 @@ var _maestra_spawned: bool = false
 var _coloso_spawned: bool = false
 var _parca_spawned: bool = false
 var clicks_totales: int = 0
+var jefes_derrotados_totales: int = 0
 var partida_iniciada: bool = false
 
 # Sistema de Protagonismo y Esbirros de Jefes
@@ -740,5 +741,6 @@ func _finalizar_duelo_jefe() -> void:
 	_duelo_jefe_en_curso = false
 	_tiempo_ultimo_jefe = _tiempo_transcurrido
 	_reloj_oleada = RESPIRO_POST_JEFE # Respiro de ~3.0s antes de reanudar oleadas
+	jefes_derrotados_totales += 1
 	emit_signal("jefe_combate_finalizado")
 	print("🏆 [OleadasSpawner] Combate de Jefe finalizado con éxito. Respiro de %.1fs antes de reanudar oleadas." % RESPIRO_POST_JEFE)

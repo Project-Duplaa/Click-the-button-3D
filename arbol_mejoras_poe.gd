@@ -288,8 +288,8 @@ func _actualizar_barra_economia():
 	var oro_cnt = MetaprogresoManager.oro_banco
 	var clk_disp = MetaprogresoManager.clics_banco
 
-	label_oro_top.text = "🧪 %s Oro (Banco)" % MetaprogresoManager.formatear_numero(float(oro_cnt))
-	label_clics_top.text = "⚡ %s Clics (Banco)" % MetaprogresoManager.formatear_numero(float(clk_disp))
+	label_oro_top.text = "🧪 %s Oro" % MetaprogresoManager.formatear_numero(float(oro_cnt))
+	label_clics_top.text = "⚡ %s Clics" % MetaprogresoManager.formatear_numero(float(clk_disp))
 
 	if label_esquirlas_top != null:
 		label_esquirlas_top.text = "✨ %s Esquirlas" % MetaprogresoManager.formatear_numero(float(MetaprogresoManager.esquirlas_astrales))
@@ -422,7 +422,7 @@ func _actualizar_panel_detalle(nodo: SkillNodeData, estado: String):
 			alcanza_clic = clics_actuales >= c_clk
 			txt_costo.append("%s Clics" % MetaprogresoManager.formatear_numero(float(c_clk)))
 
-		lbl_nodo_costo.text = "Costo (Banco): " + (" + ".join(txt_costo) if txt_costo.size() > 0 else "Gratis")
+		lbl_nodo_costo.text = "Costo: " + (" + ".join(txt_costo) if txt_costo.size() > 0 else "Gratis")
 
 		var puede_pagar = alcanza_oro and alcanza_clic
 		if en_combate:
@@ -434,7 +434,7 @@ func _actualizar_panel_detalle(nodo: SkillNodeData, estado: String):
 			btn_comprar_nodo.text = "🔒 Módulo Bloqueado"
 			btn_comprar_nodo.disabled = true
 		elif not puede_pagar:
-			btn_comprar_nodo.text = "Recursos insuficientes en Banco"
+			btn_comprar_nodo.text = "Recursos insuficientes"
 			btn_comprar_nodo.disabled = true
 		else:
 			btn_comprar_nodo.text = "Inyectar Sobrecarga (Nv. %d)" % (nodo.nivel_actual + 1)

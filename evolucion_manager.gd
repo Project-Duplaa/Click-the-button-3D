@@ -35,21 +35,37 @@ signal malla_cambiada(nuevo_modelo: Node3D)
 @export var hito_bajas: int = 25
 @export var requiere_todos_los_hitos: bool = true
 
-# Requisitos de Mejora 1 - Tier 2 (Nv.10 + 70 clics)
-@export var hito_nivel_tier2: int = 10
-@export var hito_clics_tier2: int = 70
+# Requisitos de Mejora 1 - Tier 2 (Minuto 3:30 - 5:00, tras vencer al 1er Jefe)
+@export var hito_nivel_tier2: int = 12
+@export var hito_clics_tier2: int = 90
+@export var hito_bajas_tier2: int = 80
+@export var hito_jefes_tier2: int = 1
+@export var hito_oleada_tier2: int = 5
+@export var hito_tiempo_tier2: float = 210.0 # 3.5 minutos
 
-# Requisitos de Mejora 2 / Ascensión Definitiva - Tier 3 (Nv.15 + 120 clics)
-@export var hito_nivel_tier3: int = 15
-@export var hito_clics_tier3: int = 120
+# Requisitos de Mejora 2 / Ascensión Definitiva - Tier 3 (Minuto 8:00 - 11:00, tras vencer al 2do Jefe)
+@export var hito_nivel_tier3: int = 22
+@export var hito_clics_tier3: int = 220
+@export var hito_bajas_tier3: int = 200
+@export var hito_jefes_tier3: int = 2
+@export var hito_oleada_tier3: int = 10
+@export var hito_tiempo_tier3: float = 480.0 # 8.0 minutos
 
 const HITO_NIVEL: int = 5
 const HITO_CLICS: int = 30
 const HITO_BAJAS: int = 25
-const HITO_NIVEL_TIER2: int = 10
-const HITO_CLICS_TIER2: int = 70
-const HITO_NIVEL_TIER3: int = 15
-const HITO_CLICS_TIER3: int = 120
+const HITO_NIVEL_TIER2: int = 12
+const HITO_CLICS_TIER2: int = 90
+const HITO_BAJAS_TIER2: int = 80
+const HITO_JEFES_TIER2: int = 1
+const HITO_OLEADA_TIER2: int = 5
+const HITO_TIEMPO_TIER2: float = 210.0
+const HITO_NIVEL_TIER3: int = 22
+const HITO_CLICS_TIER3: int = 220
+const HITO_BAJAS_TIER3: int = 200
+const HITO_JEFES_TIER3: int = 2
+const HITO_OLEADA_TIER3: int = 10
+const HITO_TIEMPO_TIER3: float = 480.0
 
 const MALLAS_CLASE = {
 	"Novato": "res://personaje/player_rookie.glb",
@@ -433,6 +449,9 @@ var mejora_tier2_activa: String = ""
 var personaje_ref: CharacterBody3D = null
 var modal_instancia: Node = null
 var tier_menu_activo: int = 1
+var jefes_derrotados: int = 0
+var oleada_actual: int = 1
+var tiempo_supervivencia: float = 0.0
 var _ultimo_progreso_tier: int = -1
 var _ultimo_progreso_texto: String = ""
 var _ultimo_progreso_listo: bool = false
@@ -440,8 +459,31 @@ var _ultimo_progreso_listo: bool = false
 func _ready():
 	add_to_group("evolucion_manager")
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	set_process(true)
 	if get_parent() is CharacterBody3D:
 		configurar_con_personaje(get_parent() as CharacterBody3D)
+
+func _process(delta: float) -> void:
+	tiempo_supervivencia += delta
+	_sincronizar_metricas_entorno()
+	if (estado_actual == EstadoFSM.NOVATO and puede_evolucionar()) \
+		or (estado_actual == EstadoFSM.EVOLUCIONADO and puede_ascender_tier2()) \
+		or (estado_actual == EstadoFSM.ASCENDIDO_TIER_2 and puede_ascender_tier3()):
+		_evaluar_hito_evolucion()
+
+func _sincronizar_metricas_entorno() -> void:
+	if not is_inside_tree() or get_tree() == null:
+		return
+	var spawner = get_tree().get_first_node_in_group("oleadas_spawner")
+	if spawner == null:
+		spawner = get_tree().get_first_node_in_group("spawner")
+	if spawner != null and is_instance_valid(spawner):
+		if "oleada_actual" in spawner:
+			oleada_actual = maxi(oleada_actual, int(spawner.oleada_actual))
+		if "jefes_derrotados_totales" in spawner:
+			jefes_derrotados = maxi(jefes_derrotados, int(spawner.jefes_derrotados_totales))
+		if "_tiempo_transcurrido" in spawner:
+			tiempo_supervivencia = maxf(tiempo_supervivencia, float(spawner._tiempo_transcurrido))
 
 func _exit_tree():
 	_limpiar_modal_actual(true)
@@ -464,6 +506,28 @@ func _vincular_eventos_externos():
 	if boton != null and boton.has_signal("click_presionado"):
 		if not boton.click_presionado.is_connected(_on_boton_movil_click):
 			boton.click_presionado.connect(_on_boton_movil_click)
+	var spawner = tree.get_first_node_in_group("oleadas_spawner")
+	if spawner == null:
+		spawner = tree.get_first_node_in_group("spawner")
+	if spawner != null and is_instance_valid(spawner):
+		if spawner.has_signal("jefe_combate_finalizado") and not spawner.jefe_combate_finalizado.is_connected(_on_spawner_jefe_combate_finalizado):
+			spawner.jefe_combate_finalizado.connect(_on_spawner_jefe_combate_finalizado)
+		if "oleada_actual" in spawner:
+			oleada_actual = maxi(oleada_actual, int(spawner.oleada_actual))
+		if "jefes_derrotados_totales" in spawner:
+			jefes_derrotados = maxi(jefes_derrotados, int(spawner.jefes_derrotados_totales))
+
+func _on_spawner_jefe_combate_finalizado():
+	jefes_derrotados += 1
+	_evaluar_hito_evolucion()
+
+func notificar_jefe_derrotado(_nombre_jefe: String = ""):
+	jefes_derrotados += 1
+	_evaluar_hito_evolucion()
+
+func notificar_oleada(num_oleada: int):
+	oleada_actual = maxi(oleada_actual, num_oleada)
+	_evaluar_hito_evolucion()
 
 func _on_boton_movil_click(total_clicks: int):
 	total_clics_acumulados = max(total_clics_acumulados, total_clicks)
@@ -505,15 +569,27 @@ func puede_ascender_tier2() -> bool:
 	if estado_actual != EstadoFSM.EVOLUCIONADO:
 		return false
 	var nivel_actual = personaje_ref.nivel if personaje_ref != null else 1
+	var bajas_actuales = personaje_ref.bajas if personaje_ref != null else 0
 	var clics_reales = max(total_clics_acumulados, personaje_ref.clics_totales if personaje_ref != null else 0)
-	return nivel_actual >= hito_nivel_tier2 and clics_reales >= hito_clics_tier2
+	return (nivel_actual >= hito_nivel_tier2
+		and clics_reales >= hito_clics_tier2
+		and bajas_actuales >= hito_bajas_tier2
+		and jefes_derrotados >= hito_jefes_tier2
+		and oleada_actual >= hito_oleada_tier2
+		and tiempo_supervivencia >= hito_tiempo_tier2)
 
 func puede_ascender_tier3() -> bool:
 	if estado_actual != EstadoFSM.ASCENDIDO_TIER_2:
 		return false
 	var nivel_actual = personaje_ref.nivel if personaje_ref != null else 1
+	var bajas_actuales = personaje_ref.bajas if personaje_ref != null else 0
 	var clics_reales = max(total_clics_acumulados, personaje_ref.clics_totales if personaje_ref != null else 0)
-	return nivel_actual >= hito_nivel_tier3 and clics_reales >= hito_clics_tier3
+	return (nivel_actual >= hito_nivel_tier3
+		and clics_reales >= hito_clics_tier3
+		and bajas_actuales >= hito_bajas_tier3
+		and jefes_derrotados >= hito_jefes_tier3
+		and oleada_actual >= hito_oleada_tier3
+		and tiempo_supervivencia >= hito_tiempo_tier3)
 
 func obtener_texto_progreso_evolucion() -> String:
 	var nivel_actual = personaje_ref.nivel if personaje_ref != null else 1
@@ -531,16 +607,20 @@ func obtener_texto_progreso_evolucion() -> String:
 	elif estado_actual == EstadoFSM.EVOLUCIONADO:
 		if puede_ascender_tier2():
 			return "¡MEJORA T2 DISPONIBLE!"
-		return "Mejora T2: Nv.%d/%d · Clics:%d/%d" % [
+		return "Mejora T2: Nv.%d/%d · Clics:%d/%d · Bajas:%d/%d · Jefes:%d/%d" % [
 			nivel_actual, hito_nivel_tier2,
-			clics_reales, hito_clics_tier2
+			clics_reales, hito_clics_tier2,
+			bajas_actuales, hito_bajas_tier2,
+			jefes_derrotados, hito_jefes_tier2
 		]
 	elif estado_actual == EstadoFSM.ASCENDIDO_TIER_2:
 		if puede_ascender_tier3():
 			return "¡ASCENSIÓN T3 DEFINITIVA!"
-		return "Ascensión T3: Nv.%d/%d · Clics:%d/%d" % [
+		return "Ascensión T3: Nv.%d/%d · Clics:%d/%d · Bajas:%d/%d · Jefes:%d/%d" % [
 			nivel_actual, hito_nivel_tier3,
-			clics_reales, hito_clics_tier3
+			clics_reales, hito_clics_tier3,
+			bajas_actuales, hito_bajas_tier3,
+			jefes_derrotados, hito_jefes_tier3
 		]
 	elif estado_actual == EstadoFSM.ASCENDIDO_TIER_3:
 		return "👑 " + subclase_activa
@@ -562,16 +642,16 @@ func obtener_estado_progreso_compacto() -> Dictionary:
 			return {"tier_objetivo": 1, "texto": "✨ T1 LISTA [V]", "listo": true}
 		EstadoFSM.EVOLUCIONADO:
 			var listo_t2: bool = puede_ascender_tier2()
-			var txt_t2: String = "👑 T2 LISTA [V]" if listo_t2 else "T2: Nv.%d/%d · %d/%d⚡" % [
-				nivel_actual, hito_nivel_tier2, clics_reales, hito_clics_tier2
+			var txt_t2: String = "👑 T2 LISTA [V]" if listo_t2 else "T2: Nv.%d/%d · %d/%d⚡ · %d/%d💀 · %d/%d👑" % [
+				nivel_actual, hito_nivel_tier2, clics_reales, hito_clics_tier2, bajas_actuales, hito_bajas_tier2, jefes_derrotados, hito_jefes_tier2
 			]
 			return {"tier_objetivo": 2, "texto": txt_t2, "listo": listo_t2}
 		EstadoFSM.ASCENSION_T2_LISTA:
 			return {"tier_objetivo": 2, "texto": "👑 T2 LISTA [V]", "listo": true}
 		EstadoFSM.ASCENDIDO_TIER_2:
 			var listo_t3: bool = puede_ascender_tier3()
-			var txt_t3: String = "🌟 T3 LISTA [V]" if listo_t3 else "T3: Nv.%d/%d · %d/%d⚡" % [
-				nivel_actual, hito_nivel_tier3, clics_reales, hito_clics_tier3
+			var txt_t3: String = "🌟 T3 LISTA [V]" if listo_t3 else "T3: Nv.%d/%d · %d/%d⚡ · %d/%d💀 · %d/%d👑" % [
+				nivel_actual, hito_nivel_tier3, clics_reales, hito_clics_tier3, bajas_actuales, hito_bajas_tier3, jefes_derrotados, hito_jefes_tier3
 			]
 			return {"tier_objetivo": 3, "texto": txt_t3, "listo": listo_t3}
 		EstadoFSM.ASCENSION_T3_LISTA:
