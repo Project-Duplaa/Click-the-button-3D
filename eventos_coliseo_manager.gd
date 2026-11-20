@@ -162,8 +162,6 @@ func _despachar_eventos_diferidos() -> void:
 		_nemesis_pendiente = false
 		_comprobar_y_spawnear_nemesis()
 
-=======
->>>>>>> origin/main
 func _verificar_tormento_inicial() -> void:
 	var nivel_tormento: int = 0
 	var logros = get_tree().get_first_node_in_group("logros_manager")

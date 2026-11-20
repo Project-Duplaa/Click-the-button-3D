@@ -249,7 +249,7 @@ func _resolver_juicio(pj: Node) -> void:
 			if partida != null and partida.has_method("perder"):
 				partida.perder("El Emperador bajó su pulgar. Caíste para siempre en la arena.")
 
-	return true
+	return
 
 # ==============================================================================
 # REGALOS DE LA MULTITUD (LLUVIA PARABÓLICA DE SUMINISTROS)
