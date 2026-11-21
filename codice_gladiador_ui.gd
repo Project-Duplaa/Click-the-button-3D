@@ -181,6 +181,22 @@ const DATOS_BESTIARIO: Dictionary = {
 		"lore": "Reflejo corrupto liberado al destruir el Monolito del Campeón Caído. Otorga Esquirla Astral.",
 		"escena": "res://espejo_sombrio.tscn",
 		"color": Color(0.75, 0.20, 0.95)
+	},
+	"centinela_fase": {
+		"nombre": "Centinela de Fase",
+		"tier": "Blindado de Fase · Solo Botón",
+		"icono": "⚡🛡️",
+		"lore": "Su escudo cuántico deflecta flechas, hechizos y filos. Solo las ondas e impactos del Botón Móvil atraviesan su fase.",
+		"escena": "res://centinela_fase.tscn",
+		"color": Color(0.15, 0.90, 1.0)
+	},
+	"anulador_nucleo": {
+		"nombre": "Anulador de Núcleo",
+		"tier": "Disruptor Térmico · Solo Botón",
+		"icono": "⚡🔮",
+		"lore": "Inmune a las armas del gladiador. Proyecta un sifón térmico sobre el Botón Móvil; destrúyelo con pulsaciones y suelta Esquirlas Astrales.",
+		"escena": "res://anulador_nucleo.tscn",
+		"color": Color(0.72, 0.35, 1.0)
 	}
 }
 
@@ -711,10 +727,13 @@ func _configurar_escena_3d_bestiario() -> void:
 	env.background_color = Color(0.06, 0.07, 0.09)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.55, 0.58, 0.65)
-	env.ambient_light_energy = 1.0
+	env.ambient_light_energy = 0.55
+	env.tonemap_mode = Environment.TONE_MAPPER_ACES
 	env.glow_enabled = true
-	env.glow_intensity = 0.6
-	env.glow_bloom = 0.2
+	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
+	env.glow_intensity = 0.30
+	env.glow_bloom = 0.03
+	env.glow_hdr_threshold = 1.25
 	
 	var we = WorldEnvironment.new()
 	we.environment = env
@@ -725,7 +744,7 @@ func _configurar_escena_3d_bestiario() -> void:
 	luz_key.position = Vector3(1.5, 2.8, 3.2)
 	luz_key.rotation_degrees = Vector3(-35, 25, 0)
 	luz_key.light_color = Color(1.0, 0.98, 0.94)
-	luz_key.light_energy = 1.6
+	luz_key.light_energy = 1.15
 	subviewport_3d.add_child(luz_key)
 	
 	# 2. Luz de Relleno Lateral (Fill Light)
@@ -733,7 +752,7 @@ func _configurar_escena_3d_bestiario() -> void:
 	luz_fill.position = Vector3(-2.2, 1.6, 2.0)
 	luz_fill.rotation_degrees = Vector3(-20, -45, 0)
 	luz_fill.light_color = Color(0.65, 0.8, 1.0)
-	luz_fill.light_energy = 0.9
+	luz_fill.light_energy = 0.55
 	subviewport_3d.add_child(luz_fill)
 	
 	# 3. Luz de Contorno Trasera (Rim Light / Kicker) para separar del fondo
@@ -741,7 +760,7 @@ func _configurar_escena_3d_bestiario() -> void:
 	luz_rim.position = Vector3(0, 3.2, -2.8)
 	luz_rim.rotation_degrees = Vector3(30, 180, 0)
 	luz_rim.light_color = Color(1.0, 0.85, 0.6)
-	luz_rim.light_energy = 1.4
+	luz_rim.light_energy = 0.65
 	subviewport_3d.add_child(luz_rim)
 	
 	preview_nodo_padre = Node3D.new()
@@ -790,67 +809,85 @@ func _actualizar_malla_preview(info: Dictionary) -> void:
 		escena_cargada = load(ruta_escena) as PackedScene
 		
 	if escena_cargada != null:
+		preview_nodo_padre.process_mode = Node.PROCESS_MODE_ALWAYS
 		var inst = escena_cargada.instantiate()
-		inst.process_mode = Node.PROCESS_MODE_DISABLED
+		inst.process_mode = Node.PROCESS_MODE_ALWAYS
 		# Retirar scripts activos de IA para evitar errores en SubViewport aislado
 		inst.set_script(null)
-		
-		# Ocultar telegraphs, auras, colisiones y escudos/corazas de combate en el visor del bestiario
+
+		# Ocultar telegraphs, auras, colisiones, luces y escudos/corazas de combate en el visor del bestiario
 		_limpiar_nodos_combate_bestiario(inst)
-				
 		preview_nodo_padre.add_child(inst)
 		_limpiar_nodos_combate_bestiario(inst)
+
+		var mod_prev: Node3D = inst.get_node_or_null("Modelo") as Node3D
+		if mod_prev == null:
+			mod_prev = inst.get_node_or_null("ModeloVisual") as Node3D
+		if mod_prev == null:
+			mod_prev = inst as Node3D
+		if mod_prev != null:
+			var anim_prev := AnimadorEntidad.new(mod_prev)
+			if anim_prev.esta_listo():
+				var ap_prev := anim_prev.obtener_animation_player()
+				if ap_prev != null:
+					ap_prev.process_mode = Node.PROCESS_MODE_ALWAYS
+				anim_prev.reproducir_bucle("idle", 0.0, 1.0, 0)
+
+		preview_nodo_padre.rotation.y = PI + 0.48
 		instancia_malla_actual = inst
 		
 		# Ajuste de encuadre según el tamaño del jefe/élite para encuadre áureo en SubViewport
-		var esc_base: float = 0.65
-		var off_y: float = 0.0
+		var esc_base: float = 0.72
+		var off_y: float = 0.12
 		var nom_low = info.get("nombre", "").to_lower()
 		if "parca" in nom_low:
-			esc_base = 0.65
-			off_y = 0.15
+			esc_base = 0.48
+			off_y = 0.04
 		elif "coloso" in nom_low:
-			esc_base = 0.52
-			off_y = 0.05
+			esc_base = 0.42
+			off_y = 0.02
 		elif "centurión" in nom_low or "centurion" in nom_low:
-			esc_base = 0.72
-			off_y = 0.15
+			esc_base = 0.50
+			off_y = 0.06
 		elif "bruto" in nom_low:
-			esc_base = 0.65
-			off_y = 0.20
-		elif "maestra" in nom_low:
-			esc_base = 0.70
-			off_y = 0.22
-		elif "heraldo" in nom_low:
-			esc_base = 0.72
-			off_y = 0.08
-		elif "minero" in nom_low:
-			esc_base = 0.85
-			off_y = 0.28
-		elif "arquero" in nom_low:
-			esc_base = 0.78
-			off_y = 0.20
-		elif "berserker" in nom_low:
-			esc_base = 0.60
-			off_y = 0.0
-		elif "guardia" in nom_low:
-			esc_base = 0.64
-			off_y = 0.0
-		elif "espectro" in nom_low:
-			esc_base = 0.70
-			off_y = 0.0
-		elif "parásito" in nom_low or "parasito" in nom_low:
-			esc_base = 1.05
-			off_y = 0.75
-		elif "gólem" in nom_low or "golem" in nom_low:
-			esc_base = 0.85
-			off_y = 0.25
-		elif "canalizador" in nom_low:
-			esc_base = 0.65
-			off_y = 0.0
-		elif "espejo" in nom_low:
-			esc_base = 0.60
+			esc_base = 0.62
 			off_y = 0.10
+		elif "maestra" in nom_low:
+			esc_base = 0.48
+			off_y = 0.06
+		elif "heraldo de la arena" in nom_low:
+			esc_base = 0.50
+			off_y = 0.06
+		elif "heraldo" in nom_low:
+			esc_base = 0.62
+			off_y = 0.10
+		elif "minero" in nom_low:
+			esc_base = 0.78
+			off_y = 0.18
+		elif "arquero" in nom_low:
+			esc_base = 0.80
+			off_y = 0.15
+		elif "berserker" in nom_low:
+			esc_base = 0.70
+			off_y = 0.10
+		elif "guardia" in nom_low:
+			esc_base = 0.76
+			off_y = 0.12
+		elif "espectro" in nom_low:
+			esc_base = 0.80
+			off_y = 0.15
+		elif "parásito" in nom_low or "parasito" in nom_low:
+			esc_base = 1.25
+			off_y = 0.55
+		elif "gólem" in nom_low or "golem" in nom_low:
+			esc_base = 0.80
+			off_y = 0.18
+		elif "canalizador" in nom_low:
+			esc_base = 0.74
+			off_y = 0.12
+		elif "espejo" in nom_low:
+			esc_base = 0.48
+			off_y = 0.06
 		inst.scale = Vector3.ONE * esc_base
 		inst.position = Vector3(0, off_y, 0)
 	else:
@@ -870,6 +907,8 @@ func _actualizar_malla_preview(info: Dictionary) -> void:
 
 func _limpiar_nodos_combate_bestiario(n: Node) -> void:
 	for hijo in n.get_children():
+		if hijo is Light3D:
+			hijo.visible = false
 		var h_nom = hijo.name.to_lower()
 		if "telegraph" in h_nom or "marca" in h_nom or "aura" in h_nom or "escudo" in h_nom or "coraza" in h_nom or "burbuja" in h_nom or "collision" in h_nom:
 			hijo.visible = false

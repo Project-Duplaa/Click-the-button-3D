@@ -1,11 +1,11 @@
 [gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://mini_jefe.gd" id="1_mini"]
-[ext_resource type="PackedScene" uid="uid://cohqnov7j8fie" path="res://assets/modelos/amalgama_radiactiva.glb" id="2_modelo"]
+[ext_resource type="PackedScene" path="res://assets/modelos/jefe_heraldo_arena.glb" id="2_modelo"]
 
 [sub_resource type="CapsuleShape3D" id="CapsulaMiniJefe"]
-radius = 1.0
-height = 3.4
+radius = 1.1
+height = 3.9
 
 [sub_resource type="StandardMaterial3D" id="MatTelegraph"]
 transparency = 1
@@ -22,18 +22,12 @@ height = 0.05
 script = ExtResource("1_mini")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.95, 0)
 shape = SubResource("CapsulaMiniJefe")
 
 [node name="Modelo" parent="." instance=ExtResource("2_modelo")]
-transform = Transform3D(1.25, 0, 0, 0, 1.25, 0, 0, 0, 1.25, 0, 0, 0)
+transform = Transform3D(1.15, 0, 0, 0, 1.15, 0, 0, 0, 1.15, 0, 0, 0)
 
 [node name="TelegraphSuelo" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
 mesh = SubResource("MeshTelegraph")
-
-[node name="LuzElite" type="OmniLight3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 0)
-light_color = Color(0.25, 1.0, 0.4, 1)
-light_energy = 1.15
-omni_range = 5.5

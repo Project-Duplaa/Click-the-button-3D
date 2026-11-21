@@ -125,7 +125,8 @@ func _physics_process(delta: float):
 		luz_indicador.light_energy = lerpf(2.2, 3.6, pulso_01)
 
 	var dist_jug := _obtener_distancia_jugador()
-	var en_rango := dist_jug <= distancia_max_clic
+	var rango_act := _obtener_rango_activacion()
+	var en_rango := dist_jug <= rango_act
 	if etiqueta_terminal != null:
 		if en_rango:
 			etiqueta_terminal.text = "DISYUNTOR %02d\n[PULSAR AHORA]" % id_palanca
@@ -133,6 +134,19 @@ func _physics_process(delta: float):
 		else:
 			etiqueta_terminal.text = "DISYUNTOR %02d\n[ACÉRCATE · %.0fm]" % [id_palanca, dist_jug]
 			etiqueta_terminal.modulate = Kit.COL_CRIMSON_ALERT
+
+func _obtener_bono_alcance_jugador() -> float:
+	if get_tree() == null:
+		return 0.0
+	var jug := get_tree().get_first_node_in_group("jugador") as Node
+	if jug == null:
+		jug = get_tree().get_first_node_in_group("player") as Node
+	if jug != null and is_instance_valid(jug) and "btn_alcance_palancas" in jug:
+		return maxf(0.0, float(jug.btn_alcance_palancas))
+	return 0.0
+
+func _obtener_rango_activacion() -> float:
+	return distancia_max_clic + _obtener_bono_alcance_jugador()
 
 func _obtener_distancia_jugador() -> float:
 	if get_tree() == null:
@@ -240,7 +254,8 @@ func accionar() -> bool:
 		return false
 
 	var dist_jug := _obtener_distancia_jugador()
-	if dist_jug > distancia_max_clic:
+	var rango_act := _obtener_rango_activacion()
+	if dist_jug > rango_act:
 		AudioManager.play("escudo_bloqueo", 1.15)
 		_spawn_floating_text("⚠️ ¡Acércate más a la palanca! (%.1fm)" % dist_jug, Kit.COL_HAZARD_YELLOW)
 		if manija != null:
@@ -316,6 +331,24 @@ func accionar() -> bool:
 
 	var fx_parent: Node = get_parent() if get_parent() != null else self
 	Kit.spawn_shockwave_ring(fx_parent, global_position, 0.55, 3.2, Kit.COL_NEON_GREEN, 0.45)
+
+	var bono_rango := _obtener_bono_alcance_jugador()
+	if bono_rango > 0.0 and get_tree() != null:
+		var radio_desc: float = 4.5 + bono_rango * 0.5
+		var dano_desc: float = 22.0 + bono_rango * 8.0
+		Kit.spawn_shockwave_ring(fx_parent, global_position, 0.65, radio_desc, Kit.COL_CYAN_ELECTRIC, 0.42)
+		for e in get_tree().get_nodes_in_group("enemigos").duplicate():
+			if e is Node3D and is_instance_valid(e):
+				var v_off: Vector3 = e.global_position - global_position
+				v_off.y = 0.0
+				if v_off.length() <= radio_desc:
+					if e.has_method("recibir_dano"):
+						e.recibir_dano(dano_desc, "onda", true)
+					var dir_emp: Vector3 = v_off.normalized() if v_off.length_squared() > 0.001 else Vector3.FORWARD
+					if e.has_method("aplicar_knockback"):
+						e.aplicar_knockback(dir_emp * 12.0)
+					elif "velocity" in e:
+						e.velocity += dir_emp * 12.0
 
 	if etiqueta_terminal != null:
 		etiqueta_terminal.text = "DISYUNTOR %02d\n[EN LÍNEA]" % id_palanca

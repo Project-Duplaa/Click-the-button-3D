@@ -8,6 +8,7 @@ signal jefe_derrotado
 
 const AudioManager = preload("res://audio_manager.gd")
 const ArenaColiseo = preload("res://arena_coliseo.gd")
+const VfxCombate = preload("res://vfx_combate.gd")
 
 @export var rapidez: float = 3.2
 @export var vida_maxima: float = 22000.0
@@ -44,7 +45,7 @@ var _nav_estado: Dictionary = {}
 
 @onready var modelo: Node3D = $Modelo if has_node("Modelo") else null
 @onready var telegraph_mesh: MeshInstance3D = $TelegraphPisada
-@onready var luz_coloso: OmniLight3D = $LuzColoso
+@onready var luz_coloso: OmniLight3D = get_node_or_null("LuzColoso")
 
 func _ready():
 	add_to_group("enemigos")
@@ -94,13 +95,13 @@ func _crear_coraza_visual():
 	mat_burbuja.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat_burbuja.albedo_color = Color(1.0, 0.72, 0.2, 0.08)
 	mat_burbuja.roughness = 0.08
-	mat_burbuja.metallic = 0.8
+	mat_burbuja.metallic = 0.45
 	mat_burbuja.rim_enabled = true
-	mat_burbuja.rim = 1.0
-	mat_burbuja.rim_tint = 0.6
+	mat_burbuja.rim = 0.42
+	mat_burbuja.rim_tint = 0.25
 	mat_burbuja.emission_enabled = true
 	mat_burbuja.emission = Color(1.0, 0.65, 0.15)
-	mat_burbuja.emission_energy_multiplier = 0.30
+	mat_burbuja.emission_energy_multiplier = 0.14
 	mat_burbuja.cull_mode = BaseMaterial3D.CULL_BACK
 	_escudo_burbuja.material_override = mat_burbuja
 	_escudo_bronce_mesh.add_child(_escudo_burbuja)
@@ -116,10 +117,10 @@ func _crear_coraza_visual():
 	_escudo_anillo1.position = Vector3(0, 2.7, 0)
 	var mat_anillo1 = StandardMaterial3D.new()
 	mat_anillo1.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat_anillo1.albedo_color = Color(1.0, 0.80, 0.25, 0.85)
+	mat_anillo1.albedo_color = Color(1.0, 0.78, 0.25, 0.62)
 	mat_anillo1.emission_enabled = true
 	mat_anillo1.emission = Color(1.0, 0.75, 0.2)
-	mat_anillo1.emission_energy_multiplier = 1.2
+	mat_anillo1.emission_energy_multiplier = 0.55
 	_escudo_anillo1.material_override = mat_anillo1
 	_escudo_bronce_mesh.add_child(_escudo_anillo1)
 
@@ -147,7 +148,7 @@ func _crear_coraza_visual():
 	_escudo_anillo_suelo.mesh = t_suelo
 	_escudo_anillo_suelo.position = Vector3(0, 0.08, 0)
 	var mat_suelo = mat_anillo1.duplicate() as StandardMaterial3D
-	mat_suelo.albedo_color = Color(1.0, 0.75, 0.2, 0.7)
+	mat_suelo.albedo_color = Color(1.0, 0.75, 0.2, 0.52)
 	_escudo_anillo_suelo.material_override = mat_suelo
 	_escudo_bronce_mesh.add_child(_escudo_anillo_suelo)
 
@@ -197,7 +198,9 @@ func _physics_process(delta):
 		if dist > 0.1:
 			look_at(global_position + dir.normalized(), Vector3.UP)
 
-		if dist <= radio_pisada and _reloj_ataque <= 0.001:
+		var diff_y = absf(jugador.global_position.y - global_position.y)
+
+		if dist <= radio_pisada and diff_y <= 0.50 and _reloj_ataque <= 0.001:
 			_iniciar_pisada_telegrafiada()
 		else:
 			var dir_mov = ArenaColiseo.calcular_direccion_persecucion(self, jugador.global_position, _nav_estado, delta)
@@ -237,6 +240,7 @@ func _ejecutar_pisada_telegrafiada():
 	_anim_ctrl.reproducir_accion("attack-melee-right", 2, 0.08, 0.85)
 
 	AudioManager.play("danio_jugador", 0.6, 2.5)
+	VfxCombate.spawn_explosion_nova(get_parent(), global_position + Vector3(0, 0.5, 0), radio_pisada, Color(1.0, 0.50, 0.12), Color(1.0, 0.94, 0.58), 0.42, true, true)
 	_sacudir_camara(0.4)
 
 	if is_instance_valid(jugador) and jugador is Node3D:
@@ -291,6 +295,7 @@ func _romper_coraza():
 		_escudo_bronce_mesh.visible = false
 
 	AudioManager.play("puzzle_completo", 1.0)
+	VfxCombate.spawn_explosion_nova(get_parent(), global_position + Vector3(0, 1.6, 0), 4.2, Color(1.0, 0.68, 0.16), Color.WHITE, 0.38, true, true)
 	_sacudir_camara(0.45)
 	_crear_texto_flotante("💥 ¡CORAZA DESTRUIDA! (Aturdido 3.5s)", true)
 
@@ -373,15 +378,15 @@ func _activar_coraza(clics_req: int, tipo_str: String):
 			mb.emission = col_base
 		if _escudo_anillo1 != null and _escudo_anillo1.material_override is StandardMaterial3D:
 			var m1 := _escudo_anillo1.material_override as StandardMaterial3D
-			m1.albedo_color = Color(col_base.r, col_base.g, col_base.b, 0.85)
+			m1.albedo_color = Color(col_base.r, col_base.g, col_base.b, 0.62)
 			m1.emission = col_base
 		if _escudo_anillo2 != null and _escudo_anillo2.material_override is StandardMaterial3D:
 			var m2 := _escudo_anillo2.material_override as StandardMaterial3D
-			m2.albedo_color = Color(col_base.r, col_base.g, col_base.b, 0.85)
+			m2.albedo_color = Color(col_base.r, col_base.g, col_base.b, 0.62)
 			m2.emission = col_base
 		if _escudo_anillo_suelo != null and _escudo_anillo_suelo.material_override is StandardMaterial3D:
 			var ms := _escudo_anillo_suelo.material_override as StandardMaterial3D
-			ms.albedo_color = Color(col_base.r, col_base.g, col_base.b, 0.70)
+			ms.albedo_color = Color(col_base.r, col_base.g, col_base.b, 0.52)
 			ms.emission = col_base
 
 	AudioManager.play("jefe_alerta", 1.1)
@@ -421,25 +426,8 @@ func _actualizar_hud():
 		hud.actualizar_barra_jefe(vida, titulo)
 
 func _crear_rayo_hacia_jefe(desde_pos: Vector3):
-	var orbe = MeshInstance3D.new()
-	var esfera = SphereMesh.new()
-	esfera.radius = 0.35
-	esfera.height = 0.7
-	orbe.mesh = esfera
-	var mat = StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = Color(1.0, 0.5, 0.1)
-	orbe.material_override = mat
 	if get_parent() != null:
-		get_parent().add_child(orbe)
-		orbe.global_position = desde_pos + Vector3(0, 1.0, 0)
-		var dest = global_position + Vector3(0, 2.7, 0)
-		var tw = create_tween()
-		tw.tween_property(orbe, "global_position", dest, 0.16)
-		tw.tween_callback(func():
-			if is_instance_valid(orbe):
-				orbe.queue_free()
-		)
+		VfxCombate.spawn_rayo_segmento(get_parent(), desde_pos + Vector3(0, 1.0, 0), global_position + Vector3(0, 2.7, 0), Color(1.0, 0.52, 0.12), Color.WHITE, 0.18, 0.18, 0.34)
 
 func _crear_texto_flotante(texto: String, es_crit: bool = false):
 	if get_tree() == null:

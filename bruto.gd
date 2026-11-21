@@ -1,6 +1,7 @@
 extends CharacterBody3D
 
 const ArenaColiseo = preload("res://arena_coliseo.gd")
+const VfxCombate = preload("res://vfx_combate.gd")
 
 @export var rapidez: float = 1.5
 @export var vida_maxima: float = 220.0
@@ -75,7 +76,8 @@ func _physics_process(delta):
 		return
 
 	var d = distancia_a(jugador.global_position)
-	if d <= rango_ataque:
+	var diff_y = absf(jugador.global_position.y - global_position.y)
+	if d <= rango_ataque and diff_y <= 0.45:
 		frenar()
 		if _stun_timer > 0.0:
 			_anim_ctrl.reproducir_bucle("stunned", 0.10, 1.0, 1)
@@ -121,6 +123,7 @@ func distancia_a(p: Vector3) -> float:
 	return Vector2(p.x - o.x, p.z - o.z).length()
 
 func _golpe_contundente():
+	VfxCombate.spawn_explosion_nova(get_parent(), global_position + Vector3(0, 0.4, 0), rango_ataque * 1.15, Color(1.0, 0.36, 0.10), Color(1.0, 0.90, 0.55), 0.28, true, true)
 	if jugador != null and is_instance_valid(jugador):
 		if jugador.has_method("recibir_dano"):
 			jugador.recibir_dano(dano_ataque)

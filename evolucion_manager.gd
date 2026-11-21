@@ -848,14 +848,17 @@ func cambiar_malla_3d(personaje: CharacterBody3D, ruta_malla: String) -> Animati
 		return null
 	
 	var modelo_actual = personaje.get_node_or_null("Modelo")
-	var transform_base = Transform3D(Basis(Vector3(-5.5, 0.0, 0.0), Vector3(0.0, 5.5, 0.0), Vector3(0.0, 0.0, -5.5)), Vector3.ZERO)
-	
+	var transform_base = Transform3D(Basis(Vector3(-2.8, 0.0, 0.0), Vector3(0.0, 2.8, 0.0), Vector3(0.0, 0.0, -2.8)), Vector3.ZERO)
+	if "_tween_modelo_ataque" in personaje:
+		var tw = personaje.get("_tween_modelo_ataque")
+		if tw is Tween and (tw as Tween).is_valid():
+			(tw as Tween).kill()
+
 	if modelo_actual != null:
-		transform_base = modelo_actual.transform
 		modelo_actual.name = "Modelo_Antiguo"
 		personaje.remove_child(modelo_actual)
 		modelo_actual.queue_free()
-	
+
 	var nuevo_modelo = escena_glb.instantiate()
 	nuevo_modelo.name = "Modelo"
 	nuevo_modelo.transform = transform_base
@@ -1059,7 +1062,7 @@ static func _aplicar_visual_tier(pj: Node3D, nombre_subclase: String, tier: int)
 	var col_accent: Color = paleta["accent"]
 	var col_core: Color = paleta["core"]
 
-	var mod_scale: float = 5.5
+	var mod_scale: float = 2.8
 	var modelo: Node = pj.get_node_or_null("Modelo")
 	if modelo != null:
 		if modelo is Node3D:
@@ -1111,7 +1114,7 @@ static func _aplicar_visual_tier(pj: Node3D, nombre_subclase: String, tier: int)
 
 		var orbita := Node3D.new()
 		orbita.name = "OrbitaCristales"
-		orbita.position = Vector3(0.0, mod_scale * 0.52, 0.0)
+		orbita.position = Vector3(0.0, mod_scale * 0.55, 0.0)
 		orn.add_child(orbita)
 		orn.orbita_cristales = orbita
 
@@ -1126,7 +1129,7 @@ static func _aplicar_visual_tier(pj: Node3D, nombre_subclase: String, tier: int)
 		mat_cristal.emission = col_core
 		mat_cristal.emission_energy_multiplier = 0.88
 
-		var r_orbita: float = mod_scale * 0.34
+		var r_orbita: float = mod_scale * 0.36
 		var c_scale: float = mod_scale / 2.4
 		for i in range(3):
 			var ang: float = float(i) * (TAU / 3.0)

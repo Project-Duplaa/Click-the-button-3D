@@ -28,7 +28,7 @@ func _ready():
 
 	scale = Vector3(0.01, 0.01, 0.01)
 	var tw = create_tween()
-	tw.tween_property(self, "scale", Vector3.ONE * 1.3, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(self, "scale", Vector3.ONE * 0.78, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 func _construir_capsula_vault() -> void:
 	# Material de oro cepillado / titanio nivel Alfa

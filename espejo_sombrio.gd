@@ -50,7 +50,7 @@ func _ready() -> void:
 		_lbl_hp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		_lbl_hp.no_depth_test = true
 		_lbl_hp.font_size = 38
-		_lbl_hp.position = Vector3(0.0, 3.6, 0.0)
+		_lbl_hp.position = Vector3(0.0, 4.5, 0.0)
 		_lbl_hp.modulate = Color(0.88, 0.42, 1.0)
 		add_child(_lbl_hp)
 	_actualizar_label_hp()
@@ -60,10 +60,10 @@ func _asegurar_componentes() -> void:
 		var col = CollisionShape3D.new()
 		col.name = "CollisionShape3D"
 		var cap = CapsuleShape3D.new()
-		cap.radius = 0.55
-		cap.height = 2.4
+		cap.radius = 0.78
+		cap.height = 3.6
 		col.shape = cap
-		col.position = Vector3(0.0, 1.2, 0.0)
+		col.position = Vector3(0.0, 1.8, 0.0)
 		add_child(col)
 
 	var modelo = get_node_or_null("Modelo")
@@ -72,7 +72,19 @@ func _asegurar_componentes() -> void:
 		if escena_mod != null:
 			modelo = escena_mod.instantiate()
 			modelo.name = "Modelo"
+			modelo.scale = Vector3.ONE * 1.38
 			add_child(modelo)
+	if modelo != null:
+		_anim_ctrl.vincular_modelo(modelo)
+		_anim_ctrl.reproducir_bucle("idle")
+
+func _physics_process(delta: float) -> void:
+	if _muerto:
+		return
+	_anim_ctrl.actualizar(delta)
+	super._physics_process(delta)
+	if not _anim_ctrl.esta_bloqueado():
+		_anim_ctrl.actualizar_locomocion(Vector2(velocity.x, velocity.z).length(), _dash_timer > 0.0, is_on_floor(), rapidez)
 
 func _actualizar_label_hp() -> void:
 	if _lbl_hp != null:
@@ -87,13 +99,15 @@ func _calcular_velocidad_ia(delta: float) -> Vector3:
 	var dist := dif_xz.length()
 	var dir: Vector3 = ArenaColiseo.calcular_direccion_persecucion(self, jugador.global_position, _nav_estado, delta)
 	if dir.length_squared() > 0.0025:
-		rotation.y = lerp_angle(rotation.y, atan2(dir.x, dir.z), delta * 8.0)
+		rotation.y = lerp_angle(rotation.y, atan2(-dir.x, -dir.z), delta * 8.0)
 
 	_reloj_dash -= delta
 	if _reloj_dash <= 0.0 and dist > 3.5:
 		_reloj_dash = 5.0
 		_dash_timer = 0.28
 		_dash_vel = dir * (rapidez * 3.1)
+		if _anim_ctrl != null and _anim_ctrl.esta_listo():
+			_anim_ctrl.reproducir_accion("attack-melee-right", 2, 0.08, 1.1)
 		AudioManager.play("corte_giratorio", 0.78)
 		if get_parent() != null:
 			BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position, 0.3, 2.8, Color(0.75, 0.20, 0.95), 0.30)
@@ -114,16 +128,21 @@ func _calcular_velocidad_ia(delta: float) -> Vector3:
 func _disparar_rafaga_espejo(dir: Vector3) -> void:
 	if ProyectilEnemigoEscena == null or get_parent() == null:
 		return
+	if _anim_ctrl != null and _anim_ctrl.esta_listo():
+		_anim_ctrl.reproducir_accion("cast", 2, 0.08, 1.1)
 	var base_dir = dir if dir.length_squared() > 0.01 else Vector3.FORWARD
+	VfxCombate.spawn_destello_disparo(get_parent(), global_position + Vector3(0, 1.35, 0), base_dir, Color(0.75, 0.20, 1.0), 0.72)
 	for ang_deg in [-18.0, 0.0, 18.0]:
 		var proj = ProyectilEnemigoEscena.instantiate()
 		get_parent().add_child(proj)
 		var dir_rot = base_dir.rotated(Vector3.UP, deg_to_rad(ang_deg))
 		var origen = global_position + Vector3(0.0, 1.35, 0.0) + dir_rot * 0.9
 		if proj.has_method("iniciar"):
-			proj.iniciar(origen, dir_rot, dano_ataque * 0.85, 9.5)
+			proj.iniciar(origen, dir_rot, dano_ataque * 0.85, 9.5, "sombra")
 
 func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false) -> void:
+	if not _muerto:
+		_anim_ctrl.disparar_golpe()
 	super.recibir_dano(cantidad, fuente, es_critico)
 	_actualizar_label_hp()
 

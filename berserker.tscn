@@ -1,7 +1,7 @@
 [gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://berserker.gd" id="1_ber"]
-[ext_resource type="PackedScene" uid="uid://xa3rc81rfyak" path="res://assets/modelos/mecha_infectado.glb" id="2_mod"]
+[ext_resource type="PackedScene" path="res://assets/modelos/enemigo_berserker_rabioso.glb" id="2_mod"]
 
 [sub_resource type="CapsuleShape3D" id="CapsulaBerserker"]
 radius = 0.75
@@ -24,7 +24,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, 0)
 shape = SubResource("CapsulaBerserker")
 
 [node name="Modelo" parent="." instance=ExtResource("2_mod")]
-transform = Transform3D(1.05, 0, 0, 0, 1.05, 0, 0, 0, 1.05, 0, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 
 [node name="LineaCarga" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, -4.25)

@@ -4,6 +4,7 @@ enum Estado { ACERCAR, HUIR, APUNTAR, ESPERAR }
 
 const AudioManager = preload("res://audio_manager.gd")
 const ArenaColiseo = preload("res://arena_coliseo.gd")
+const VfxCombate = preload("res://vfx_combate.gd")
 const ProyectilEnemigoEscena = preload("res://proyectil_enemigo.tscn")
 
 @export var vida_maxima: float = 28.0
@@ -120,7 +121,10 @@ func _physics_process(delta):
 			if dist >= distancia_huida + 2.0:
 				estado = Estado.ACERCAR
 			else:
-				var dir_huida = -dif.normalized()
+				var destino_huida := ArenaColiseo.clamping_y_ajustar_a_suelo(global_position - dif.normalized() * 6.5, 2.2, 0.0)
+				var dir_huida := ArenaColiseo.calcular_direccion_persecucion(self, destino_huida, _nav_estado, delta)
+				if dir_huida.length_squared() < 0.01:
+					dir_huida = -dif.normalized()
 				velocity.x = dir_huida.x * rapidez_huir * mult_stun
 				velocity.z = dir_huida.z * rapidez_huir * mult_stun
 				if _stun_timer > 0.0:
@@ -199,6 +203,7 @@ func _disparar_flecha(pos_objetivo: Vector3):
 	var origen = global_position + Vector3(0, 1.0, 0)
 	var destino = pos_objetivo + Vector3(0, 0.9, 0)
 	var dir = (destino - origen).normalized()
+	VfxCombate.spawn_destello_disparo(get_parent(), origen, dir, Color(1.0, 0.34, 0.10), 0.58)
 
 	if ProyectilEnemigoEscena != null:
 		var p = ProyectilEnemigoEscena.instantiate()

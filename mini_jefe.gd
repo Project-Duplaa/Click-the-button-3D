@@ -7,6 +7,7 @@ signal jefe_derrotado
 
 const AudioManager = preload("res://audio_manager.gd")
 const ArenaColiseo = preload("res://arena_coliseo.gd")
+const VfxCombate = preload("res://vfx_combate.gd")
 
 @export var rapidez: float = 3.95
 @export var vida_maxima: float = 4800.0
@@ -98,13 +99,13 @@ func _crear_escudo_hierro_visual():
 	mat_burbuja.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat_burbuja.albedo_color = Color(1.0, 0.75, 0.2, 0.08)
 	mat_burbuja.roughness = 0.08
-	mat_burbuja.metallic = 0.85
+	mat_burbuja.metallic = 0.45
 	mat_burbuja.rim_enabled = true
-	mat_burbuja.rim = 1.0
-	mat_burbuja.rim_tint = 0.6
+	mat_burbuja.rim = 0.42
+	mat_burbuja.rim_tint = 0.25
 	mat_burbuja.emission_enabled = true
 	mat_burbuja.emission = Color(1.0, 0.65, 0.15)
-	mat_burbuja.emission_energy_multiplier = 0.30
+	mat_burbuja.emission_energy_multiplier = 0.14
 	mat_burbuja.cull_mode = BaseMaterial3D.CULL_BACK
 	_escudo_burbuja.material_override = mat_burbuja
 	_escudo_hierro_mesh.add_child(_escudo_burbuja)
@@ -120,10 +121,10 @@ func _crear_escudo_hierro_visual():
 	_escudo_anillo1.position = Vector3(0, 1.9, 0)
 	var mat_anillo1 = StandardMaterial3D.new()
 	mat_anillo1.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat_anillo1.albedo_color = Color(1.0, 0.80, 0.25, 0.85)
+	mat_anillo1.albedo_color = Color(1.0, 0.78, 0.25, 0.62)
 	mat_anillo1.emission_enabled = true
 	mat_anillo1.emission = Color(1.0, 0.70, 0.15)
-	mat_anillo1.emission_energy_multiplier = 1.2
+	mat_anillo1.emission_energy_multiplier = 0.55
 	_escudo_anillo1.material_override = mat_anillo1
 	_escudo_hierro_mesh.add_child(_escudo_anillo1)
 
@@ -151,7 +152,7 @@ func _crear_escudo_hierro_visual():
 	_escudo_anillo_suelo.mesh = t_suelo
 	_escudo_anillo_suelo.position = Vector3(0, 0.08, 0)
 	var mat_suelo = mat_anillo1.duplicate() as StandardMaterial3D
-	mat_suelo.albedo_color = Color(1.0, 0.75, 0.2, 0.70)
+	mat_suelo.albedo_color = Color(1.0, 0.75, 0.2, 0.52)
 	_escudo_anillo_suelo.material_override = mat_suelo
 	_escudo_hierro_mesh.add_child(_escudo_anillo_suelo)
 
@@ -201,7 +202,9 @@ func _physics_process(delta):
 		if dist > 0.1:
 			look_at(global_position + dir.normalized(), Vector3.UP)
 
-		if dist <= rango_ataque and _reloj_ataque <= 0.001:
+		var diff_y = absf(jugador.global_position.y - global_position.y)
+
+		if dist <= rango_ataque and diff_y <= 0.48 and _reloj_ataque <= 0.001:
 			_iniciar_ataque_telegrafiado()
 		else:
 			var dir_mov = ArenaColiseo.calcular_direccion_persecucion(self, jugador.global_position, _nav_estado, delta)
@@ -246,6 +249,8 @@ func _ejecutar_golpe_telegrafiado():
 	_anim_ctrl.reproducir_accion("attack-melee-right", 2, 0.08, 1.0)
 
 	AudioManager.play("danio_jugador", 0.8)
+	VfxCombate.spawn_tajo(get_parent(), global_position + Vector3(0, 1.15, 0), -global_transform.basis.z, rango_ataque + 0.6, Color(1.0, 0.62, 0.12), Color(1.0, 0.96, 0.72), Color(0.95, 0.25, 0.05), false, 0.22, 12.0)
+	BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position, 0.4, rango_ataque + 0.6, Color(1.0, 0.62, 0.12), 0.26)
 
 	if is_instance_valid(jugador) and jugador is Node3D:
 		var dist = global_position.distance_to(jugador.global_position)
@@ -254,6 +259,7 @@ func _ejecutar_golpe_telegrafiado():
 				jugador.recibir_dano(dano_golpe)
 			elif jugador.has_node("Salud"):
 				jugador.get_node("Salud").recibir_golpe(int(dano_golpe))
+			VfxCombate.spawn_impacto(get_parent(), jugador.global_position + Vector3(0, 0.95, 0), Color(1.0, 0.65, 0.12), Color.WHITE, 1.15, true)
 			_sacudir_camara(0.35)
 
 func _on_boton_click(_total_clicks: int):
@@ -289,6 +295,7 @@ func _romper_muralla():
 		_escudo_hierro_mesh.visible = false
 
 	AudioManager.play("puzzle_completo", 1.1)
+	VfxCombate.spawn_explosion_nova(get_parent(), global_position + Vector3(0, 1.1, 0), 3.4, Color(1.0, 0.72, 0.20), Color.WHITE, 0.34, true, true)
 	_sacudir_camara(0.4)
 	_crear_texto_flotante("💥 ¡MURALLA ROTA! (Aturdido 3s)", true)
 
@@ -402,25 +409,8 @@ func _actualizar_hud():
 		hud.actualizar_barra_jefe(vida, titulo)
 
 func _crear_rayo_hacia_jefe(desde_pos: Vector3):
-	var orbe = MeshInstance3D.new()
-	var esfera = SphereMesh.new()
-	esfera.radius = 0.3
-	esfera.height = 0.6
-	orbe.mesh = esfera
-	var mat = StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = Color(1.0, 0.6, 0.1)
-	orbe.material_override = mat
 	if get_parent() != null:
-		get_parent().add_child(orbe)
-		orbe.global_position = desde_pos + Vector3(0, 1.0, 0)
-		var dest = global_position + Vector3(0, 1.9, 0)
-		var tw = create_tween()
-		tw.tween_property(orbe, "global_position", dest, 0.16)
-		tw.tween_callback(func():
-			if is_instance_valid(orbe):
-				orbe.queue_free()
-		)
+		VfxCombate.spawn_rayo_segmento(get_parent(), desde_pos + Vector3(0, 1.0, 0), global_position + Vector3(0, 1.9, 0), Color(1.0, 0.65, 0.12), Color.WHITE, 0.16, 0.18, 0.30)
 
 func _crear_texto_flotante(texto: String, es_crit: bool = false):
 	if get_tree() == null:

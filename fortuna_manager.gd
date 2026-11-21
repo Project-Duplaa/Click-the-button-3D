@@ -262,6 +262,15 @@ func tirar_tabla_drops(tipo_enemigo: String) -> Array:
 			drops.append({"tipo": DROP_EXP, "valor": rng.randi_range(8, 14)})
 		"berserker":
 			drops.append({"tipo": DROP_ORO, "valor": rng.randi_range(6, 12)})
+		"centinela_fase":
+			for _i in range(2):
+				drops.append({"tipo": DROP_ORO, "valor": 4})
+			drops.append({"tipo": DROP_EXP, "valor": 14})
+		"anulador_nucleo":
+			for _i in range(3):
+				drops.append({"tipo": DROP_ORO, "valor": 6})
+			drops.append({"tipo": DROP_EXP, "valor": 24})
+			drops.append({"tipo": DROP_DENARIO, "valor": rng.randi_range(1, 2)})
 		"mini_jefe":
 			for _i in range(8):
 				drops.append({"tipo": DROP_ORO, "valor": 5})

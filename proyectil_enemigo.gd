@@ -2,6 +2,7 @@ extends Area3D
 
 const AudioManager = preload("res://audio_manager.gd")
 const ArenaColiseo = preload("res://arena_coliseo.gd")
+const VfxCombate = preload("res://vfx_combate.gd")
 
 @export var rapidez: float = 5.5
 @export var dano: float = 11.0
@@ -9,8 +10,10 @@ const ArenaColiseo = preload("res://arena_coliseo.gd")
 @export var seguir_terreno: bool = false
 
 var direccion: Vector3 = Vector3.FORWARD
+var estilo: String = "flecha_enemiga"
 var _tiempo: float = 0.0
 var _impactado: bool = false
+var _visual_vfx: Node3D = null
 
 @onready var mesh_flecha: MeshInstance3D = $MeshInstance3D
 @onready var luz: OmniLight3D = get_node_or_null("OmniLight3D")
@@ -20,12 +23,21 @@ func _ready():
 	collision_mask = 2 | 4
 	body_entered.connect(_on_body_entered)
 	area_entered.connect(_on_area_entered)
+	_actualizar_visual_proyectil()
 
-func iniciar(origen: Vector3, dir: Vector3, dano_in: float = 11.0, vel_in: float = 5.5):
+func _actualizar_visual_proyectil() -> void:
+	if mesh_flecha != null:
+		mesh_flecha.visible = false
+	_visual_vfx = VfxCombate.construir_visual_proyectil(self, estilo, false)
+
+func iniciar(origen: Vector3, dir: Vector3, dano_in: float = 11.0, vel_in: float = 5.5, estilo_in: String = ""):
 	global_position = origen
 	direccion = dir.normalized()
 	dano = dano_in
 	rapidez = vel_in
+	if estilo_in != "":
+		estilo = estilo_in
+	_actualizar_visual_proyectil()
 	_mirar_hacia(direccion)
 
 func _mirar_hacia(dir: Vector3):
@@ -81,13 +93,16 @@ func _impactar_obstaculo():
 	_desaparecer_con_efecto()
 
 func _desaparecer_con_efecto():
+	var cols_e := VfxCombate.obtener_colores_estilo(estilo, false)
+	VfxCombate.spawn_impacto(get_parent(), global_position, cols_e["main"], cols_e["core"], 0.85, false)
 	# Destello final y remoción
 	if luz != null:
 		var tw = create_tween()
 		tw.tween_property(luz, "light_energy", 0.0, 0.12)
-	if mesh_flecha != null:
+	var nodo_anim: Node3D = _visual_vfx if (_visual_vfx != null and is_instance_valid(_visual_vfx)) else mesh_flecha
+	if nodo_anim != null:
 		var tw_m = create_tween()
-		tw_m.tween_property(mesh_flecha, "scale", Vector3.ZERO, 0.12)
+		tw_m.tween_property(nodo_anim, "scale", Vector3.ZERO, 0.10)
 		tw_m.chain().tween_callback(queue_free)
 	else:
 		queue_free()

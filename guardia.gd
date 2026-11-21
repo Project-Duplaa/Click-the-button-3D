@@ -6,9 +6,9 @@ enum Estado { PATRULLAR, ESPERAR, PERSEGUIR, ATACAR, BUSCAR }
 
 @export var rapidez = 2.55
 @export var espera = 1.0
-@export var rango_vision = 18.0
+@export var rango_vision = 55.0
 @export var rango_ataque = 1.25
-@export var rango_perder = 24.0
+@export var rango_perder = 65.0
 @export var tiempo_busqueda = 3.0
 @export var ruta: Array[Vector3] = [Vector3.ZERO, Vector3(0, 0, -6)]
 
@@ -53,8 +53,13 @@ func _ready():
 	jugador = get_tree().get_first_node_in_group("player")
 	if jugador == null:
 		jugador = get_tree().get_first_node_in_group("jugador")
+	call_deferred("_inicializar_ruta_patrulla")
+
+func _inicializar_ruta_patrulla() -> void:
+	puntos.clear()
 	for d in ruta:
-		puntos.append(global_position + d)
+		puntos.append(ArenaColiseo.clamping_y_ajustar_a_suelo(global_position + d, 2.0, 0.0))
+	ultimo_visto = global_position
 
 func aplicar_knockback(impulso: Vector3, duracion_stun: float = 0.08) -> void:
 	var factor: float = clampf(1.0 - resistencia_knockback, 0.1, 1.0)
@@ -92,11 +97,12 @@ func _physics_process(delta):
 			return
 
 	var d = distancia_a(jugador.global_position)
+	var diff_y = absf(jugador.global_position.y - global_position.y)
 	var ve = lo_ve()
 	if ve:
 		ultimo_visto = jugador.global_position
 
-	var nuevo = decidir(d, ve)
+	var nuevo = decidir(d, ve, diff_y)
 	if nuevo != estado:
 		estado = nuevo
 
@@ -111,7 +117,7 @@ func _physics_process(delta):
 			frenar()
 			if _stun_timer > 0.0:
 				_anim_ctrl.reproducir_bucle("stunned", 0.10, 1.0, 1)
-			elif _reloj_ataque <= 0.001 and d <= rango_ataque + 0.3:
+			elif _reloj_ataque <= 0.001 and d <= rango_ataque + 0.3 and diff_y <= 0.48:
 				_reloj_ataque = cadencia_ataque
 				_anim_ctrl.reproducir_accion("attack-melee-right", 2, 0.08, 1.0)
 				if jugador != null:
@@ -120,7 +126,7 @@ func _physics_process(delta):
 					elif jugador.has_node("Salud"):
 						jugador.get_node("Salud").recibir_golpe(int(dano_ataque))
 		Estado.BUSCAR:
-			if distancia_a(ultimo_visto) > 0.1:
+			if distancia_a(ultimo_visto) > 0.1 or absf(ultimo_visto.y - global_position.y) > 0.35:
 				ir_a(ultimo_visto, delta)
 			else:
 				frenar()
@@ -131,11 +137,11 @@ func _physics_process(delta):
 		velocity.y = minf(velocity.y, 0.0)
 	move_and_slide()
 
-func decidir(d, ve):
+func decidir(d, ve, diff_y: float = 0.0):
 	var alerta = estado == Estado.PERSEGUIR or estado == Estado.ATACAR
 	var limite = rango_perder if alerta else rango_vision
 
-	if ve and d <= rango_ataque:
+	if ve and d <= rango_ataque and diff_y <= 0.45:
 		return Estado.ATACAR
 	if ve and d <= limite:
 		return Estado.PERSEGUIR
@@ -149,20 +155,12 @@ func decidir(d, ve):
 	return Estado.PATRULLAR
 
 func lo_ve():
-	if vision == null or jugador == null:
+	if jugador == null or not is_instance_valid(jugador):
 		return true
-	var ahora: float = Time.get_ticks_msec() * 0.001
-	if ahora < _reloj_vision:
-		return _ultimo_lo_ve
-	_reloj_vision = ahora + 0.12
-	var pecho = jugador.global_position + Vector3(0, 0.9, 0)
-	vision.target_position = vision.to_local(pecho)
-	vision.force_raycast_update()
-	if vision.is_colliding():
-		_ultimo_lo_ve = vision.get_collider() == jugador
-	else:
-		_ultimo_lo_ve = true
-	return _ultimo_lo_ve
+	# En el coliseo abierto de supervivencia, el guardia detecta al jugador en todo el radio de visión (rango_vision)
+	# sin perderlo por desniveles de rampa/pasarela o coberturas bajas
+	_ultimo_lo_ve = true
+	return true
 
 func patrullar(delta: float = 0.016):
 	if puntos.size() == 0:

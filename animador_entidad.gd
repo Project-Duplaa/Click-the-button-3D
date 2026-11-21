@@ -9,6 +9,7 @@ const FALLBACKS := {
 	"sprint": ["sprint", "run", "walk", "idle"],
 	"run": ["run", "sprint", "walk", "idle"],
 	"walk": ["walk", "run", "sprint", "idle"],
+	"block-walk": ["block-walk", "holding-both", "walk"],
 	"attack-melee-right": ["attack-melee-right", "attack-melee-left", "attack-ranged", "cast"],
 	"attack-melee-left": ["attack-melee-left", "attack-melee-right", "attack-ranged", "cast"],
 	"attack-ranged": ["attack-ranged", "cast", "holding-right-shoot", "attack-melee-right"],
@@ -19,6 +20,8 @@ const FALLBACKS := {
 	"telegraph": ["telegraph", "crouch", "idle"],
 	"stunned": ["stunned", "crouch", "idle"],
 	"hit": ["hit", "emerge", "idle"],
+	"dash": ["dash", "sprint", "run", "walk"],
+	"die": ["die", "hit", "stunned", "crouch"],
 	"fall": ["fall", "jump", "idle"],
 	"jump": ["jump", "fall", "idle"],
 	"idle": ["idle", "static"],
@@ -27,11 +30,13 @@ const FALLBACKS := {
 var _ap: AnimationPlayer = null
 var _clips_disponibles: Dictionary = {}
 var _clip_actual: String = ""
+var _ultimo_estado_loco: String = ""
 var _prioridad_bloqueo: int = 0
 var _tiempo_bloqueo: float = 0.0
 var _en_bucle: bool = false
 
 static var _cache_mallas_fusionadas: Dictionary = {}
+static var _cache_librerias_modulares: Dictionary = {}
 
 
 func _init(modelo_raiz: Node3D = null) -> void:
@@ -50,8 +55,13 @@ func vincular_modelo(modelo_raiz: Node3D) -> void:
 		nodo_check = nodo_check.get_parent()
 	estilizar_entidad_visual(modelo_raiz, es_jugador)
 	_ap = buscar_animation_player(modelo_raiz)
+	if not es_jugador and (_ap == null or _ap.get_animation_list().is_empty()):
+		_ap = _asegurar_animaciones_modulares(modelo_raiz)
+	elif not es_jugador and _ap != null and modelo_raiz.find_child("NucleoSingularidad", true, false) != null:
+		_eliminar_pistas_nodo(_ap, "NucleoSingularidad")
 	_clips_disponibles.clear()
 	_clip_actual = ""
+	_ultimo_estado_loco = ""
 	_prioridad_bloqueo = 0
 	_tiempo_bloqueo = 0.0
 	_en_bucle = false
@@ -99,9 +109,11 @@ func reproducir_bucle(nombre: String, blend: float = 0.14, velocidad: float = 1.
 		return false
 
 	var vel := clampf(velocidad, 0.25, 2.5)
-	if clip in ["idle", "walk", "run", "sprint", "holding-both", "telegraph", "stunned", "fall", "static"]:
-		var anim_res := _ap.get_animation(clip)
-		if anim_res != null and anim_res.loop_mode == Animation.LOOP_NONE:
+	var anim_res := _ap.get_animation(clip)
+	if anim_res == null or anim_res.length <= 0.001:
+		return false
+	if clip in ["idle", "walk", "run", "sprint", "block-walk", "crouch", "holding-both", "holding-right-shoot", "telegraph", "stunned", "fall", "static"]:
+		if anim_res.loop_mode == Animation.LOOP_NONE:
 			anim_res.loop_mode = Animation.LOOP_LINEAR
 	if _ap.current_animation == clip and _ap.is_playing():
 		_ap.speed_scale = vel
@@ -135,10 +147,13 @@ func reproducir_accion(nombre: String, prioridad: int = 2, blend: float = 0.07, 
 	_tiempo_bloqueo = bloqueo
 	_en_bucle = false
 	_clip_actual = clip
+	var mismo_clip: bool = (_ap.current_animation == clip)
 	_ap.speed_scale = vel
-	_ap.play(clip, blend)
-	if _ap.current_animation_position > dur_real * 0.65:
+	if mismo_clip:
+		_ap.play(clip, 0.0)
 		_ap.seek(0.0, true)
+	else:
+		_ap.play(clip, blend)
 	return true
 
 
@@ -150,24 +165,68 @@ func disparar_golpe() -> void:
 		reproducir_accion("hit", 1, 0.04, 1.15, 0.22)
 
 
+func reproducir_muerte(velocidad: float = 1.0) -> bool:
+	if not esta_listo():
+		return false
+	var clip := _resolver_clip("die")
+	if clip.is_empty():
+		return false
+	var vel := clampf(velocidad, 0.5, 2.0)
+	var anim_res := _ap.get_animation(clip)
+	if anim_res != null and clip == "die":
+		anim_res.loop_mode = Animation.LOOP_NONE
+	var dur := (anim_res.length / vel) if anim_res != null else 0.9
+	_prioridad_bloqueo = 10
+	_tiempo_bloqueo = maxf(0.5, dur)
+	_en_bucle = false
+	_clip_actual = clip
+	_ap.speed_scale = vel
+	_ap.play(clip, 0.04)
+	_ap.seek(0.0, true)
+	return true
+
+
 func actualizar_locomocion(velocidad_actual: float, corriendo: bool = false, en_suelo: bool = true, velocidad_ref: float = 4.5) -> void:
 	if not esta_listo() or esta_bloqueado():
 		return
 
 	if not en_suelo:
 		if tiene_clip("fall"):
-			reproducir_bucle("fall", 0.12, 1.0, 0)
+			_ultimo_estado_loco = "fall"
+			reproducir_bucle("fall", 0.14, 1.0, 0)
 			return
 
-	if velocidad_actual <= 0.15:
-		reproducir_bucle("idle", 0.16, 1.0, 0)
-	elif corriendo or (velocidad_ref > 0.0 and velocidad_actual >= velocidad_ref * 1.25):
-		var clip_rapido := "sprint" if tiene_clip("sprint") else "run"
-		var escala := clampf(velocidad_actual / maxf(1.0, velocidad_ref * 1.35), 0.78, 1.55)
-		reproducir_bucle(clip_rapido, 0.12, escala, 0)
+	var vel_ref := maxf(1.0, velocidad_ref)
+	var umbral_idle := 0.22 if _ultimo_estado_loco == "idle" else 0.14
+	if velocidad_actual <= umbral_idle:
+		_ultimo_estado_loco = "idle"
+		reproducir_bucle("idle", 0.18, 1.0, 0)
+		return
+
+	var es_sprint := false
+	var es_run := false
+	if corriendo:
+		if velocidad_actual >= vel_ref * 1.28 or (_ultimo_estado_loco == "sprint" and velocidad_actual >= vel_ref * 1.15):
+			es_sprint = true
+		else:
+			es_run = true
+	elif velocidad_actual >= vel_ref * 1.48:
+		es_sprint = true
+	elif velocidad_actual >= vel_ref * 1.18 or (_ultimo_estado_loco == "run" and velocidad_actual >= vel_ref * 1.05):
+		es_run = true
+
+	if es_sprint and tiene_clip("sprint"):
+		_ultimo_estado_loco = "sprint"
+		var escala_sprint := clampf(velocidad_actual / (vel_ref * 1.50), 0.85, 1.50)
+		reproducir_bucle("sprint", 0.12, escala_sprint, 0)
+	elif (es_sprint or es_run) and tiene_clip("run"):
+		_ultimo_estado_loco = "run"
+		var escala_run := clampf(velocidad_actual / (vel_ref * 1.25), 0.80, 1.40)
+		reproducir_bucle("run", 0.13, escala_run, 0)
 	else:
-		var escala_walk := clampf(velocidad_actual / maxf(1.0, velocidad_ref), 0.70, 1.45)
-		reproducir_bucle("walk", 0.14, escala_walk, 0)
+		_ultimo_estado_loco = "walk"
+		var escala_walk := clampf(velocidad_actual / vel_ref, 0.72, 1.35)
+		reproducir_bucle("walk", 0.15, escala_walk, 0)
 
 
 func _resolver_clip(nombre: String) -> String:
@@ -3782,19 +3841,27 @@ static func _adjuntar_array_empaquetado(dst: Variant, src: Variant) -> Variant:
 	return dst
 
 
-static var _outline_enemigo: StandardMaterial3D = null
-static var _outline_heroe: StandardMaterial3D = null
 static var _outline_heroe_calibrado: StandardMaterial3D = null
+static var _outline_enemigo_calibrado: StandardMaterial3D = null
+
+static func _crear_outline_calibrado(albedo: Color, grow_amount: float) -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.cull_mode = BaseMaterial3D.CULL_FRONT
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = albedo
+	mat.grow = true
+	mat.grow_amount = grow_amount
+	return mat
 
 static func _obtener_outline_heroe_calibrado() -> StandardMaterial3D:
 	if _outline_heroe_calibrado == null:
-		_outline_heroe_calibrado = StandardMaterial3D.new()
-		_outline_heroe_calibrado.cull_mode = BaseMaterial3D.CULL_FRONT
-		_outline_heroe_calibrado.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		_outline_heroe_calibrado.albedo_color = Color(0.05, 0.06, 0.09, 1.0)
-		_outline_heroe_calibrado.grow = true
-		_outline_heroe_calibrado.grow_amount = 0.0026
+		_outline_heroe_calibrado = _crear_outline_calibrado(Color(0.05, 0.06, 0.09, 1.0), 0.0011)
 	return _outline_heroe_calibrado
+
+static func _obtener_outline_enemigo_calibrado() -> StandardMaterial3D:
+	if _outline_enemigo_calibrado == null:
+		_outline_enemigo_calibrado = _crear_outline_calibrado(Color(0.035, 0.04, 0.055, 1.0), 0.008)
+	return _outline_enemigo_calibrado
 
 static func _duplicar_material_heroe_calibrado(mat_in: BaseMaterial3D, outline_mat: StandardMaterial3D) -> BaseMaterial3D:
 	var mat_dup := mat_in.duplicate() as BaseMaterial3D
@@ -3803,30 +3870,56 @@ static func _duplicar_material_heroe_calibrado(mat_in: BaseMaterial3D, outline_m
 	mat_dup.resource_name = mat_in.resource_name
 	if mat_dup.transparency == BaseMaterial3D.TRANSPARENCY_DISABLED:
 		mat_dup.rim_enabled = true
-		mat_dup.rim = 0.62 if mat_dup.metallic >= 0.4 else 0.42
-		mat_dup.rim_tint = 0.45
+		mat_dup.rim = 0.55 if mat_dup.metallic >= 0.4 else 0.34
+		mat_dup.rim_tint = 0.35
 		if not mat_dup.emission_enabled:
 			mat_dup.next_pass = outline_mat
 	return mat_dup
 
-static func _aplicar_acabado_heroe_recursivo(nodo: Node, outline_mat: StandardMaterial3D) -> void:
+static func _duplicar_material_enemigo_calibrado(mat_in: BaseMaterial3D, outline_mat: StandardMaterial3D) -> BaseMaterial3D:
+	var mat_dup := mat_in.duplicate() as BaseMaterial3D
+	if mat_dup == null:
+		return mat_in
+	mat_dup.resource_name = mat_in.resource_name
+	if mat_dup.shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED:
+		return mat_dup
+	mat_dup.metallic = minf(mat_dup.metallic, 0.62)
+	if mat_dup.transparency == BaseMaterial3D.TRANSPARENCY_DISABLED:
+		mat_dup.roughness = maxf(mat_dup.roughness, 0.34)
+		mat_dup.rim_enabled = true
+		mat_dup.rim = 0.24
+		mat_dup.rim_tint = 0.20
+		if not mat_dup.emission_enabled:
+			mat_dup.next_pass = outline_mat
+	if mat_dup.emission_enabled:
+		mat_dup.emission_energy_multiplier = minf(mat_dup.emission_energy_multiplier, 0.68)
+	return mat_dup
+
+static func _aplicar_acabado_recursivo(nodo: Node, outline_mat: StandardMaterial3D, es_jugador: bool) -> void:
 	if nodo is MeshInstance3D:
 		var mi := nodo as MeshInstance3D
 		if mi.material_override is BaseMaterial3D:
-			mi.material_override = _duplicar_material_heroe_calibrado(mi.material_override as BaseMaterial3D, outline_mat)
+			var mat_ov := mi.material_override as BaseMaterial3D
+			mi.material_override = _duplicar_material_heroe_calibrado(mat_ov, outline_mat) if es_jugador else _duplicar_material_enemigo_calibrado(mat_ov, outline_mat)
 		elif mi.mesh != null:
 			for s in mi.mesh.get_surface_count():
 				var mat_orig: Material = mi.get_active_material(s)
 				if mat_orig is BaseMaterial3D:
-					mi.set_surface_override_material(s, _duplicar_material_heroe_calibrado(mat_orig as BaseMaterial3D, outline_mat))
+					var mat_b := mat_orig as BaseMaterial3D
+					var mat_cal := _duplicar_material_heroe_calibrado(mat_b, outline_mat) if es_jugador else _duplicar_material_enemigo_calibrado(mat_b, outline_mat)
+					mi.set_surface_override_material(s, mat_cal)
 	for hijo in nodo.get_children():
-		_aplicar_acabado_heroe_recursivo(hijo, outline_mat)
+		_aplicar_acabado_recursivo(hijo, outline_mat, es_jugador)
 
 static func _aplicar_acabado_heroe(modelo_raiz: Node3D) -> void:
 	if modelo_raiz == null:
 		return
-	var outline_mat := _obtener_outline_heroe_calibrado()
-	_aplicar_acabado_heroe_recursivo(modelo_raiz, outline_mat)
+	_aplicar_acabado_recursivo(modelo_raiz, _obtener_outline_heroe_calibrado(), true)
+
+static func _aplicar_acabado_enemigo(modelo_raiz: Node3D) -> void:
+	if modelo_raiz == null:
+		return
+	_aplicar_acabado_recursivo(modelo_raiz, _obtener_outline_enemigo_calibrado(), false)
 
 static func estilizar_entidad_visual(modelo_raiz: Node3D, es_jugador: bool) -> void:
 	if modelo_raiz == null or modelo_raiz.has_meta(&"estilo_visual_aplicado"):
@@ -3838,121 +3931,442 @@ static func estilizar_entidad_visual(modelo_raiz: Node3D, es_jugador: bool) -> v
 		_aplicar_acabado_heroe(modelo_raiz)
 		return
 
-	# Preservar modelos oficiales custom y no sobreescribir sus texturas ni shaders de arte
-	if modelo_raiz.has_meta(&"modelo_oficial_custom") or modelo_raiz.name.to_lower().contains("parca") or modelo_raiz.name.to_lower().contains("coloso") or modelo_raiz.name.to_lower().contains("heraldo") or modelo_raiz.name.to_lower().contains("arquero") or modelo_raiz.name.to_lower().contains("maestra") or modelo_raiz.name.to_lower().contains("kamikaze") or modelo_raiz.name.to_lower().contains("minero") or modelo_raiz.name.to_lower().contains("bruto") or modelo_raiz.name.to_lower().contains("centurion") or (ruta_escena != "" and (ruta_escena.contains("parca") or ruta_escena.contains("coloso") or ruta_escena.contains("heraldo") or ruta_escena.contains("enemigo_arquero") or ruta_escena.contains("maestra") or ruta_escena.contains("kamikaze") or ruta_escena.contains("minero") or ruta_escena.contains("bruto") or ruta_escena.contains("centurion"))):
+	_aplicar_acabado_enemigo(modelo_raiz)
+
+
+# ==============================================================================
+# SÍNTESIS DE ANIMACIONES MODULARES EN TIEMPO DE EJECUCIÓN (12 ENEMIGOS/JEFES)
+# ==============================================================================
+
+static func _mod_q_euler(d: Vector3) -> Quaternion:
+	return Basis.from_euler(Vector3(deg_to_rad(d.x), deg_to_rad(d.y), deg_to_rad(d.z))).get_rotation_quaternion().normalized()
+
+
+static func _mod_crear_anim(nombre: String, dur: float, loop: bool) -> Animation:
+	var a := Animation.new()
+	a.resource_name = nombre
+	a.length = dur
+	a.loop_mode = Animation.LOOP_LINEAR if loop else Animation.LOOP_NONE
+	return a
+
+
+static func _mod_ruta_relativa(raiz: Node, nodo: Node) -> String:
+	if raiz == null or nodo == null or not is_instance_valid(raiz) or not is_instance_valid(nodo):
+		return ""
+	if nodo == raiz:
+		return "."
+	var partes: PackedStringArray = []
+	var cur: Node = nodo
+	while cur != null and cur != raiz:
+		partes.append(String(cur.name))
+		cur = cur.get_parent()
+	if cur != raiz:
+		return ""
+	partes.reverse()
+	return "/".join(partes)
+
+
+static func _mod_pista(
+	anim: Animation,
+	raiz: Node3D,
+	nodo: Node3D,
+	pos_claves: Array,
+	rot_claves: Array
+) -> void:
+	if anim == null or raiz == null or nodo == null or not is_instance_valid(nodo):
 		return
+	var ruta := _mod_ruta_relativa(raiz, nodo)
+	if ruta.is_empty():
+		return
+	var np := NodePath(ruta)
+	if not pos_claves.is_empty():
+		var base_pos := nodo.position
+		var tp := anim.add_track(Animation.TYPE_POSITION_3D)
+		anim.track_set_path(tp, np)
+		anim.track_set_interpolation_type(tp, Animation.INTERPOLATION_LINEAR)
+		for kv in pos_claves:
+			anim.position_track_insert_key(tp, float(kv[0]), base_pos + (kv[1] as Vector3))
+	if not rot_claves.is_empty():
+		var base_q := nodo.transform.basis.get_rotation_quaternion().normalized()
+		var tr := anim.add_track(Animation.TYPE_ROTATION_3D)
+		anim.track_set_path(tr, np)
+		anim.track_set_interpolation_type(tr, Animation.INTERPOLATION_LINEAR)
+		for kv in rot_claves:
+			var dq := _mod_q_euler(kv[1] as Vector3)
+			anim.rotation_track_insert_key(tr, float(kv[0]), (dq * base_q).normalized())
 
-	if _outline_enemigo == null:
-		_outline_enemigo = StandardMaterial3D.new()
-		_outline_enemigo.cull_mode = BaseMaterial3D.CULL_FRONT
-		_outline_enemigo.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		_outline_enemigo.albedo_color = Color(0.04, 0.05, 0.07, 1.0)
-		_outline_enemigo.grow = true
-		_outline_enemigo.grow_amount = 0.022
 
-	if _outline_heroe == null:
-		_outline_heroe = StandardMaterial3D.new()
-		_outline_heroe.cull_mode = BaseMaterial3D.CULL_FRONT
-		_outline_heroe.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		_outline_heroe.albedo_color = Color(0.08, 0.10, 0.14, 1.0)
-		_outline_heroe.grow = true
-		_outline_heroe.grow_amount = 0.020
+static func _mod_pista_giro(
+	anim: Animation,
+	raiz: Node3D,
+	nodo: Node3D,
+	eje: Vector3,
+	dur: float,
+	vueltas: float = 1.0
+) -> void:
+	if anim == null or raiz == null or nodo == null or not is_instance_valid(nodo):
+		return
+	var ruta := _mod_ruta_relativa(raiz, nodo)
+	if ruta.is_empty():
+		return
+	var base_q := nodo.transform.basis.get_rotation_quaternion().normalized()
+	var tr := anim.add_track(Animation.TYPE_ROTATION_3D)
+	anim.track_set_path(tr, NodePath(ruta))
+	anim.track_set_interpolation_type(tr, Animation.INTERPOLATION_LINEAR)
+	var pasos: int = maxi(4, int(round(4.0 * absf(vueltas))))
+	var axis_n := eje.normalized()
+	for i in range(pasos + 1):
+		var frac := float(i) / float(pasos)
+		var q_spin := Quaternion(axis_n, frac * TAU * vueltas)
+		anim.rotation_track_insert_key(tr, frac * dur, (q_spin * base_q).normalized())
 
-	var outline_usar = _outline_heroe if es_jugador else _outline_enemigo
-	_procesar_mallas_estilo_recursivo(modelo_raiz, es_jugador, outline_usar)
 
-static func _procesar_mallas_estilo_recursivo(nodo: Node, es_jugador: bool, outline_mat: StandardMaterial3D) -> void:
-	if nodo is MeshInstance3D:
-		var mi: MeshInstance3D = nodo as MeshInstance3D
-		if mi.mesh != null:
-			for s in mi.mesh.get_surface_count():
-				var mat_orig: Material = mi.get_active_material(s)
-				if mat_orig is BaseMaterial3D:
-					if mat_orig.albedo_texture != null:
-						continue
-					var mat_nuevo = _transformar_material_estilo(mat_orig, es_jugador, outline_mat, mi.name)
-					mi.set_surface_override_material(s, mat_nuevo)
-	for hijo in nodo.get_children():
-		_procesar_mallas_estilo_recursivo(hijo, es_jugador, outline_mat)
+static func _mod_nodo(raiz: Node3D, nombre: String) -> Node3D:
+	if raiz == null:
+		return null
+	if raiz.name == nombre:
+		return raiz
+	return raiz.find_child(nombre, true, false) as Node3D
 
-static func _transformar_material_estilo(mat_in: BaseMaterial3D, es_jugador: bool, outline_mat: StandardMaterial3D, nombre_mesh: String = "") -> StandardMaterial3D:
-	var mat_dup: StandardMaterial3D = mat_in.duplicate() as StandardMaterial3D
-	if mat_dup == null:
-		mat_dup = StandardMaterial3D.new()
-		mat_dup.albedo_color = mat_in.albedo_color
 
-	if es_jugador:
-		mat_dup.rim_enabled = true
-		mat_dup.rim = 0.55
-		mat_dup.rim_tint = 0.4
-		mat_dup.roughness = clampf(mat_dup.roughness, 0.35, 0.8)
-		mat_dup.next_pass = outline_mat
-		return mat_dup
+static func _mod_primer_visual(raiz: Node3D) -> Array[Node3D]:
+	var res: Array[Node3D] = []
+	for c in raiz.get_children():
+		if c is Node3D and not (c is CollisionShape3D) and not (c is Area3D) and not (c is Light3D) and not (c is Camera3D):
+			res.append(c as Node3D)
+	return res
 
-	# =========================================================================
-	# OVERHAUL VISUAL DE ENEMIGOS RADIOACTIVOS
-	# Quitina bio-oscura amenazante + espinas/venas verde tóxico y cian hiper-brillantes
-	# =========================================================================
-	var mname := mat_in.resource_name
-	var col := mat_dup.albedo_color
 
-	# 1. Espinas, cuernos, conos o fragmentos cristalinos
-	var es_espina := mname.contains("Thorn") or mname.contains("Glass") or nombre_mesh.begins_with("Cone")
-	if es_espina:
-		mat_dup.albedo_color = Color(0.10, 0.95, 0.30, 1.0)
-		mat_dup.metallic = 0.15
-		mat_dup.roughness = 0.20
-		mat_dup.emission_enabled = true
-		mat_dup.emission = Color(0.15, 1.0, 0.32, 1.0)
-		mat_dup.emission_energy_multiplier = 3.6
-		mat_dup.rim_enabled = true
-		mat_dup.rim = 0.8
-		mat_dup.rim_tint = 0.5
-		mat_dup.next_pass = outline_mat
-		return mat_dup
+static func _mod_detectar_arquetipo(raiz: Node3D) -> String:
+	var mapa := [
+		["TorsoAcechador", "arquero_balistico"],
+		["TorsoTitan", "bruto_aplastador"],
+		["TorsoColoso", "coloso_bronce"],
+		["CuerpoEspectral", "parca_roja"],
+		["TorsoDuelista", "maestra_sanguinaria"],
+		["ChasisDron", "centurion_corrupto"],
+		["GabineteArcade", "heraldo_clic"],
+		["CuerpoGelatina", "minero_kamikaze"],
+		["CuerpoBicho", "parasito_cursor"],
+		["TorsoGolem", "golem_tesoro"],
+		["PilaresContencion", "canalizador_vacio"],
+		["SingularidadVacio", "canalizador_vacio"],
+		["CampeonSombrio", "espejo_sombrio"],
+		["MarcoEspejoSombrio", "espejo_sombrio"],
+	]
+	for par in mapa:
+		if _mod_nodo(raiz, par[0]) != null:
+			return par[1]
+	return "generico"
 
-	# 2. Ojos, glándulas y núcleos vitales
-	var es_ojos_o_nucleo := mname.contains("Eyes") or mname.contains("Glow") or (mat_dup.emission_enabled and mat_dup.emission_energy_multiplier > 1.5)
-	if es_ojos_o_nucleo:
-		mat_dup.albedo_color = Color(0.95, 1.0, 0.20, 1.0)
-		mat_dup.metallic = 0.1
-		mat_dup.roughness = 0.15
-		mat_dup.emission_enabled = true
-		mat_dup.emission = Color(0.95, 1.0, 0.20, 1.0)
-		mat_dup.emission_energy_multiplier = 4.5
-		mat_dup.next_pass = outline_mat
-		return mat_dup
 
-	# 3. Fauces / bocado tóxico
-	if mname.contains("Mouth"):
-		mat_dup.albedo_color = Color(0.95, 0.22, 0.05, 1.0)
-		mat_dup.emission_enabled = true
-		mat_dup.emission = Color(1.0, 0.28, 0.05, 1.0)
-		mat_dup.emission_energy_multiplier = 3.8
-		mat_dup.next_pass = outline_mat
-		return mat_dup
+static func _mod_construir_bipedo(
+	lib: AnimationLibrary,
+	raiz: Node3D,
+	p: Dictionary,
+	cfg: Dictionary
+) -> void:
+	var torso: Node3D = p.get("torso")
+	var head: Node3D = p.get("head")
+	var arm_l: Node3D = p.get("arm_l")
+	var arm_r: Node3D = p.get("arm_r")
+	var leg_l: Node3D = p.get("leg_l")
+	var leg_r: Node3D = p.get("leg_r")
+	var extra: Node3D = p.get("extra")
+	var amp_leg: float = cfg.get("leg", 24.0)
+	var amp_arm: float = cfg.get("arm", 22.0)
+	var amp_bob: float = cfg.get("bob", 0.05)
+	var es_rango: bool = cfg.get("rango", false)
+	var yaw_atk: float = cfg.get("yaw_atk", 30.0)
 
-	# 4. Slime de plasma o tejido mutagénico
-	if mname.contains("PlasmaSlime"):
-		mat_dup.albedo_color = Color(0.06, 0.14, 0.09, 1.0)
-		mat_dup.metallic = 0.20
-		mat_dup.roughness = 0.18
-		mat_dup.emission_enabled = true
-		mat_dup.emission = Color(0.12, 0.95, 0.35, 1.0)
-		mat_dup.emission_energy_multiplier = 2.4
-		mat_dup.rim_enabled = true
-		mat_dup.rim = 0.7
-		mat_dup.next_pass = outline_mat
-		return mat_dup
+	# idle (1.5s loop)
+	var a_idle := _mod_crear_anim("idle", 1.5, true)
+	_mod_pista(a_idle, raiz, torso, [[0.0, Vector3.ZERO], [0.75, Vector3(0, amp_bob * 0.65, 0)], [1.5, Vector3.ZERO]], [[0.0, Vector3(2, 0, 0)], [0.75, Vector3(5, 2, 0)], [1.5, Vector3(2, 0, 0)]])
+	_mod_pista(a_idle, raiz, head, [[0.0, Vector3.ZERO], [0.75, Vector3(0, 0.015, 0)], [1.5, Vector3.ZERO]], [[0.0, Vector3(0, -4, 0)], [0.75, Vector3(-3, 5, 0)], [1.5, Vector3(0, -4, 0)]])
+	_mod_pista(a_idle, raiz, arm_l, [], [[0.0, Vector3(4, 0, 0)], [0.75, Vector3(10, 0, 3)], [1.5, Vector3(4, 0, 0)]])
+	_mod_pista(a_idle, raiz, arm_r, [], [[0.0, Vector3(6, 0, 0)], [0.75, Vector3(14, 0, -3)], [1.5, Vector3(6, 0, 0)]])
+	_mod_pista(a_idle, raiz, leg_l, [], [[0.0, Vector3.ZERO], [0.75, Vector3(-2, 0, 0)], [1.5, Vector3.ZERO]])
+	_mod_pista(a_idle, raiz, leg_r, [], [[0.0, Vector3.ZERO], [0.75, Vector3(2, 0, 0)], [1.5, Vector3.ZERO]])
+	_mod_pista(a_idle, raiz, extra, [[0.0, Vector3.ZERO], [0.75, Vector3(0, 0.03, 0)], [1.5, Vector3.ZERO]], [[0.0, Vector3(0, 0, -3)], [0.75, Vector3(4, 0, 3)], [1.5, Vector3(0, 0, -3)]])
+	lib.add_animation(&"idle", a_idle)
 
-	# 5. Cuerpo, caparazón, enredaderas y quitina oscura (Petals, Vines, PlasmaDark, etc.)
-	# Reemplazar tonos pastel / deslavados por obsidiana bio-mecánica brillante
-	mat_dup.albedo_color = Color(0.08, 0.09, 0.12, 1.0)
-	mat_dup.metallic = 0.35
-	mat_dup.roughness = 0.35
-	mat_dup.rim_enabled = true
-	mat_dup.rim = 0.65
-	mat_dup.rim_tint = 0.4
-	mat_dup.emission_enabled = false
-	mat_dup.next_pass = outline_mat
-	return mat_dup
+	# walk / run / sprint
+	for spec in [["walk", 0.85, 1.0], ["run", 0.62, 1.25], ["sprint", 0.48, 1.45]]:
+		var nom: String = spec[0]
+		var dur: float = spec[1]
+		var mult: float = spec[2]
+		var q1 := dur * 0.25
+		var q2 := dur * 0.50
+		var q3 := dur * 0.75
+		var al := amp_leg * mult
+		var aa := amp_arm * mult
+		var ab := amp_bob * (1.2 * mult)
+		var a := _mod_crear_anim(nom, dur, true)
+		_mod_pista(a, raiz, torso,
+			[[0.0, Vector3(0, ab, 0)], [q1, Vector3(0, -ab * 0.35, 0)], [q2, Vector3(0, ab, 0)], [q3, Vector3(0, -ab * 0.35, 0)], [dur, Vector3(0, ab, 0)]],
+			[[0.0, Vector3(6.0 * mult, -7, 0)], [q1, Vector3(8.0 * mult, 0, 3)], [q2, Vector3(6.0 * mult, 7, 0)], [q3, Vector3(8.0 * mult, 0, -3)], [dur, Vector3(6.0 * mult, -7, 0)]])
+		_mod_pista(a, raiz, leg_l, [], [[0.0, Vector3(-al, 0, 0)], [q1, Vector3.ZERO], [q2, Vector3(al, 0, 0)], [q3, Vector3.ZERO], [dur, Vector3(-al, 0, 0)]])
+		_mod_pista(a, raiz, leg_r, [], [[0.0, Vector3(al, 0, 0)], [q1, Vector3.ZERO], [q2, Vector3(-al, 0, 0)], [q3, Vector3.ZERO], [dur, Vector3(al, 0, 0)]])
+		_mod_pista(a, raiz, arm_l, [], [[0.0, Vector3(aa, 0, 0)], [q1, Vector3.ZERO], [q2, Vector3(-aa, 0, 0)], [q3, Vector3.ZERO], [dur, Vector3(aa, 0, 0)]])
+		_mod_pista(a, raiz, arm_r, [], [[0.0, Vector3(-aa, 0, 0)], [q1, Vector3.ZERO], [q2, Vector3(aa, 0, 0)], [q3, Vector3.ZERO], [dur, Vector3(-aa, 0, 0)]])
+		_mod_pista(a, raiz, head, [], [[0.0, Vector3(-4, 5, 0)], [q2, Vector3(-4, -5, 0)], [dur, Vector3(-4, 5, 0)]])
+		_mod_pista(a, raiz, extra, [[0.0, Vector3(0, ab * 0.6, 0)], [q1, Vector3(0, -ab * 0.4, 0)], [q2, Vector3(0, ab * 0.6, 0)], [q3, Vector3(0, -ab * 0.4, 0)], [dur, Vector3(0, ab * 0.6, 0)]], [[0.0, Vector3(-4, 0, -6)], [q2, Vector3(-4, 0, 6)], [dur, Vector3(-4, 0, -6)]])
+		lib.add_animation(StringName(nom), a)
+
+	# attack-melee-right / attack-ranged / cast
+	for atk_nom: String in ["attack-melee-right", "attack-ranged", "cast"]:
+		var a := _mod_crear_anim(atk_nom, 0.50, false)
+		var pitch_fwd := 10.0 if (es_rango and atk_nom != "attack-melee-right") else 24.0
+		var swing_r := -42.0 if atk_nom == "attack-ranged" else -68.0
+		_mod_pista(a, raiz, torso,
+			[[0.0, Vector3.ZERO], [0.15, Vector3(0, 0.05, -0.04)], [0.28, Vector3(0, -0.06, 0.08)], [0.50, Vector3.ZERO]],
+			[[0.0, Vector3.ZERO], [0.15, Vector3(-16, -yaw_atk, 0)], [0.28, Vector3(pitch_fwd, yaw_atk, 0)], [0.50, Vector3.ZERO]])
+		_mod_pista(a, raiz, arm_r, [],
+			[[0.0, Vector3.ZERO], [0.15, Vector3(-92, 0, -14)], [0.28, Vector3(-swing_r, 0, 12)], [0.50, Vector3.ZERO]])
+		_mod_pista(a, raiz, arm_l, [],
+			[[0.0, Vector3.ZERO], [0.15, Vector3(-68, 0, 12)], [0.28, Vector3(24, 0, -10)], [0.50, Vector3.ZERO]])
+		_mod_pista(a, raiz, leg_l, [], [[0.0, Vector3.ZERO], [0.28, Vector3(-18, 0, 0)], [0.50, Vector3.ZERO]])
+		_mod_pista(a, raiz, leg_r, [], [[0.0, Vector3.ZERO], [0.28, Vector3(18, 0, 0)], [0.50, Vector3.ZERO]])
+		_mod_pista(a, raiz, head, [], [[0.0, Vector3.ZERO], [0.15, Vector3(-8, yaw_atk * 0.6, 0)], [0.28, Vector3(4, -yaw_atk * 0.6, 0)], [0.50, Vector3.ZERO]])
+		_mod_pista(a, raiz, extra, [[0.0, Vector3.ZERO], [0.15, Vector3(0, 0.06, 0)], [0.50, Vector3.ZERO]], [])
+		lib.add_animation(StringName(atk_nom), a)
+
+	# telegraph (0.8s loop)
+	var a_tel := _mod_crear_anim("telegraph", 0.8, true)
+	_mod_pista(a_tel, raiz, torso, [[0.0, Vector3(0, -0.04, 0)], [0.4, Vector3(0, 0.06, 0)], [0.8, Vector3(0, -0.04, 0)]], [[0.0, Vector3(-12, -14, 0)], [0.4, Vector3(-18, 14, 0)], [0.8, Vector3(-12, -14, 0)]])
+	_mod_pista(a_tel, raiz, arm_l, [], [[0.0, Vector3(-85, 0, 12)], [0.4, Vector3(-105, 0, 18)], [0.8, Vector3(-85, 0, 12)]])
+	_mod_pista(a_tel, raiz, arm_r, [], [[0.0, Vector3(-85, 0, -12)], [0.4, Vector3(-105, 0, -18)], [0.8, Vector3(-85, 0, -12)]])
+	lib.add_animation(&"telegraph", a_tel)
+
+	# stunned (0.9s loop) & hit (0.32s one-shot)
+	var a_st := _mod_crear_anim("stunned", 0.9, true)
+	_mod_pista(a_st, raiz, torso, [[0.0, Vector3(0, -0.05, 0)], [0.45, Vector3(0, -0.08, 0)], [0.9, Vector3(0, -0.05, 0)]], [[0.0, Vector3(14, -10, 6)], [0.45, Vector3(18, 10, -6)], [0.9, Vector3(14, -10, 6)]])
+	_mod_pista(a_st, raiz, head, [], [[0.0, Vector3(16, 12, -10)], [0.45, Vector3(20, -12, 10)], [0.9, Vector3(16, 12, -10)]])
+	_mod_pista(a_st, raiz, arm_l, [], [[0.0, Vector3(24, 0, 10)], [0.45, Vector3(32, 0, 6)], [0.9, Vector3(24, 0, 10)]])
+	_mod_pista(a_st, raiz, arm_r, [], [[0.0, Vector3(24, 0, -10)], [0.45, Vector3(32, 0, -6)], [0.9, Vector3(24, 0, -10)]])
+	lib.add_animation(&"stunned", a_st)
+
+	var a_hit := _mod_crear_anim("hit", 0.32, false)
+	_mod_pista(a_hit, raiz, torso, [[0.0, Vector3.ZERO], [0.09, Vector3(0, -0.04, -0.06)], [0.32, Vector3.ZERO]], [[0.0, Vector3.ZERO], [0.09, Vector3(-20, 14, 0)], [0.32, Vector3.ZERO]])
+	_mod_pista(a_hit, raiz, head, [], [[0.0, Vector3.ZERO], [0.09, Vector3(-18, -12, 0)], [0.32, Vector3.ZERO]])
+	_mod_pista(a_hit, raiz, arm_l, [], [[0.0, Vector3.ZERO], [0.09, Vector3(-28, 0, 16)], [0.32, Vector3.ZERO]])
+	_mod_pista(a_hit, raiz, arm_r, [], [[0.0, Vector3.ZERO], [0.09, Vector3(-28, 0, -16)], [0.32, Vector3.ZERO]])
+	lib.add_animation(&"hit", a_hit)
+
+
+static func _construir_libreria_modular(raiz: Node3D, tipo: String) -> AnimationLibrary:
+	var lib := AnimationLibrary.new()
+	match tipo:
+		"arquero_balistico":
+			_mod_construir_bipedo(lib, raiz, {
+				"torso": _mod_nodo(raiz, "TorsoAcechador"),
+				"head": _mod_nodo(raiz, "_Node3D_8"),
+				"arm_r": _mod_nodo(raiz, "ArmaArcoRecurvo"),
+				"leg_l": _mod_nodo(raiz, "Pierna_Izq"),
+				"leg_r": _mod_nodo(raiz, "Pierna_Der"),
+			}, {"leg": 22.0, "arm": 16.0, "bob": 0.045, "rango": true, "yaw_atk": 20.0})
+			return lib
+		"bruto_aplastador":
+			_mod_construir_bipedo(lib, raiz, {
+				"torso": _mod_nodo(raiz, "TorsoTitan"),
+				"head": _mod_nodo(raiz, "CabezaGolem"),
+				"arm_l": _mod_nodo(raiz, "Brazo_Izq"),
+				"arm_r": _mod_nodo(raiz, "Brazo_Der"),
+				"leg_l": _mod_nodo(raiz, "Pierna_Izq"),
+				"leg_r": _mod_nodo(raiz, "Pierna_Der"),
+				"extra": _mod_nodo(raiz, "BarrilRadiactivo"),
+			}, {"leg": 20.0, "arm": 26.0, "bob": 0.06, "rango": false, "yaw_atk": 26.0})
+			return lib
+		"coloso_bronce":
+			_mod_construir_bipedo(lib, raiz, {
+				"torso": _mod_nodo(raiz, "TorsoColoso"),
+				"head": _mod_nodo(raiz, "CabezaTitan"),
+				"arm_l": _mod_nodo(raiz, "BrazoColoso_Izq"),
+				"arm_r": _mod_nodo(raiz, "BrazoColoso_Der"),
+				"leg_l": _mod_nodo(raiz, "PiernaColoso_Izq"),
+				"leg_r": _mod_nodo(raiz, "PiernaColoso_Der"),
+			}, {"leg": 18.0, "arm": 28.0, "bob": 0.07, "rango": false, "yaw_atk": 24.0})
+			return lib
+		"golem_tesoro":
+			_mod_construir_bipedo(lib, raiz, {
+				"torso": _mod_nodo(raiz, "TorsoGolem"),
+				"head": _mod_nodo(raiz, "CabezaGolem"),
+				"arm_l": _mod_nodo(raiz, "BrazoIzq"),
+				"arm_r": _mod_nodo(raiz, "BrazoDer"),
+				"leg_l": _mod_nodo(raiz, "Pierna_Izq"),
+				"leg_r": _mod_nodo(raiz, "Pierna_Der"),
+				"extra": _mod_nodo(raiz, "SacoTesoros"),
+			}, {"leg": 24.0, "arm": 24.0, "bob": 0.06, "rango": false, "yaw_atk": 28.0})
+			return lib
+
+	# Arquetipos especializados restantes (8 jefes/enemigos + genérico)
+	if tipo == "parca_roja":
+		var body := _mod_nodo(raiz, "CuerpoEspectral")
+		var scythe := _mod_nodo(raiz, "GranGuadanaSangre")
+		var h := _mod_nodo(raiz, "_Node3D_2")
+		_mod_construir_bipedo(lib, raiz, {"torso": body, "head": h, "arm_r": scythe}, {"leg": 0.0, "arm": 20.0, "bob": 0.11, "yaw_atk": 48.0})
+		return lib
+
+	if tipo == "maestra_sanguinaria":
+		var torso := _mod_nodo(raiz, "TorsoDuelista")
+		var head := _mod_nodo(raiz, "CabezaVampirica")
+		var ala_l := _mod_nodo(raiz, "Ala_Izq")
+		var ala_r := _mod_nodo(raiz, "Ala_Der")
+		var arm_r := _mod_nodo(raiz, "BrazoEstoque")
+		_mod_construir_bipedo(lib, raiz, {"torso": torso, "head": head, "arm_r": arm_r}, {"leg": 0.0, "arm": 26.0, "bob": 0.09, "yaw_atk": 38.0})
+		for clip_n: String in lib.get_animation_list():
+			var a := lib.get_animation(clip_n)
+			var dur := a.length
+			var bat := 24.0 if clip_n in ["sprint", "run", "cast"] else 14.0
+			_mod_pista(a, raiz, ala_l, [], [[0.0, Vector3(0, -bat, -8)], [dur * 0.5, Vector3(0, bat, 10)], [dur, Vector3(0, -bat, -8)]])
+			_mod_pista(a, raiz, ala_r, [], [[0.0, Vector3(0, bat, 8)], [dur * 0.5, Vector3(0, -bat, -10)], [dur, Vector3(0, bat, 8)]])
+		return lib
+
+	if tipo == "centurion_corrupto":
+		var chasis := _mod_nodo(raiz, "ChasisDron")
+		var ala_l := _mod_nodo(raiz, "AlaDron_Izq")
+		var ala_r := _mod_nodo(raiz, "AlaDron_Der")
+		var halo := _mod_nodo(raiz, "HaloOrbital")
+		_mod_construir_bipedo(lib, raiz, {"torso": chasis}, {"leg": 0.0, "arm": 0.0, "bob": 0.09, "rango": true, "yaw_atk": 22.0})
+		for clip_n: String in lib.get_animation_list():
+			var a := lib.get_animation(clip_n)
+			var dur := a.length
+			var fl := 18.0 if clip_n in ["sprint", "attack-ranged", "cast"] else 10.0
+			_mod_pista(a, raiz, ala_l, [], [[0.0, Vector3(0, 0, -fl)], [dur * 0.5, Vector3(0, 0, fl)], [dur, Vector3(0, 0, -fl)]])
+			_mod_pista(a, raiz, ala_r, [], [[0.0, Vector3(0, 0, fl)], [dur * 0.5, Vector3(0, 0, -fl)], [dur, Vector3(0, 0, fl)]])
+			_mod_pista_giro(a, raiz, halo, Vector3.UP, dur, 1.0)
+		return lib
+
+	if tipo == "heraldo_clic":
+		var cab := _mod_nodo(raiz, "GabineteArcade")
+		var lev := _mod_nodo(raiz, "PalancaJackpot")
+		var wheel := _mod_nodo(raiz, "Monorueda")
+		_mod_construir_bipedo(lib, raiz, {"torso": cab, "arm_r": lev}, {"leg": 0.0, "arm": 16.0, "bob": 0.06, "rango": true, "yaw_atk": 18.0})
+		for clip_n: String in ["walk", "run", "sprint", "attack-melee-right", "attack-ranged", "cast"]:
+			var a := lib.get_animation(clip_n)
+			if a != null:
+				_mod_pista_giro(a, raiz, wheel, Vector3.RIGHT, a.length, 2.0 if clip_n == "sprint" else 1.0)
+		return lib
+
+	if tipo == "minero_kamikaze":
+		var gel := _mod_nodo(raiz, "CuerpoGelatina")
+		var drill := _mod_nodo(raiz, "TaladroIndustrial")
+		var pipe := _mod_nodo(raiz, "ChimeneasEscape")
+		var dyn := _mod_nodo(raiz, "DinamitaIncrustada")
+		_mod_construir_bipedo(lib, raiz, {"torso": gel, "extra": pipe, "head": dyn}, {"leg": 0.0, "arm": 0.0, "bob": 0.08, "yaw_atk": 18.0})
+		for clip_n: String in lib.get_animation_list():
+			var a := lib.get_animation(clip_n)
+			if clip_n != "stunned":
+				_mod_pista_giro(a, raiz, drill, Vector3.BACK, a.length, 2.0 if clip_n in ["sprint", "attack-melee-right", "telegraph"] else 1.0)
+		return lib
+
+	if tipo == "parasito_cursor":
+		var cuerpo := _mod_nodo(raiz, "CuerpoBicho")
+		var head := _mod_nodo(raiz, "CabezaRobotica")
+		var abd := _mod_nodo(raiz, "AbdomenNanitas")
+		var grupo_a: Array[Node3D] = [_mod_nodo(raiz, "Pata_1_I"), _mod_nodo(raiz, "Pata_2_D"), _mod_nodo(raiz, "Pata_3_I")]
+		var grupo_b: Array[Node3D] = [_mod_nodo(raiz, "Pata_1_D"), _mod_nodo(raiz, "Pata_2_I"), _mod_nodo(raiz, "Pata_3_D")]
+		_mod_construir_bipedo(lib, raiz, {"torso": cuerpo, "head": head, "extra": abd}, {"leg": 0.0, "arm": 0.0, "bob": 0.05, "yaw_atk": 22.0})
+		for clip_n: String in lib.get_animation_list():
+			var a := lib.get_animation(clip_n)
+			var dur := a.length
+			var sw := 28.0 if clip_n in ["sprint", "run", "walk"] else 10.0
+			var up := 16.0 if clip_n in ["sprint", "run", "walk"] else 6.0
+			for pa: Node3D in grupo_a:
+				_mod_pista(a, raiz, pa, [], [[0.0, Vector3(0, sw, up)], [dur * 0.5, Vector3(0, -sw, -up)], [dur, Vector3(0, sw, up)]])
+			for pb: Node3D in grupo_b:
+				_mod_pista(a, raiz, pb, [], [[0.0, Vector3(0, -sw, -up)], [dur * 0.5, Vector3(0, sw, up)], [dur, Vector3(0, -sw, -up)]])
+		return lib
+
+	if tipo == "canalizador_vacio":
+		var pilares := _mod_nodo(raiz, "PilaresContencion")
+		var sing := _mod_nodo(raiz, "SingularidadVacio")
+		# No tocar NucleoSingularidad (su escala es animada por canalizador_vacio.gd)
+		_mod_construir_bipedo(lib, raiz, {"torso": sing}, {"leg": 0.0, "arm": 0.0, "bob": 0.10, "rango": true, "yaw_atk": 16.0})
+		for clip_n: String in lib.get_animation_list():
+			var a := lib.get_animation(clip_n)
+			_mod_pista_giro(a, raiz, pilares, Vector3.UP, a.length, 1.0)
+		return lib
+
+	if tipo == "espejo_sombrio":
+		var marco := _mod_nodo(raiz, "MarcoEspejoSombrio")
+		var camp := _mod_nodo(raiz, "CampeonSombrio")
+		var yelmo := _mod_nodo(raiz, "CabezaYelmo")
+		var espada := _mod_nodo(raiz, "MandobleVacio")
+		_mod_construir_bipedo(lib, raiz, {"torso": camp, "head": yelmo, "arm_r": espada, "extra": marco}, {"leg": 0.0, "arm": 26.0, "bob": 0.08, "yaw_atk": 36.0})
+		return lib
+
+	# Fallback genérico para cualquier otro Node3D modular sin animación
+	var visuales := _mod_primer_visual(raiz)
+	var cuerpo_gen: Node3D = visuales[0] if not visuales.is_empty() else null
+	var extra_gen: Node3D = visuales[1] if visuales.size() > 1 else null
+	_mod_construir_bipedo(lib, raiz, {"torso": cuerpo_gen, "extra": extra_gen}, {"leg": 0.0, "arm": 0.0, "bob": 0.07, "yaw_atk": 20.0})
+	return lib
+
+
+func _asegurar_animaciones_modulares(modelo_raiz: Node3D) -> AnimationPlayer:
+	if modelo_raiz == null or not is_instance_valid(modelo_raiz):
+		return null
+	var ap := buscar_animation_player(modelo_raiz)
+	if ap == null:
+		ap = AnimationPlayer.new()
+		ap.name = "AnimationPlayer"
+		modelo_raiz.add_child(ap)
+	var subidas: PackedStringArray = []
+	var cur_ap: Node = ap
+	while cur_ap != null and cur_ap != modelo_raiz:
+		subidas.append("..")
+		cur_ap = cur_ap.get_parent()
+	ap.root_node = NodePath("/".join(subidas)) if (cur_ap == modelo_raiz and not subidas.is_empty()) else NodePath("..")
+
+	var tipo := _mod_detectar_arquetipo(modelo_raiz)
+	var primer_nodo: Node3D = null
+	var cand := ["TorsoAcechador", "TorsoTitan", "TorsoColoso", "CuerpoEspectral", "TorsoDuelista", "ChasisDron", "GabineteArcade", "CuerpoGelatina", "CuerpoBicho", "TorsoGolem", "SingularidadVacio", "CampeonSombrio"]
+	for c_nom: String in cand:
+		primer_nodo = _mod_nodo(modelo_raiz, c_nom)
+		if primer_nodo != null:
+			break
+	if primer_nodo == null:
+		var vis := _mod_primer_visual(modelo_raiz)
+		if not vis.is_empty():
+			primer_nodo = vis[0]
+	var ruta_sig := _mod_ruta_relativa(modelo_raiz, primer_nodo) if primer_nodo != null else String(modelo_raiz.name)
+	var clave_cache := "%s|%s" % [tipo, ruta_sig]
+
+	var lib: AnimationLibrary = null
+	if _cache_librerias_modulares.has(clave_cache):
+		lib = _cache_librerias_modulares[clave_cache] as AnimationLibrary
+	else:
+		lib = _construir_libreria_modular(modelo_raiz, tipo)
+		if tipo != "generico":
+			_cache_librerias_modulares[clave_cache] = lib
+
+	for lib_old: StringName in ap.get_animation_library_list():
+		ap.remove_animation_library(lib_old)
+	ap.add_animation_library(&"", lib)
+	return ap
+
+
+static func _eliminar_pistas_nodo(ap: AnimationPlayer, subcadena: String) -> void:
+	if ap == null or subcadena.is_empty():
+		return
+	for lib_n: StringName in ap.get_animation_library_list():
+		var lib := ap.get_animation_library(lib_n)
+		if lib == null:
+			continue
+		for anim_n: StringName in lib.get_animation_list():
+			var anim := lib.get_animation(anim_n)
+			if anim == null:
+				continue
+			var tiene := false
+			for t in range(anim.get_track_count()):
+				if String(anim.track_get_path(t)).contains(subcadena):
+					tiene = true
+					break
+			if tiene:
+				var anim_dup := anim.duplicate(true) as Animation
+				for t in range(anim_dup.get_track_count() - 1, -1, -1):
+					if String(anim_dup.track_get_path(t)).contains(subcadena):
+						anim_dup.remove_track(t)
+				lib.remove_animation(anim_n)
+				lib.add_animation(anim_n, anim_dup)

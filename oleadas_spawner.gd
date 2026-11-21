@@ -7,10 +7,6 @@ extends Node3D
 
 const AudioManager = preload("res://audio_manager.gd")
 const ArenaColiseo = preload("res://arena_coliseo.gd")
-const ParasitoCursorScript = preload("res://parasito_cursor.gd")
-const CanalizadorVacioScript = preload("res://canalizador_vacio.gd")
-const GolemTesoroScript = preload("res://golem_tesoro.gd")
-const HeraldoClicScript = preload("res://heraldo_clic.gd")
 
 @export var guardia_escena: PackedScene = preload("res://guardia.tscn")
 @export var espectro_escena: PackedScene = preload("res://espectro.tscn")
@@ -23,14 +19,20 @@ const HeraldoClicScript = preload("res://heraldo_clic.gd")
 @export var maestra_escena: PackedScene = preload("res://maestra_sanguinaria.tscn")
 @export var coloso_escena: PackedScene = preload("res://coloso_bronce.tscn")
 @export var parca_roja_escena: PackedScene = preload("res://parca_roja.tscn")
+@export var parasito_cursor_escena: PackedScene = preload("res://parasito_cursor.tscn")
+@export var canalizador_vacio_escena: PackedScene = preload("res://canalizador_vacio.tscn")
+@export var golem_tesoro_escena: PackedScene = preload("res://golem_tesoro.tscn")
+@export var heraldo_clic_escena: PackedScene = preload("res://heraldo_clic.tscn")
+@export var centinela_fase_escena: PackedScene = preload("res://centinela_fase.tscn")
+@export var anulador_nucleo_escena: PackedScene = preload("res://anulador_nucleo.tscn")
 @export var portal_spawn_escena: PackedScene = preload("res://portal_spawn.tscn")
 
-@export var intervalo_oleada: float = 12.5
+@export var intervalo_oleada: float = 10.5
 @export var radio_spawn: float = 26.0
 @export var max_enemigos_concurrentes: int = 55
 
-var _reloj_oleada: float = 13.0
-var _reloj_goteo: float = 4.2
+var _reloj_oleada: float = 11.0
+var _reloj_goteo: float = 3.6
 var _elite_temprano_spawned: bool = false
 var _tiempo_transcurrido: float = 0.0
 var oleada_actual: int = 1
@@ -110,17 +112,23 @@ func _disparar_incursion_asalto(clicks: int):
 	if clicks <= 12:
 		for i in range(2): _spawn_enemigo(espectro_escena, extra_vida)
 		_spawn_enemigo(guardia_escena, extra_vida)
+		_spawn_enemigo(centinela_fase_escena, extra_vida * 0.45)
 	elif clicks <= 24:
 		_spawn_enemigo_especial("parasito_cursor")
+		_spawn_enemigo(centinela_fase_escena, extra_vida * 0.50)
 		for i in range(2): _spawn_enemigo(berserker_escena, extra_vida)
 		for i in range(2): _spawn_enemigo(kamikaze_escena, extra_vida * 0.5)
 	elif clicks <= 36:
 		_spawn_enemigo_especial("canalizador_vacio")
+		_spawn_enemigo(centinela_fase_escena, extra_vida * 0.55)
+		_spawn_enemigo(anulador_nucleo_escena, extra_vida * 0.50, 0.30)
 		_spawn_enemigo(bruto_escena, extra_vida * 1.3)
 		for i in range(2): _spawn_enemigo(arquero_escena, extra_vida * 0.8)
 	else:
 		_spawn_enemigo_especial("parasito_cursor")
 		_spawn_enemigo_especial("canalizador_vacio")
+		for i in range(2): _spawn_enemigo(centinela_fase_escena, extra_vida * 0.60, float(i) * 0.20)
+		_spawn_enemigo(anulador_nucleo_escena, extra_vida * 0.55, 0.35)
 		_spawn_enemigo(bruto_escena, extra_vida * 1.4)
 		for i in range(2): _spawn_enemigo(berserker_escena, extra_vida)
 		for i in range(3): _spawn_enemigo(espectro_escena, extra_vida)
@@ -153,17 +161,19 @@ func _process(delta):
 		# Goteo continuo de presión entre oleadas
 		_reloj_goteo -= delta
 		if _reloj_goteo <= 0.0:
-			_reloj_goteo = maxf(2.4, 4.4 - float(oleada_actual) * 0.25)
+			_reloj_goteo = maxf(2.0, 3.8 - float(oleada_actual) * 0.22)
 			var enemigos_activos := get_tree().get_nodes_in_group("enemigos").size()
 			if enemigos_activos < max_enemigos_concurrentes:
 				var extra_goteo := float(maxi(0, oleada_actual - 1)) * 2.5
-				var esc_goteo: PackedScene = espectro_escena
-				if oleada_actual >= 3 and randf() < 0.35:
-					esc_goteo = arquero_escena
-				elif oleada_actual >= 2 and randf() < 0.40:
-					esc_goteo = guardia_escena
 				var cant_goteo := 2 if oleada_actual >= 3 else 1
 				for _g in range(cant_goteo):
+					var esc_goteo: PackedScene = espectro_escena
+					if oleada_actual >= 3 and _g == 0 and randf() < 0.20:
+						esc_goteo = centinela_fase_escena
+					elif oleada_actual >= 3 and randf() < 0.35:
+						esc_goteo = arquero_escena
+					elif oleada_actual >= 2 and randf() < 0.40:
+						esc_goteo = guardia_escena
 					_spawn_enemigo(esc_goteo, extra_goteo, 0.0, false)
 
 	if modo_abismo:
@@ -271,23 +281,29 @@ func _generar_oleada(num: int):
 		for i in range(6): _spawn_enemigo(espectro_escena, extra_abismo, i * 0.18)
 		for i in range(3): _spawn_enemigo(guardia_escena, extra_abismo, 0.40 + i * 0.25)
 		_spawn_enemigo(arquero_escena, extra_abismo, 0.80)
+		_spawn_enemigo(centinela_fase_escena, extra_abismo, 1.00)
 	elif num == 3:
 		for i in range(2): _spawn_enemigo(arquero_escena, extra_abismo, 0.20 + i * 0.20)
 		for i in range(2): _spawn_enemigo(kamikaze_escena, extra_abismo, 0.40 + i * 0.20)
 		for i in range(3): _spawn_enemigo(guardia_escena, 4.0 + extra_abismo, 0.60 + i * 0.18)
 		for i in range(7): _spawn_enemigo(espectro_escena, 2.0 + extra_abismo, 0.80 + i * 0.12)
+		for i in range(2): _spawn_enemigo(centinela_fase_escena, 2.0 + extra_abismo, 1.05 + i * 0.25)
 	elif num == 4:
 		for i in range(2): _spawn_enemigo(berserker_escena, 4.0 + extra_abismo, i * 0.20)
 		for i in range(3): _spawn_enemigo(arquero_escena, 6.0 + extra_abismo, 0.20 + i * 0.15)
 		for i in range(2): _spawn_enemigo(kamikaze_escena, extra_abismo, 0.40 + i * 0.20)
 		for i in range(4): _spawn_enemigo(guardia_escena, 8.0 + extra_abismo, 0.60 + i * 0.15)
 		for i in range(8): _spawn_enemigo(espectro_escena, 5.0 + extra_abismo, 0.80 + i * 0.10)
+		for i in range(2): _spawn_enemigo(centinela_fase_escena, 4.0 + extra_abismo, 0.95 + i * 0.25)
+		_spawn_enemigo(anulador_nucleo_escena, 4.0 + extra_abismo, 1.25)
 	elif num == 5:
 		for i in range(2): _spawn_enemigo(bruto_escena, 10.0 + extra_abismo, i * 0.25)
 		for i in range(3): _spawn_enemigo(berserker_escena, 8.0 + extra_abismo, 0.20 + i * 0.18)
 		for i in range(3): _spawn_enemigo(arquero_escena, 8.0 + extra_abismo, 0.40 + i * 0.18)
 		for i in range(2): _spawn_enemigo(kamikaze_escena, extra_abismo, 0.55 + i * 0.20)
 		for i in range(8): _spawn_enemigo(espectro_escena, 6.0 + extra_abismo, 0.65 + i * 0.10)
+		for i in range(3): _spawn_enemigo(centinela_fase_escena, 6.0 + extra_abismo, 0.85 + i * 0.22)
+		_spawn_enemigo(anulador_nucleo_escena, 6.0 + extra_abismo, 1.20)
 	else:
 		var extra = (num - 5) * 6.0 + extra_abismo
 		for i in range(2): _spawn_enemigo(bruto_escena, extra * 1.5, i * 0.2)
@@ -296,22 +312,28 @@ func _generar_oleada(num: int):
 		for i in range(4): _spawn_enemigo(kamikaze_escena, extra * 0.6, 0.5 + i * 0.12)
 		for i in range(6): _spawn_enemigo(guardia_escena, extra, 0.65 + i * 0.1)
 		for i in range(10): _spawn_enemigo(espectro_escena, extra * 0.4, 0.8 + i * 0.08)
+		for i in range(3): _spawn_enemigo(centinela_fase_escena, extra * 0.45, 0.90 + i * 0.20)
+		for i in range(2): _spawn_enemigo(anulador_nucleo_escena, extra * 0.40, 1.15 + i * 0.30)
 
 func _spawn_enemigo_especial(tipo: String):
 	var enemigos_activos = get_tree().get_nodes_in_group("enemigos").size()
 	if enemigos_activos >= max_enemigos_concurrentes:
 		return
 
-	var nodo: CharacterBody3D = CharacterBody3D.new()
+	var escena: PackedScene = null
 	match tipo:
-		"parasito_cursor": nodo.set_script(ParasitoCursorScript)
-		"canalizador_vacio": nodo.set_script(CanalizadorVacioScript)
-		"golem_tesoro": nodo.set_script(GolemTesoroScript)
-		"heraldo_clic": nodo.set_script(HeraldoClicScript)
+		"parasito_cursor": escena = parasito_cursor_escena
+		"canalizador_vacio": escena = canalizador_vacio_escena
+		"golem_tesoro": escena = golem_tesoro_escena
+		"heraldo_clic": escena = heraldo_clic_escena
 		_:
-			nodo.queue_free()
 			return
+	if escena == null:
+		return
 
+	var nodo: Node3D = escena.instantiate() as Node3D
+	if nodo == null:
+		return
 	var pos: Vector3 = _obtener_pos_spawn_cerca_jugador(14.0, 26.0)
 	get_parent().add_child(nodo)
 	nodo.global_position = pos
@@ -331,12 +353,12 @@ func _obtener_pos_spawn_cerca_jugador(r_min: float, r_max: float) -> Vector3:
 			var cand := ArenaColiseo.clamping_y_ajustar_a_suelo(raw, 2.4, 0.0)
 			if Vector2(cand.x - centro.x, cand.z - centro.z).length() < 10.0:
 				continue
-			if ArenaColiseo.esta_en_pendiente(cand.x, cand.z, 0.7):
+			if ArenaColiseo.esta_en_pendiente(cand.x, cand.z, 1.3):
 				continue
 			if not ArenaColiseo.punto_libre_de_obstaculos(cand, 2.2):
 				continue
 			var m_c: float = ArenaColiseo.apotema_en_pos(cand.x, cand.z)
-			if m_c >= (ArenaColiseo.APOTEMA_FOSO - 1.1) and m_c <= (ArenaColiseo.APOTEMA_FOSO + 0.9):
+			if m_c >= (ArenaColiseo.APOTEMA_FOSO - 1.8) and m_c <= (ArenaColiseo.APOTEMA_FOSO + 1.5):
 				continue
 			return cand
 	return ArenaColiseo.punto_aleatorio(16.0, ArenaColiseo.APOTEMA_EXTERIOR - 2.4, null, 0.0)
@@ -388,8 +410,8 @@ func _spawn_enemigo(escena: PackedScene, vida_extra: float, retraso: float = 0.0
 
 ## Calcula el escalado continuo de daño según la oleada alcanzada y los minutos transcurridos
 func calcular_multiplicador_dano_incremental() -> float:
-	var factor_oleada = 1.0 + float(maxi(0, oleada_actual - 1)) * 0.10
-	var factor_tiempo = 1.0 + (_tiempo_transcurrido / 60.0) * 0.10
+	var factor_oleada = 1.0 + float(maxi(0, oleada_actual - 1)) * 0.14
+	var factor_tiempo = 1.0 + (_tiempo_transcurrido / 60.0) * 0.14
 	return factor_oleada * factor_tiempo
 
 func aplicar_escalado_dificultad(enemigo: Node, vida_extra_base: float = 0.0) -> void:
@@ -398,20 +420,25 @@ func aplicar_escalado_dificultad(enemigo: Node, vida_extra_base: float = 0.0) ->
 func _aplicar_escalado_dificultad(enemigo: Node, vida_extra_base: float = 0.0) -> void:
 	if enemigo == null or not is_instance_valid(enemigo):
 		return
-	var mult_hp := 1.0
+	var es_solo_boton: bool = ("solo_dano_boton" in enemigo and bool(enemigo.get("solo_dano_boton")))
+	var factor_hp_combate := 1.18 * (1.0 + float(maxi(0, oleada_actual - 1)) * 0.12 + (_tiempo_transcurrido / 60.0) * 0.10)
+	if es_solo_boton:
+		factor_hp_combate = 1.0 + float(maxi(0, oleada_actual - 1)) * 0.08
+	var mult_hp := factor_hp_combate
 	var mult_dmg := 1.0 * calcular_multiplicador_dano_incremental()
 	var mult_vel := 1.0
 	var lm = get_tree().get_first_node_in_group("logros_manager")
 	if lm != null and lm.has_method("obtener_multiplicadores_tormento"):
 		var m = lm.obtener_multiplicadores_tormento()
-		mult_hp = float(m.get("vida_enemigos", 1.0))
+		mult_hp *= float(m.get("vida_enemigos", 1.0))
 		mult_dmg *= float(m.get("dano_enemigos", 1.0))
 		mult_vel = float(m.get("velocidad_enemigos", 1.0))
 	if modo_abismo:
 		mult_dmg *= (1.0 + float(nivel_abismo) * 0.12)
 		mult_vel *= minf(1.85, 1.0 + float(nivel_abismo) * 0.04)
 	if "vida_maxima" in enemigo:
-		enemigo.vida_maxima = (float(enemigo.vida_maxima) + vida_extra_base) * mult_hp
+		var extra_efectiva: float = vida_extra_base * (0.45 if es_solo_boton else 1.0)
+		enemigo.vida_maxima = (float(enemigo.vida_maxima) + extra_efectiva) * mult_hp
 		enemigo.vida = enemigo.vida_maxima
 	for prop in ["dano_ataque", "dano_contacto", "dano_disparo", "dano_guadana", "dano_carga", "dano_golpe", "dano_pisada", "dano_a_jugador", "dano_flecha", "dano_lluvia", "dano_sentencia"]:
 		if prop in enemigo:

@@ -8,6 +8,7 @@ signal jefe_derrotado
 
 const AudioManager = preload("res://audio_manager.gd")
 const ArenaColiseo = preload("res://arena_coliseo.gd")
+const VfxCombate = preload("res://vfx_combate.gd")
 
 @export var rapidez: float = 3.65
 @export var vida_maxima: float = 1750.0
@@ -43,7 +44,7 @@ var _nav_estado: Dictionary = {}
 
 @onready var modelo: Node3D = $Modelo if has_node("Modelo") else null
 @onready var telegraph_mesh: MeshInstance3D = $TelegraphSuelo
-@onready var luz_aura: OmniLight3D = $LuzCenturion
+@onready var luz_aura: OmniLight3D = get_node_or_null("LuzCenturion")
 
 func _ready():
 	add_to_group("enemigos")
@@ -123,8 +124,9 @@ func _physics_process(delta):
 			_ejecutar_grito_guerra()
 
 		var vel_actual = rapidez * (1.35 if _grito_activo else 1.0)
+		var diff_y = absf(jugador.global_position.y - global_position.y)
 
-		if dist <= rango_ataque and _reloj_ataque <= 0.001:
+		if dist <= rango_ataque and diff_y <= 0.48 and _reloj_ataque <= 0.001:
 			_iniciar_ataque_telegrafiado()
 		else:
 			var dir_mov = ArenaColiseo.calcular_direccion_persecucion(self, jugador.global_position, _nav_estado, delta)
@@ -165,9 +167,9 @@ func _invocar_cristales_escudo():
 		mat.albedo_color = Color(0.95, 0.45, 0.08)
 		mat.emission_enabled = true
 		mat.emission = Color(1.0, 0.35, 0.05)
-		mat.emission_energy_multiplier = 1.4
+		mat.emission_energy_multiplier = 0.58
 		mat.metallic = 0.5
-		mat.roughness = 0.25
+		mat.roughness = 0.36
 		mesh_i.material_override = mat
 		area.add_child(mesh_i)
 
@@ -240,6 +242,7 @@ func _ejecutar_sentencia_de_muerte():
 	_anim_ctrl.reproducir_accion("attack-melee-right", 2, 0.08, 1.25)
 
 	AudioManager.play("danio_jugador", 0.6, 2.5)
+	VfxCombate.spawn_explosion_nova(get_parent(), global_position + Vector3(0, 0.5, 0), rango_ataque * 1.45, Color(1.0, 0.14, 0.22), Color(1.0, 0.85, 0.65), 0.36, true, true)
 	_sacudir_camara(0.45)
 
 	if is_instance_valid(jugador) and jugador is Node3D:
@@ -296,6 +299,7 @@ func _ejecutar_grito_guerra():
 	_reloj_grito = 9.0
 	_grito_activo = true
 	AudioManager.play("alerta_oleada", 1.4, 2.0)
+	BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position, 0.5, 5.5, Color(1.0, 0.42, 0.10), 0.35)
 	_sacudir_camara(0.2)
 
 	_crear_texto_flotante("📢 ¡POR EL COLISEO!", true)
@@ -335,6 +339,7 @@ func _ejecutar_golpe_telegrafiado():
 	_anim_ctrl.reproducir_accion("attack-melee-right", 2, 0.08, 1.0)
 
 	AudioManager.play("corte_giratorio", 1.1)
+	VfxCombate.spawn_tajo(get_parent(), global_position + Vector3(0, 1.15, 0), -global_transform.basis.z, rango_ataque + 0.6, Color(1.0, 0.48, 0.12), Color(1.0, 0.94, 0.68), Color(0.85, 0.12, 0.08), false, 0.22, 12.0)
 
 	if is_instance_valid(jugador) and jugador is Node3D:
 		var dist = global_position.distance_to(jugador.global_position)
@@ -343,6 +348,7 @@ func _ejecutar_golpe_telegrafiado():
 				jugador.recibir_dano(dano_golpe)
 			elif jugador.has_node("Salud"):
 				jugador.get_node("Salud").recibir_golpe(int(dano_golpe))
+			VfxCombate.spawn_impacto(get_parent(), jugador.global_position + Vector3(0, 0.95, 0), Color(1.0, 0.45, 0.10), Color.WHITE, 1.15, true)
 			_sacudir_camara(0.3)
 
 func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
@@ -416,25 +422,8 @@ func _actualizar_hud():
 		hud.actualizar_barra_jefe(vida, txt)
 
 func _crear_rayo_hacia_jefe(desde_pos: Vector3):
-	var orbe = MeshInstance3D.new()
-	var esfera = SphereMesh.new()
-	esfera.radius = 0.28
-	esfera.height = 0.56
-	orbe.mesh = esfera
-	var mat = StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = Color(1.0, 0.8, 0.2)
-	orbe.material_override = mat
 	if get_parent() != null:
-		get_parent().add_child(orbe)
-		orbe.global_position = desde_pos + Vector3(0, 1.0, 0)
-		var dest = global_position + Vector3(0, 1.8, 0)
-		var tw = create_tween()
-		tw.tween_property(orbe, "global_position", dest, 0.16)
-		tw.tween_callback(func():
-			if is_instance_valid(orbe):
-				orbe.queue_free()
-		)
+		VfxCombate.spawn_rayo_segmento(get_parent(), desde_pos + Vector3(0, 1.0, 0), global_position + Vector3(0, 1.8, 0), Color(1.0, 0.80, 0.20), Color.WHITE, 0.16, 0.18, 0.30)
 
 func _crear_texto_flotante(texto: String, es_crit: bool = false):
 	var pool = get_tree().get_first_node_in_group("damage_numbers")

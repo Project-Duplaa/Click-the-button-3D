@@ -4,21 +4,15 @@
 [ext_resource type="PackedScene" uid="uid://dpas8ljx6dwab" path="res://assets/modelos/jefe_maestra_sanguinaria.glb" id="2_modelo"]
 
 [sub_resource type="CapsuleShape3D" id="CapsulaMaestra"]
-radius = 0.7
-height = 3.6
+radius = 0.85
+height = 4.1
 
 [node name="MaestraSanguinaria" type="CharacterBody3D"]
 script = ExtResource("1_maestra")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.05, 0)
 shape = SubResource("CapsulaMaestra")
 
 [node name="Modelo" parent="." instance=ExtResource("2_modelo")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
-
-[node name="LuzMaestra" type="OmniLight3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 0)
-light_color = Color(0.95, 0.1, 0.25, 1)
-light_energy = 1.5
-omni_range = 6.0
+transform = Transform3D(1.22, 0, 0, 0, 1.22, 0, 0, 0, 1.22, 0, 0, 0)

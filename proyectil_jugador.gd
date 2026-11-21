@@ -6,6 +6,7 @@ extends Area3D
 
 const AudioManager = preload("res://audio_manager.gd")
 const ArenaColiseo = preload("res://arena_coliseo.gd")
+const VfxCombate = preload("res://vfx_combate.gd")
 
 @export var rapidez: float = 16.0
 @export var dano: float = 15.0
@@ -15,6 +16,7 @@ var direccion: Vector3 = Vector3.FORWARD
 var perforaciones_restantes: int = 0
 var rebotes_restantes: int = 0
 var es_critico: bool = false
+var estilo: String = "flecha"
 var _enemigos_golpeados: Array = []
 var _tiempo: float = 0.0
 
@@ -25,54 +27,35 @@ func _ready():
 	area_entered.connect(_on_area_entered)
 	_crear_malla_si_no_existe()
 
-static var _mesh_flecha_norm: CylinderMesh = null
-static var _mesh_flecha_crit: CylinderMesh = null
 static var _shape_col_def: SphereShape3D = null
 
 
 func _crear_malla_si_no_existe():
-	if get_node_or_null("MeshInstance3D") != null:
-		return
-	if _mesh_flecha_norm == null:
-		var mat_n := StandardMaterial3D.new()
-		mat_n.shading_mode = StandardMaterial3D.SHADING_MODE_UNSHADED
-		mat_n.albedo_color = Color(0.25, 0.85, 1.0)
-		_mesh_flecha_norm = CylinderMesh.new()
-		_mesh_flecha_norm.top_radius = 0.03
-		_mesh_flecha_norm.bottom_radius = 0.08
-		_mesh_flecha_norm.height = 0.95
-		_mesh_flecha_norm.material = mat_n
-	if _mesh_flecha_crit == null:
-		var mat_c := StandardMaterial3D.new()
-		mat_c.shading_mode = StandardMaterial3D.SHADING_MODE_UNSHADED
-		mat_c.albedo_color = Color(1.0, 0.85, 0.2)
-		_mesh_flecha_crit = CylinderMesh.new()
-		_mesh_flecha_crit.top_radius = 0.03
-		_mesh_flecha_crit.bottom_radius = 0.08
-		_mesh_flecha_crit.height = 0.95
-		_mesh_flecha_crit.material = mat_c
 	if _shape_col_def == null:
 		_shape_col_def = SphereShape3D.new()
 		_shape_col_def.radius = 0.45
 
-	var mesh_inst = MeshInstance3D.new()
-	mesh_inst.name = "MeshInstance3D"
-	mesh_inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	mesh_inst.mesh = _mesh_flecha_crit if es_critico else _mesh_flecha_norm
-	mesh_inst.rotation_degrees.x = 90.0
-	add_child(mesh_inst)
-	
-	var col = CollisionShape3D.new()
-	col.shape = _shape_col_def
-	add_child(col)
+	if get_node_or_null("CollisionShape3D") == null:
+		var col = CollisionShape3D.new()
+		col.name = "CollisionShape3D"
+		col.shape = _shape_col_def
+		add_child(col)
 
-func iniciar(origen: Vector3, dir: Vector3, dano_in: float, rapidez_in: float = 16.0, perforaciones_in: int = 0, es_crit: bool = false):
+	var malla_base := get_node_or_null("MeshInstance3D") as MeshInstance3D
+	if malla_base != null:
+		malla_base.visible = false
+	VfxCombate.construir_visual_proyectil(self, estilo, es_critico)
+
+func iniciar(origen: Vector3, dir: Vector3, dano_in: float, rapidez_in: float = 16.0, perforaciones_in: int = 0, es_crit: bool = false, estilo_in: String = ""):
 	global_position = origen
 	direccion = dir.normalized()
 	dano = dano_in
 	rapidez = rapidez_in
 	perforaciones_restantes = perforaciones_in
 	es_critico = es_crit
+	if estilo_in != "":
+		estilo = estilo_in
+	VfxCombate.construir_visual_proyectil(self, estilo, es_critico)
 	if direccion.length_squared() > 0.001 and absf(direccion.dot(Vector3.UP)) < 0.999:
 		look_at(global_position + direccion, Vector3.UP)
 
@@ -108,12 +91,17 @@ func _procesar_impacto(target: Node):
 			target.velocity += direccion * 5.5
 			
 		AudioManager.play("impacto_flecha", randf_range(1.0, 1.25))
+		var cols_j := VfxCombate.obtener_colores_estilo(estilo, es_critico)
+		VfxCombate.spawn_impacto(get_parent(), global_position, cols_j["main"], cols_j["core"], 0.95, es_critico)
 		
 		if rebotes_restantes > 0:
 			rebotes_restantes -= 1
 			var nuevo_objetivo = _buscar_siguiente_enemigo(target)
 			if nuevo_objetivo != null:
-				direccion = (nuevo_objetivo.global_position + Vector3(0.0, 0.9, 0.0) - global_position).normalized()
+				var pos_antes: Vector3 = global_position
+				var pos_dest: Vector3 = nuevo_objetivo.global_position + Vector3(0.0, 0.9, 0.0)
+				VfxCombate.spawn_rayo_segmento(get_parent(), pos_antes, pos_dest, cols_j["main"], cols_j["core"], 0.09, 0.14, 0.16)
+				direccion = (pos_dest - global_position).normalized()
 				if direccion.length_squared() > 0.001 and absf(direccion.dot(Vector3.UP)) < 0.999:
 					look_at(global_position + direccion, Vector3.UP)
 				return
@@ -124,6 +112,8 @@ func _procesar_impacto(target: Node):
 		else:
 			queue_free()
 	elif target is StaticBody3D:
+		var cols_w := VfxCombate.obtener_colores_estilo(estilo, false)
+		VfxCombate.spawn_impacto(get_parent(), global_position, cols_w["main"], cols_w["core"], 0.65, false)
 		queue_free()
 
 func _buscar_siguiente_enemigo(ignorar: Node) -> Node3D:

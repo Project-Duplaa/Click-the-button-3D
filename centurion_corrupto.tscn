@@ -4,8 +4,8 @@
 [ext_resource type="PackedScene" path="res://assets/modelos/enemigo_centurion_corrupto.glb" id="2_modelo"]
 
 [sub_resource type="CapsuleShape3D" id="CapsulaCenturion"]
-radius = 0.65
-height = 3.2
+radius = 0.8
+height = 3.8
 
 [sub_resource type="StandardMaterial3D" id="MatTelegraph"]
 transparency = 1
@@ -22,19 +22,13 @@ height = 0.05
 script = ExtResource("1_centurion")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.9, 0)
 shape = SubResource("CapsulaCenturion")
 
 [node name="Modelo" parent="." instance=ExtResource("2_modelo")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+transform = Transform3D(1.22, 0, 0, 0, 1.22, 0, 0, 0, 1.22, 0, 0, 0)
 
 [node name="TelegraphSuelo" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
 visible = false
 mesh = SubResource("MeshTelegraph")
-
-[node name="LuzCenturion" type="OmniLight3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, 0)
-light_color = Color(0.3, 0.85, 1.0, 1)
-light_energy = 1.6
-omni_range = 5.5

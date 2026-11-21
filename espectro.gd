@@ -69,7 +69,8 @@ func _physics_process(delta):
 		return
 
 	var d = distancia_a(jugador.global_position)
-	if d <= rango_ataque:
+	var diff_y = absf(jugador.global_position.y - global_position.y)
+	if d <= rango_ataque and diff_y <= 0.45:
 		frenar()
 		if _stun_timer > 0.0:
 			_anim_ctrl.reproducir_bucle("stunned", 0.10, 1.0, 1)

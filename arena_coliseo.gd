@@ -101,6 +101,22 @@ func limitar_en_arena(pos: Vector3, margen: float = 1.0) -> Vector3:
 func _ready() -> void:
 	add_to_group("arena_coliseo")
 	_asegurar_cache()
+	# Los muros rectangulares heredados (a +-31 m) y sus esquinas/detalles perimetrales antiguos quedan DENTRO
+	# del foso dodecagonal (apotema 39.9 m) y bloquean las rampas: se retiran y los reemplaza GeometriaAnfiteatro.
+	for legacy_name in ["Muros", "EsquinasIndustriales", "DetallesPerimetro"]:
+		var legacy_node := get_node_or_null(legacy_name)
+		if legacy_node != null:
+			remove_child(legacy_node)
+			legacy_node.queue_free()
+	var pilares_legacy := get_node_or_null("Pilares")
+	if pilares_legacy != null:
+		for p_diag in ["Pilar_NO", "Pilar_NE", "Pilar_SO", "Pilar_SE"]:
+			var p_node := pilares_legacy.get_node_or_null(p_diag) as Node3D
+			if p_node != null:
+				# Reubicar los 4 pilares diagonales fuera del corredor de acceso de los Bastiones Diagonales (45°/135°/225°/315°)
+				var s_x := signf(p_node.position.x)
+				var s_z := signf(p_node.position.z)
+				p_node.position = Vector3(s_x * 16.5, 0.0, s_z * 25.5)
 	_construir_anfiteatro_completo()
 	call_deferred("_reubicar_ruinas_escena")
 
@@ -159,9 +175,15 @@ static func _asegurar_cache() -> void:
 			"tangente": td,
 			"r_inicio": BASTION_RAMPA_INF_INICIO,
 			"r_fin": BASTION_RAMPA_SUP_FIN_APRON,
-			"semi_ancho": BASTION_RAMPA_INF_SEMI_ANCHO,
+			"r_deck_ini": BASTION_DECK_INICIO,
+			"r_sup_ini": BASTION_RAMPA_SUP_INICIO,
+			"semi_ancho": BASTION_RAMPA_SUP_SEMI_ANCHO,
+			"semi_ancho_inf": BASTION_RAMPA_INF_SEMI_ANCHO,
+			"semi_ancho_deck": BASTION_DECK_SEMI_ANCHO,
 			"boca": Vector3(nd.x * (BASTION_RAMPA_INF_INICIO - 1.3), 0.0, nd.y * (BASTION_RAMPA_INF_INICIO - 1.3)),
-			"cresta": Vector3(nd.x * (BASTION_RAMPA_SUP_FIN_APRON + 1.3), ALTURA_PASARELA, nd.y * (BASTION_RAMPA_SUP_FIN_APRON + 1.3)),
+			"boca_sup": Vector3(nd.x * (BASTION_RAMPA_SUP_INICIO - 0.5), ALTURA_BASTION, nd.y * (BASTION_RAMPA_SUP_INICIO - 0.5)),
+			"cresta_inf": Vector3(nd.x * ((BASTION_DECK_INICIO + BASTION_DECK_FIN) * 0.5), ALTURA_BASTION, nd.y * ((BASTION_DECK_INICIO + BASTION_DECK_FIN) * 0.5)),
+			"cresta": Vector3(nd.x * (BASTION_RAMPA_SUP_FIN_APRON + 1.4), ALTURA_PASARELA, nd.y * (BASTION_RAMPA_SUP_FIN_APRON + 1.4)),
 		})
 
 static func apotema_en_pos(x: float, z: float) -> float:
@@ -368,10 +390,12 @@ static func _punto_es_seguro_spawn(pos: Vector3) -> bool:
 		return false
 	# Evitar que un spawn caiga montado justo en el escalón vertical de 0.80 m (fuera de rampas)
 	var m := apotema_en_pos(pos.x, pos.z)
-	if m >= (APOTEMA_FOSO - 1.05) and m <= (APOTEMA_FOSO + 0.85):
+	if m >= (APOTEMA_FOSO - 1.65) and m <= (APOTEMA_FOSO + 1.45):
 		var h := obtener_altura_suelo(pos.x, pos.z)
 		if h <= 0.05 or h >= 0.78:
 			return false
+	if esta_en_pendiente(pos.x, pos.z, 1.15):
+		return false
 	return true
 
 # ==============================================================================
@@ -381,18 +405,35 @@ static func _punto_es_seguro_spawn(pos: Vector3) -> bool:
 static func configurar_cuerpo_terreno(body: CharacterBody3D, es_rapido: bool = false, es_enemigo: bool = true) -> void:
 	if body == null:
 		return
-	body.floor_max_angle = deg_to_rad(45.0)
-	body.floor_snap_length = 0.45 if es_rapido else 0.36
+	body.floor_max_angle = deg_to_rad(56.0)
+	body.floor_snap_length = 0.65 if es_rapido else 0.55
 	body.floor_stop_on_slope = true
 	body.floor_constant_speed = true
-	body.floor_block_on_wall = true
-	body.wall_min_slide_angle = deg_to_rad(10.0)
+	body.floor_block_on_wall = false
+	body.wall_min_slide_angle = deg_to_rad(5.0)
+	body.safe_margin = 0.04
+	body.max_slides = 6
 	# Mantener bit 0 (Layer 1) activo para que Area3D existentes (DropItem, Cofre, Palanca...) sigan disparando body_entered
 	if es_enemigo:
 		body.collision_layer = 1 | 8
 	else:
 		body.collision_layer = 1 | 4
 	body.collision_mask = LAYER_MUROS_OBSTACULOS # 1 | 2 (Terreno + MurosYObstaculos)
+
+static func _detectar_corredor_rampa(x: float, z: float, margen_r: float = 1.35, margen_lat: float = 0.30) -> int:
+	_asegurar_cache()
+	for i in range(_rampas_info.size()):
+		var r_info: Dictionary = _rampas_info[i]
+		var rn: Vector2 = r_info["normal"]
+		var rt: Vector2 = r_info["tangente"]
+		var along: float = x * rn.x + z * rn.y
+		var perp: float = absf(x * rt.x + z * rt.y)
+		var r_min_i: float = float(r_info["r_inicio"]) - margen_r
+		var r_max_i: float = float(r_info["r_fin"]) + margen_r
+		var semi_max: float = float(r_info.get("semi_ancho_deck", r_info["semi_ancho"])) + margen_lat
+		if along >= r_min_i and along <= r_max_i and perp <= semi_max:
+			return i
+	return -1
 
 static func calcular_direccion_persecucion(
 	cuerpo: CharacterBody3D,
@@ -405,70 +446,202 @@ static func calcular_direccion_persecucion(
 		return Vector3.ZERO
 
 	var orig := cuerpo.global_position
+	var h_suelo_actual := obtener_altura_suelo(orig.x, orig.z)
+	var h_suelo_obj := obtener_altura_suelo(objetivo_pos.x, objetivo_pos.z)
+	var y_ref_orig := maxf(orig.y, h_suelo_actual)
+	var y_ref_obj := maxf(objetivo_pos.y, h_suelo_obj)
+
+	# 0. Watchdog físico de rescate: si un enemigo queda incrustado bajo una rampa/escalón
+	if orig.y < h_suelo_actual - 0.14:
+		cuerpo.global_position.y = h_suelo_actual + 0.04
+		orig = cuerpo.global_position
+
 	var dif_total := objetivo_pos - orig
 	dif_total.y = 0.0
 	if dif_total.length_squared() < 0.0025:
 		return Vector3.ZERO
 	var dir_directa := dif_total.normalized()
 
-	# Timer de deslizamiento anti-atasco activo
+	var corredor_actual_idx := _detectar_corredor_rampa(orig.x, orig.z, 1.35, 0.25)
+	var en_rampa_activa: bool = corredor_actual_idx >= 0 or esta_en_pendiente(orig.x, orig.z, 0.65)
+
+	# Timer de deslizamiento anti-atasco activo (nunca desviar de costado si está en una rampa)
 	var slide_t := float(estado_nav.get("slide_timer", 0.0))
-	if slide_t > 0.0:
+	if slide_t > 0.0 and not en_rampa_activa:
 		slide_t = maxf(0.0, slide_t - delta)
 		estado_nav["slide_timer"] = slide_t
 		var s_dir: Vector3 = estado_nav.get("slide_dir", dir_directa)
 		if slide_t > 0.0 and s_dir.length_squared() > 0.01:
 			return s_dir.normalized()
+	elif en_rampa_activa:
+		estado_nav["slide_timer"] = 0.0
 
 	var dir_deseada := dir_directa
-	var diff_y := objetivo_pos.y - orig.y
+	var rampa_guardada_idx := int(estado_nav.get("rampa_idx", -1))
+	var buscando_bastion := (h_suelo_obj >= 0.35 and h_suelo_obj < 0.60) and not esta_en_pasarela(objetivo_pos)
+	var en_pasarela_plana := h_suelo_actual >= ALTURA_PASARELA - 0.02 and orig.y >= ALTURA_PASARELA - 0.06 and apotema_en_pos(orig.x, orig.z) >= (APOTEMA_FOSO + 0.70)
+	if corredor_actual_idx >= 0 and String(_rampas_info[corredor_actual_idx]["tipo"]) == "diagonal":
+		var rn_corr: Vector2 = _rampas_info[corredor_actual_idx]["normal"]
+		var along_corr: float = orig.x * rn_corr.x + orig.z * rn_corr.y
+		if along_corr < (BASTION_RAMPA_SUP_FIN_APRON + 0.15):
+			en_pasarela_plana = false
+	var coronada_pasarela := en_pasarela_plana
+	var coronado_bastion := h_suelo_actual >= ALTURA_BASTION - 0.02 and orig.y >= ALTURA_BASTION - 0.06
 
-	# CASO A: Objetivo en nivel superior (> +0.30m) y cuerpo debajo -> enfilar rampa más conveniente
-	if diff_y > 0.30 and orig.y < (ALTURA_PASARELA - 0.15):
-		var mejor_idx := int(estado_nav.get("rampa_idx", -1))
-		var mejor_costo: float = 999999.0
-		var rampa_elegida: Dictionary = _rampas_info[0]
-		var buscando_bastion := objetivo_pos.y < 0.55 and not esta_en_pasarela(objetivo_pos)
+	# CASO A: Objetivo en nivel superior (Pasarela +0.80m o Bastión +0.40m) o enemigo actualmente subiendo una rampa
+	# Mantener bloqueo de rampa hasta que tanto la posición como la altura real del cuerpo hayan coronado la cresta!
+	var necesita_subir_rampa: bool = (
+		(y_ref_obj > orig.y + 0.14 and not coronada_pasarela)
+		or (h_suelo_obj >= ALTURA_PASARELA - 0.05 and not coronada_pasarela)
+		or (buscando_bastion and not coronado_bastion)
+		or (rampa_guardada_idx >= 0 and h_suelo_obj >= ALTURA_BASTION - 0.05 and orig.y < h_suelo_obj - 0.06)
+		or (corredor_actual_idx >= 0 and y_ref_obj >= orig.y - 0.06 and not coronada_pasarela and apotema_en_pos(objetivo_pos.x, objetivo_pos.z) >= RAMPA_CARDINAL_INICIO - 1.0)
+	)
 
-		for i in range(_rampas_info.size()):
-			var r := _rampas_info[i]
-			if buscando_bastion and String(r["tipo"]) != "diagonal":
-				continue
-			var boca: Vector3 = r["boca"]
-			var cresta: Vector3 = r["cresta"]
-			var d_boca := Vector2(orig.x - boca.x, orig.z - boca.z).length()
-			var d_cresta := Vector2(cresta.x - objetivo_pos.x, cresta.z - objetivo_pos.z).length()
-			var bonus: float = 2.5 if i == mejor_idx else 0.0
-			var costo := d_boca + 0.65 * d_cresta - bonus
-			if costo < mejor_costo:
-				mejor_costo = costo
-				mejor_idx = i
-				rampa_elegida = r
+	if necesita_subir_rampa:
+		var mejor_idx := rampa_guardada_idx
+		if corredor_actual_idx >= 0 and ( not buscando_bastion or String(_rampas_info[corredor_actual_idx]["tipo"]) == "diagonal" ):
+			mejor_idx = corredor_actual_idx
+		else:
+			var mejor_costo: float = 999999.0
+			for i in range(_rampas_info.size()):
+				var r := _rampas_info[i]
+				if buscando_bastion and String(r["tipo"]) != "diagonal":
+					continue
+				var boca: Vector3 = r["boca"]
+				var cresta: Vector3 = r["cresta_inf"] if buscando_bastion else r["cresta"]
+				var d_boca := Vector2(orig.x - boca.x, orig.z - boca.z).length()
+				var d_cresta := Vector2(cresta.x - objetivo_pos.x, cresta.z - objetivo_pos.z).length()
+				var bonus: float = 3.2 if i == mejor_idx else 0.0
+				var costo := d_boca + 0.65 * d_cresta - bonus
+				if costo < mejor_costo:
+					mejor_costo = costo
+					mejor_idx = i
 
+		if mejor_idx < 0 or mejor_idx >= _rampas_info.size():
+			mejor_idx = 0
 		estado_nav["rampa_idx"] = mejor_idx
+		var rampa_elegida: Dictionary = _rampas_info[mejor_idx]
+		var tipo_r := String(rampa_elegida["tipo"])
 		var rn: Vector2 = rampa_elegida["normal"]
 		var rt: Vector2 = rampa_elegida["tangente"]
 		var along: float = orig.x * rn.x + orig.z * rn.y
 		var perp: float = orig.x * rt.x + orig.z * rt.y
-		var semi_a: float = float(rampa_elegida["semi_ancho"])
 		var r_ini: float = float(rampa_elegida["r_inicio"])
+		var r_fin_r: float = float(rampa_elegida["r_fin"])
+		var semi_a: float = float(rampa_elegida["semi_ancho"])
+		if tipo_r == "diagonal" and along < float(rampa_elegida.get("r_sup_ini", BASTION_RAMPA_SUP_INICIO)) - 1.0:
+			semi_a = float(rampa_elegida.get("semi_ancho_inf", BASTION_RAMPA_INF_SEMI_ANCHO))
+		var semi_seguro := maxf(0.9, semi_a - 0.72)
 		var wp: Vector3
 
-		# Escape lateral si se quedó pegado fuera de la boca pero junto al lateral de la rampa
-		if along >= (r_ini - 0.4) and absf(perp) > (semi_a - 0.15) and orig.y < 0.25:
-			var p_esc := rn * (r_ini - 1.9) + rt * (signf(perp) * (semi_a + 1.5))
+		# Escape lateral si se quedó pegado fuera de la boca o en el bolsillo lateral junto a la rampa
+		if along >= (r_ini - 0.5) and absf(perp) > (semi_a - 0.25) and orig.y < 0.36:
+			var p_esc := rn * (r_ini - 2.0) + rt * (signf(perp) * maxf(0.0, absf(perp) - 1.6))
 			wp = Vector3(p_esc.x, 0.0, p_esc.y)
-		elif along < (r_ini + 0.35) and absf(perp) > (semi_a * 0.55):
-			wp = rampa_elegida["boca"]
+		elif along < (r_ini - 0.4) or (absf(perp) > semi_seguro and orig.y < 0.28):
+			# Si está en el foso pegado al escalón de 0.80m lejos de la boca, bordear hacia la boca sin chocar contra el escalón
+			var apot_o := apotema_en_pos(orig.x, orig.z)
+			if orig.y < 0.36 and apot_o >= (APOTEMA_FOSO - 2.2) and absf(perp) > semi_seguro + 0.5:
+				var s_hacia := -signf(perp) if absf(perp) > 0.01 else 1.0
+				var p_borde := Vector2(orig.x, orig.z) + rt * (s_hacia * 2.8) - rn * 1.15
+				wp = Vector3(p_borde.x, 0.0, p_borde.y)
+			else:
+				var r_boca_wp := clampf(along + 1.6, r_ini - 1.3, r_ini + 0.5)
+				var p_boca_wp := clampf(perp * 0.25, -semi_seguro * 0.45, semi_seguro * 0.45)
+				var pt_b := rn * r_boca_wp + rt * p_boca_wp
+				wp = Vector3(pt_b.x, 0.0, pt_b.y)
+		elif tipo_r == "diagonal" and along >= (BASTION_RAMPA_SUP_FIN_PENDIENTE - 0.15) and orig.y >= (ALTURA_PASARELA - 0.06):
+			# Ya en el puente horizontal del bastión (Apron, y = 0.80m): avanzar hacia el carril de la pasarela en dirección al jugador
+			var dot_obj_t := (objetivo_pos.x * rt.x + objetivo_pos.z * rt.y) - perp
+			var s_lat := signf(dot_obj_t) if absf(dot_obj_t) > 0.2 else 0.0
+			var pt_apron := rn * (r_fin_r + 2.2) + rt * (s_lat * 2.4)
+			wp = Vector3(pt_apron.x, ALTURA_PASARELA, pt_apron.y)
 		else:
-			wp = rampa_elegida["cresta"]
+			# Ya dentro del corredor de la rampa: avanzar centrado por el eje longitudinal hasta superar r_fin + 1.4m
+			if buscando_bastion and tipo_r == "diagonal":
+				wp = rampa_elegida["cresta_inf"]
+			elif tipo_r == "diagonal" and along >= float(rampa_elegida.get("r_deck_ini", BASTION_DECK_INICIO)) - 0.5 and absf(perp) > 1.15 and along < float(rampa_elegida.get("r_sup_ini", BASTION_RAMPA_SUP_INICIO)) + 1.2:
+				# Si está en la plataforma intermedia del bastión (semi_ancho 3.1m) desplazado lateralmente,
+				# primero embocar la boca de la rampa superior (semi_ancho 2.3m) antes de avanzar contra el muro de 0.80m
+				var r_emb := clampf(along + 0.8, BASTION_DECK_INICIO + 1.2, BASTION_RAMPA_SUP_INICIO - 0.3)
+				var pt_emb := rn * r_emb + rt * (perp * 0.15)
+				wp = Vector3(pt_emb.x, ALTURA_BASTION, pt_emb.y)
+			else:
+				var r_avance := minf(r_fin_r + 1.45, along + 3.4)
+				var factor_c := 0.20
+				if tipo_r == "diagonal" and along >= float(rampa_elegida.get("r_deck_ini", BASTION_DECK_INICIO)) - 0.5:
+					# Embocar el tramo superior del bastión (semi_ancho = 2.30m) bien centrado
+					factor_c = 0.08
+					semi_seguro = BASTION_RAMPA_SUP_SEMI_ANCHO - 0.95
+				var p_centrado := clampf(perp * factor_c, -semi_seguro * 0.45, semi_seguro * 0.45)
+				var pt_c := rn * r_avance + rt * p_centrado
+				wp = Vector3(pt_c.x, ALTURA_PASARELA, pt_c.y)
+
+		# Rescate anti-atasco dentro de la rampa: si lleva > 0.40s sin avanzar en la rampa, centrar y elevar suavemente
+		var last_pos_r: Vector3 = estado_nav.get("last_pos_rampa", orig)
+		var stuck_r: float = float(estado_nav.get("stuck_rampa_t", 0.0))
+		if Vector2(orig.x - last_pos_r.x, orig.z - last_pos_r.z).length() < 0.28 * maxf(delta * 12.0, 0.16):
+			stuck_r += delta
+		else:
+			stuck_r = maxf(0.0, stuck_r - delta * 2.0)
+			estado_nav["last_pos_rampa"] = orig
+		estado_nav["stuck_rampa_t"] = stuck_r
+
+		if stuck_r >= 0.40 and along >= (r_ini - 1.6) and along <= (r_fin_r + 1.2):
+			var r_snap := clampf(along + 0.60, r_ini + 0.3, r_fin_r + 0.9)
+			var p_snap := clampf(perp * 0.30, -1.0, 1.0)
+			var pt_s := rn * r_snap + rt * p_snap
+			var ny := obtener_altura_suelo(pt_s.x, pt_s.y) + 0.05
+			cuerpo.global_position = Vector3(pt_s.x, maxf(orig.y + 0.06, ny), pt_s.y)
+			orig = cuerpo.global_position
+			estado_nav["stuck_rampa_t"] = 0.0
+			estado_nav["last_pos_rampa"] = orig
 
 		var h_wp := Vector3(wp.x - orig.x, 0.0, wp.z - orig.z)
 		if h_wp.length_squared() > 0.01:
-			dir_deseada = h_wp.normalized()
+			return h_wp.normalized()
+	else:
+		if coronada_pasarela or corredor_actual_idx < 0:
+			estado_nav["rampa_idx"] = -1
+			estado_nav["stuck_rampa_t"] = 0.0
+
+	# CASO A2: Enemigo en el Foso (0.0m) cerca del muro vertical de la Pasarela (+0.80m) fuera de rampa
+	var apot_actual := apotema_en_pos(orig.x, orig.z)
+	if orig.y < 0.38 and apot_actual >= (APOTEMA_FOSO - 1.65) and corredor_actual_idx < 0:
+		var n_inward := obtener_normal_pared_cercana(orig)
+		if dir_directa.dot(-n_inward) > 0.12 or cuerpo.is_on_wall():
+			var mejor_i := 0
+			var mejor_d := 999999.0
+			for i in range(_rampas_info.size()):
+				var b_pos: Vector3 = _rampas_info[i]["boca"]
+				var d_b := Vector2(orig.x - b_pos.x, orig.z - b_pos.z).length()
+				if d_b < mejor_d:
+					mejor_d = d_b
+					mejor_i = i
+			estado_nav["rampa_idx"] = mejor_i
+			var boca_c: Vector3 = _rampas_info[mejor_i]["boca"]
+			var h_boca := Vector3(boca_c.x - orig.x, 0.0, boca_c.z - orig.z)
+			if h_boca.length_squared() > 0.01:
+				return h_boca.normalized()
+
+	# CASO A3: Enemigo bajando por una rampa hacia el Foso: mantener centrado en el corredor para no caer de costado en un rincón
+	if corredor_actual_idx >= 0 and y_ref_obj < y_ref_orig - 0.15:
+		var r_baja: Dictionary = _rampas_info[corredor_actual_idx]
+		var rn_b: Vector2 = r_baja["normal"]
+		var rt_b: Vector2 = r_baja["tangente"]
+		var along_b: float = orig.x * rn_b.x + orig.z * rn_b.y
+		var perp_b: float = orig.x * rt_b.x + orig.z * rt_b.y
+		var semi_b := maxf(0.9, float(r_baja["semi_ancho"]) - 0.75)
+		var r_dest_b := maxf(float(r_baja["r_inicio"]) - 1.2, along_b - 3.0)
+		var p_dest_b := clampf(perp_b * 0.25, -semi_b * 0.45, semi_b * 0.45)
+		var pt_baja := rn_b * r_dest_b + rt_b * p_dest_b
+		var h_baja := Vector3(pt_baja.x - orig.x, 0.0, pt_baja.y - orig.z)
+		if h_baja.length_squared() > 0.01:
+			return h_baja.normalized()
 
 	# CASO B: Ambos en la Pasarela (+0.80m) -> rodear si la línea recta cruza el foso con diferencia angular <= 115°
-	elif orig.y >= 0.45 and objetivo_pos.y >= 0.45 and apotema_en_pos(orig.x, orig.z) >= (APOTEMA_FOSO - 0.5):
+	if orig.y >= 0.45 and objetivo_pos.y >= 0.45 and apot_actual >= (APOTEMA_FOSO - 0.5):
 		var corta_foso := false
 		for t_m in [0.25, 0.50, 0.75]:
 			var m_pt := orig.lerp(objetivo_pos, t_m)
@@ -487,6 +660,10 @@ static func calcular_direccion_persecucion(
 				var h_orb := Vector3(pt_orbita.x - orig.x, 0.0, pt_orbita.z - orig.z)
 				if h_orb.length_squared() > 0.01:
 					dir_deseada = h_orb.normalized()
+		elif apot_actual < (APOTEMA_FOSO + 1.15) and apotema_en_pos(orig.x + dir_deseada.x * 2.5, orig.z + dir_deseada.z * 2.5) < (APOTEMA_FOSO + 0.35):
+			# Si camina por la pasarela rozando la esquina interior de un vértice del foso, abrirse ligeramente hacia el exterior
+			var n_in_p := obtener_normal_pared_cercana(orig)
+			dir_deseada = (dir_deseada * 0.78 - n_in_p * 0.38).normalized()
 
 	# CASO D: Anti-atasco y deslizamiento tangencial si hay contacto con muro/escalón
 	var choca_muro := cuerpo.is_on_wall()
@@ -505,6 +682,28 @@ static func calcular_direccion_persecucion(
 	estado_nav["last_pos"] = last_pos
 
 	if choca_muro or bloqueado_avance:
+		# Si está en o cerca de una rampa Y aún necesita subir o bajar por ella, desatascar alineando al eje longitudinal
+		var r_cerca_idx := _detectar_corredor_rampa(orig.x, orig.z, 2.2, 0.85)
+		if r_cerca_idx >= 0 and (necesita_subir_rampa or y_ref_obj < y_ref_orig - 0.15):
+			var r_c: Dictionary = _rampas_info[r_cerca_idx]
+			var rn_c: Vector2 = r_c["normal"]
+			var along_c: float = orig.x * rn_c.x + orig.z * rn_c.y
+			var va_subiendo := y_ref_obj >= y_ref_orig - 0.05
+			var r_obj_c := (along_c + 2.4) if va_subiendo else (along_c - 2.4)
+			var pt_eje := rn_c * r_obj_c
+			var dir_eje := Vector3(pt_eje.x - orig.x, 0.0, pt_eje.y - orig.z)
+			if dir_eje.length_squared() > 0.01:
+				return dir_eje.normalized()
+		elif r_cerca_idx >= 0 and coronada_pasarela:
+			# Ya coronó una rampa hacia la pasarela pero choca con un obstáculo o borde: empujar radialmente hacia el centro del carril de la pasarela
+			var r_c2: Dictionary = _rampas_info[r_cerca_idx]
+			var rn_c2: Vector2 = r_c2["normal"]
+			var rt_c2: Vector2 = r_c2["tangente"]
+			var dot_t2 := dir_deseada.x * rt_c2.x + dir_deseada.z * rt_c2.y
+			var s_t2 := 1.0 if dot_t2 >= 0.0 else -1.0
+			var dir_carril := Vector3(rn_c2.x * 0.45 + rt_c2.x * s_t2 * 0.89, 0.0, rn_c2.y * 0.45 + rt_c2.y * s_t2 * 0.89).normalized()
+			return dir_carril
+
 		var wn := Vector3.ZERO
 		if choca_muro:
 			wn = cuerpo.get_wall_normal()
@@ -520,10 +719,10 @@ static func calcular_direccion_persecucion(
 		var slide := (tang * signo * 0.90 + wn * 0.10).normalized()
 		if choca_muro:
 			estado_nav["slide_dir"] = slide
-			estado_nav["slide_timer"] = 0.28
+			estado_nav["slide_timer"] = 0.25
 		else:
 			estado_nav["slide_dir"] = slide
-			estado_nav["slide_timer"] = 0.34
+			estado_nav["slide_timer"] = 0.30
 		return slide
 
 	return dir_deseada
@@ -856,9 +1055,9 @@ func _construir_bastiones_diagonales(parent: Node3D) -> void:
 
 		var col_d := CollisionShape3D.new()
 		var box_col := BoxShape3D.new()
-		box_col.size = Vector3(deck_w, ALTURA_BASTION + 0.06, deck_len)
+		box_col.size = Vector3(deck_w, ALTURA_BASTION - 0.015, deck_len)
 		col_d.shape = box_col
-		col_d.position = Vector3(0.0, (ALTURA_BASTION - 0.06) * 0.5, 0.0)
+		col_d.position = Vector3(0.0, (ALTURA_BASTION - 0.015) * 0.5, 0.0)
 		body_deck.add_child(col_d)
 
 		# Malla del bastión con contraste + rebordes titanio y franjas hazard laterales
@@ -917,9 +1116,9 @@ func _construir_bastiones_diagonales(parent: Node3D) -> void:
 
 		var col_ap := CollisionShape3D.new()
 		var box_ap := BoxShape3D.new()
-		box_ap.size = Vector3(BASTION_RAMPA_SUP_SEMI_ANCHO * 2.0, ALTURA_PASARELA + 0.06, apron_len)
+		box_ap.size = Vector3(BASTION_RAMPA_SUP_SEMI_ANCHO * 2.0, ALTURA_PASARELA - 0.015, apron_len)
 		col_ap.shape = box_ap
-		col_ap.position = Vector3(0.0, (ALTURA_PASARELA - 0.06) * 0.5, 0.0)
+		col_ap.position = Vector3(0.0, (ALTURA_PASARELA - 0.015) * 0.5, 0.0)
 		body_apron.add_child(col_ap)
 
 		BunkerVisualKit.make_box(
@@ -987,6 +1186,22 @@ func _crear_tramo_rampa(
 	var col_cuna := CollisionShape3D.new()
 	col_cuna.shape = conv_cuna
 	body.add_child(col_cuna)
+
+	# Losa puente horizontal a ras de la cresta (y = y_fin) y de la entrada (y = y_inicio):
+	# sella cualquier micro-costura entre la losa inclinada y la plataforma superior/inferior en Jolt Physics
+	var col_puente_sup := CollisionShape3D.new()
+	var box_puente_sup := BoxShape3D.new()
+	box_puente_sup.size = Vector3(ancho, 0.24, 0.90)
+	col_puente_sup.shape = box_puente_sup
+	col_puente_sup.position = Vector3(0.0, y_fin - 0.12, -hl - 0.35)
+	body.add_child(col_puente_sup)
+
+	var col_puente_inf := CollisionShape3D.new()
+	var box_puente_inf := BoxShape3D.new()
+	box_puente_inf.size = Vector3(ancho, 0.20, 0.70)
+	col_puente_inf.shape = box_puente_inf
+	col_puente_inf.position = Vector3(0.0, y_inicio - 0.10, hl + 0.25)
+	body.add_child(col_puente_inf)
 
 	# Malla visual superior de la rampa + costados hazard (sin colisión lateral sobresaliente)
 	var malla_losa := MeshInstance3D.new()
@@ -1279,7 +1494,7 @@ func _construir_props_e_iluminacion_sectores(parent: Node3D) -> void:
 
 	# --- OESTE: Munition Forge ---
 	_colocar_prop(sect, GLB_CRATE, Vector3(-49.7, ALTURA_PASARELA, 6.3), 12.0)
-	_colocar_prop(sect, GLB_CRATE, Vector3(-49.7, ALTURA_PASARELA + 0.9, 6.3), -14.0)
+	_colocar_prop(sect, GLB_CRATE, Vector3(-49.7, ALTURA_PASARELA + 0.70, 6.3), -14.0)
 	_colocar_prop(sect, GLB_CRATE, Vector3(-49.7, ALTURA_PASARELA, -6.3), -18.0)
 	_colocar_prop(sect, GLB_GENERATOR, Vector3(-48.65, ALTURA_PASARELA, -10.15), 90.0, true, Vector3(2.8, 2.2, 2.2))
 	_colocar_prop(sect, GLB_LOCKERS, Vector3(-43.75, ALTURA_PASARELA, -26.95), 60.0)
@@ -1343,6 +1558,12 @@ func _generar_obstaculos_run(parent: Node3D) -> void:
 	centros_obstaculos_run.append(Vector2(49.0, -6.125))
 	centros_obstaculos_run.append(Vector2(42.0, -26.25))
 	centros_obstaculos_run.append(Vector2(-48.65, -10.15))
+	# Reservar las bocas y salidas de todas las rampas cardinales y diagonales para que nunca se coloque una barricada frente a una rampa
+	for r_res in _rampas_info:
+		var b_res: Vector3 = r_res["boca"]
+		var c_res: Vector3 = r_res["cresta"]
+		centros_obstaculos_run.append(Vector2(b_res.x, b_res.z))
+		centros_obstaculos_run.append(Vector2(c_res.x, c_res.z))
 	var pilares_node: Node = get_node_or_null("Pilares")
 	if pilares_node != null:
 		for p_child in pilares_node.get_children():
@@ -1399,7 +1620,7 @@ func _generar_obstaculos_run(parent: Node3D) -> void:
 			var c2 := Vector2(cand.x, cand.z)
 			if apotema_en_pos(cand.x, cand.z) >= (APOTEMA_FOSO - 2.4):
 				continue
-			if esta_en_pendiente(cand.x, cand.z, 1.8):
+			if esta_en_pendiente(cand.x, cand.z, 3.6):
 				continue
 			if obtener_altura_suelo(cand.x, cand.z) > 0.05:
 				continue
@@ -1421,18 +1642,18 @@ func _generar_obstaculos_run(parent: Node3D) -> void:
 		var c_pasa := Vector3.ZERO
 		var base_p: float = float(pi) * 90.0 + 18.0
 		for _i in range(44):
-			var ang: float = deg_to_rad(base_p + rng.randf_range(-10.0, 52.0))
-			var r: float = rng.randf_range(43.2, 48.0)
+			var ang: float = deg_to_rad(base_p + rng.randf_range(0.0, 54.0))
+			var r: float = rng.randf_range(44.6, 48.2)
 			var cand := Vector3(sin(ang) * r, 0.0, -cos(ang) * r)
 			var m_p: float = apotema_en_pos(cand.x, cand.z)
-			if m_p < (APOTEMA_FOSO + 2.4) or m_p > (APOTEMA_EXTERIOR - 3.4):
+			if m_p < (APOTEMA_FOSO + 3.8) or m_p > (APOTEMA_EXTERIOR - 3.2):
 				continue
-			if esta_en_pendiente(cand.x, cand.z, 2.0):
+			if esta_en_pendiente(cand.x, cand.z, 3.8):
 				continue
 			var c2 := Vector2(cand.x, cand.z)
 			var ok := true
 			for prev in centros_obstaculos_run:
-				if c2.distance_to(prev) < 12.0:
+				if c2.distance_to(prev) < 11.5:
 					ok = false
 					break
 			if ok:

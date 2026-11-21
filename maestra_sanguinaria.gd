@@ -8,6 +8,7 @@ signal jefe_derrotado
 
 const AudioManager = preload("res://audio_manager.gd")
 const ArenaColiseo = preload("res://arena_coliseo.gd")
+const VfxCombate = preload("res://vfx_combate.gd")
 
 @export var rapidez: float = 4.85
 @export var vida_maxima: float = 10500.0
@@ -43,7 +44,7 @@ var _anim_ctrl: AnimadorEntidad = AnimadorEntidad.new()
 var _nav_estado: Dictionary = {}
 
 @onready var modelo: Node3D = $Modelo if has_node("Modelo") else null
-@onready var luz_arco: OmniLight3D = $LuzMaestra
+@onready var luz_arco: OmniLight3D = get_node_or_null("LuzMaestra")
 
 func _ready():
 	add_to_group("enemigos")
@@ -81,17 +82,7 @@ func _conectar_boton_movil():
 			_boton_movil.click_presionado.connect(_on_boton_click)
 
 func _crear_telegraph_lluvia():
-	_telegraph_lluvia = MeshInstance3D.new()
-	var cyl = CylinderMesh.new()
-	cyl.top_radius = 4.0
-	cyl.bottom_radius = 4.0
-	cyl.height = 0.05
-	_telegraph_lluvia.mesh = cyl
-	var mat = StandardMaterial3D.new()
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.albedo_color = Color(0.95, 0.1, 0.45, 0.55)
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	_telegraph_lluvia.material_override = mat
+	_telegraph_lluvia = BunkerVisualKit.create_hazard_ground_ring(4.2, Color(1.0, 0.12, 0.45), Color(1.0, 0.35, 0.65), 0.78, 0.96, 0.55, 0.16)
 	_telegraph_lluvia.top_level = true
 	_telegraph_lluvia.visible = false
 	add_child(_telegraph_lluvia)
@@ -116,8 +107,12 @@ func _invocar_cristales_escudo():
 		prism.size = Vector3(0.6, 0.9, 0.6)
 		mesh_i.mesh = prism
 		var mat = StandardMaterial3D.new()
-		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		mat.albedo_color = Color(1.0, 0.2, 0.65)
+		mat.albedo_color = Color(0.76, 0.14, 0.30)
+		mat.metallic = 0.25
+		mat.roughness = 0.36
+		mat.emission_enabled = true
+		mat.emission = Color(0.82, 0.16, 0.34)
+		mat.emission_energy_multiplier = 0.55
 		mesh_i.material_override = mat
 		area.add_child(mesh_i)
 
@@ -202,7 +197,10 @@ func _physics_process(delta):
 		var vel_actual = rapidez * (0.4 if _reloj_fijacion_luz > 0.0 else 1.0)
 
 		if dist < distancia_kiting:
-			var dir_huida = -hacia_jugador.normalized()
+			var destino_huida := ArenaColiseo.clamping_y_ajustar_a_suelo(global_position - hacia_jugador.normalized() * 6.5, 2.2, 0.0)
+			var dir_huida := ArenaColiseo.calcular_direccion_persecucion(self, destino_huida, _nav_estado, delta)
+			if dir_huida.length_squared() < 0.01:
+				dir_huida = -hacia_jugador.normalized()
 			velocity.x = dir_huida.x * vel_actual + _knockback_velocity.x
 			velocity.z = dir_huida.z * vel_actual + _knockback_velocity.z
 		elif dist > (distancia_kiting + 4.0):
@@ -238,12 +236,13 @@ func _disparar_rafaga(dir_frente: Vector3):
 			dir_pitch = (objetivo_3d - origen_base).normalized()
 
 	var angulos = [-16.0, 0.0, 16.0]
+	VfxCombate.spawn_destello_disparo(get_parent(), global_position + Vector3(0, 1.8, 0), dir_pitch, Color(1.0, 0.16, 0.46), 0.75)
 	for ang in angulos:
 		var dir_rot = dir_pitch.rotated(Vector3.UP, deg_to_rad(ang))
 		var f = escena_flecha.instantiate()
 		get_parent().add_child(f)
 		var pos_inicio = global_position + Vector3(0, 1.8, 0) + Vector3(dir_rot.x, 0.0, dir_rot.z).normalized() * 1.2
-		f.iniciar(pos_inicio, dir_rot, dano_flecha, 7.5)
+		f.iniciar(pos_inicio, dir_rot, dano_flecha, 7.5, "sanguinaria")
 
 func _iniciar_lluvia_flechas():
 	_esta_canalizando = true
@@ -279,6 +278,7 @@ func _ejecutar_lluvia_flechas():
 	_anim_ctrl.reproducir_accion("cast", 2, 0.08, 1.1)
 
 	AudioManager.play("impacto_flecha", 1.2, 2.5)
+	VfxCombate.spawn_lluvia_flechas(get_parent(), _pos_lluvia_objetivo, 4.2, Color(1.0, 0.15, 0.45), Color(1.0, 0.85, 0.92), 16)
 	_sacudir_camara(0.35)
 
 	if is_instance_valid(jugador) and jugador is Node3D:
@@ -426,25 +426,8 @@ func _actualizar_hud():
 		hud.actualizar_barra_jefe(vida, titulo)
 
 func _crear_rayo_hacia_jefe(desde_pos: Vector3):
-	var orbe = MeshInstance3D.new()
-	var esfera = SphereMesh.new()
-	esfera.radius = 0.28
-	esfera.height = 0.56
-	orbe.mesh = esfera
-	var mat = StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = Color(0.9, 0.2, 0.6)
-	orbe.material_override = mat
 	if get_parent() != null:
-		get_parent().add_child(orbe)
-		orbe.global_position = desde_pos + Vector3(0, 1.0, 0)
-		var dest = global_position + Vector3(0, 2.0, 0)
-		var tw = create_tween()
-		tw.tween_property(orbe, "global_position", dest, 0.16)
-		tw.tween_callback(func():
-			if is_instance_valid(orbe):
-				orbe.queue_free()
-		)
+		VfxCombate.spawn_rayo_segmento(get_parent(), desde_pos + Vector3(0, 1.0, 0), global_position + Vector3(0, 2.0, 0), Color(0.95, 0.22, 0.68), Color.WHITE, 0.16, 0.18, 0.30)
 
 func _crear_texto_flotante(texto: String, es_crit: bool = false):
 	var pool = get_tree().get_first_node_in_group("damage_numbers")

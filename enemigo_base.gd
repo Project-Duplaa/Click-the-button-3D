@@ -8,9 +8,15 @@ class_name EnemigoBase
 
 const AudioManager = preload("res://audio_manager.gd")
 const ArenaColiseo = preload("res://arena_coliseo.gd")
+const VfxCombate = preload("res://vfx_combate.gd")
 const MetaprogresoManager = preload("res://metaprogreso_manager.gd")
+const FUENTES_BOTON: Array[String] = ["onda", "boton", "boton_hilo", "boton_cometa", "sobrecarga_clic"]
+
+static func es_fuente_boton(fuente: String) -> bool:
+	return fuente in FUENTES_BOTON
 
 @export var tipo_enemigo_id: String = ""
+@export var solo_dano_boton: bool = false
 @export var rapidez: float = 2.85
 @export var vida_maxima: float = 14.0
 @export var dano_ataque: float = 9.0
@@ -38,8 +44,11 @@ var muerto: bool:
 var knockback_vel: Vector3 = Vector3.ZERO
 var resistencia_knockback: float = 0.0
 var _stun_timer: float = 0.0
+var _cooldown_feedback_inmune: float = 0.0
+var _escudo_fase_mesh: MeshInstance3D = null
 var marca_conductiva_timer: float = 0.0
 var _nav_estado: Dictionary = {}
+var _anim_ctrl: AnimadorEntidad = AnimadorEntidad.new()
 
 func _ready() -> void:
 	add_to_group("enemies")
@@ -52,6 +61,15 @@ func _ready() -> void:
 		jugador = get_tree().get_first_node_in_group("jugador")
 
 	_autodetectar_tipo_enemigo()
+	if not _anim_ctrl.esta_listo():
+		var mod_base := get_node_or_null("Modelo") as Node3D
+		if mod_base == null:
+			mod_base = get_node_or_null("ModeloVisual") as Node3D
+		if mod_base == null:
+			mod_base = self
+		_anim_ctrl.vincular_modelo(mod_base)
+		if _anim_ctrl.esta_listo():
+			_anim_ctrl.reproducir_bucle("idle")
 
 func _autodetectar_tipo_enemigo() -> void:
 	if tipo_enemigo_id != "":
@@ -69,18 +87,29 @@ func _autodetectar_tipo_enemigo() -> void:
 	elif nom.contains("coloso"): tipo_enemigo_id = "coloso"
 	elif nom.contains("parca"): tipo_enemigo_id = "parca"
 	elif nom.contains("espejo"): tipo_enemigo_id = "espejo_sombrio"
+	elif nom.contains("centinela_fase"): tipo_enemigo_id = "centinela_fase"
+	elif nom.contains("anulador_nucleo"): tipo_enemigo_id = "anulador_nucleo"
 	else: tipo_enemigo_id = "guardia"
 
 func _physics_process(delta: float) -> void:
 	if _muerto:
 		return
+	_cooldown_feedback_inmune = maxf(_cooldown_feedback_inmune - delta, 0.0)
+	_anim_ctrl.actualizar(delta)
 	var vel_ia: Vector3 = _calcular_velocidad_ia(delta)
 	procesar_fisica_base(delta, vel_ia)
+
+	if not _anim_ctrl.esta_bloqueado():
+		if _stun_timer > 0.0 and _anim_ctrl.tiene_clip("stunned"):
+			_anim_ctrl.reproducir_bucle("stunned", 0.10, 1.0, 1)
+		else:
+			_anim_ctrl.actualizar_locomocion(Vector2(velocity.x, velocity.z).length(), false, is_on_floor(), rapidez)
 
 	if dano_contacto > 0.0 and jugador != null and is_instance_valid(jugador):
 		_reloj_ataque = maxf(_reloj_ataque - delta, 0.0)
 		if _reloj_ataque <= 0.0 and global_position.distance_to(jugador.global_position) <= maxf(rango_ataque, 1.35):
 			_reloj_ataque = cadencia_ataque
+			_anim_ctrl.reproducir_accion("attack-melee-right", 2, 0.07, 1.1)
 			if jugador.has_method("recibir_dano"):
 				jugador.recibir_dano(dano_contacto)
 
@@ -130,8 +159,15 @@ func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false) 
 		es_critico = fuente
 		fuente = "normal"
 
+	var fuente_str: String = str(fuente)
+	if solo_dano_boton and not es_fuente_boton(fuente_str):
+		_reaccionar_inmunidad_arma()
+		return
+
 	var cantidad_final: float = cantidad
 	if marca_conductiva_timer > 0.0:
+		cantidad_final *= 1.25
+	if solo_dano_boton and es_critico:
 		cantidad_final *= 1.25
 
 	# Multiplicador de daño por Bono de Bestiario (retorna 0.00..0.20 extra)
@@ -139,15 +175,42 @@ func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false) 
 	cantidad_final *= (1.0 + bono_bestiario)
 
 	vida -= cantidad_final
+	if vida > 0.0 and _anim_ctrl.esta_listo():
+		_anim_ctrl.disparar_golpe()
 
 	var tw = create_tween()
 	tw.tween_property(self, "scale", _escala_base * 1.15, 0.05)
 	tw.tween_property(self, "scale", _escala_base, 0.08)
 
-	_notificar_dano(cantidad_final, es_critico, str(fuente))
+	var fuente_visual: String = "clic" if solo_dano_boton else fuente_str
+	var col_hit := Color(0.22, 0.92, 1.0) if es_fuente_boton(fuente_str) else (Color(1.0, 0.84, 0.16) if es_critico else Color(1.0, 0.45, 0.14))
+	VfxCombate.spawn_impacto(get_parent(), global_position + Vector3(0.0, 0.95, 0.0), col_hit, Color.WHITE, 0.95 if es_critico else 0.72, es_critico)
+	_notificar_dano(cantidad_final, es_critico, fuente_visual)
 
 	if vida <= 0.0:
 		morir()
+
+func _reaccionar_inmunidad_arma() -> void:
+	if _escudo_fase_mesh != null and is_instance_valid(_escudo_fase_mesh):
+		var esc_tw = create_tween()
+		esc_tw.tween_property(_escudo_fase_mesh, "scale", Vector3.ONE * 1.12, 0.04)
+		esc_tw.tween_property(_escudo_fase_mesh, "scale", Vector3.ONE, 0.08)
+	if _cooldown_feedback_inmune > 0.0:
+		return
+	_cooldown_feedback_inmune = 0.42
+	AudioManager.play("escudo_bloqueo", randf_range(1.25, 1.50), -4.0)
+	VfxCombate.spawn_impacto(get_parent(), global_position + Vector3(0.0, 1.0, 0.0), Color(0.25, 0.95, 1.0), Color.WHITE, 0.85, false)
+	var dmg_pool = get_tree().get_first_node_in_group("damage_numbers") if is_inside_tree() else null
+	if dmg_pool != null and dmg_pool.has_method("mostrar_texto"):
+		dmg_pool.mostrar_texto(global_position + Vector3(0, 1.8, 0), "⚡ SOLO BOTÓN", Color(0.25, 0.95, 1.0), 0.95)
+	else:
+		var escena = load("res://damage_number_3d.tscn")
+		if escena != null and is_inside_tree() and get_parent() != null:
+			var num = escena.instantiate()
+			get_parent().add_child(num)
+			num.global_position = global_position + Vector3(0, 1.8, 0)
+			if num.has_method("iniciar"):
+				num.iniciar(0.0, false, false, "⚡ SOLO BOTÓN")
 
 func _notificar_dano(cantidad: float, es_critico: bool, fuente: String) -> void:
 	var dmg_pool = get_tree().get_first_node_in_group("damage_numbers")

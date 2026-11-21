@@ -18,6 +18,7 @@ const AudioManager = preload("res://audio_manager.gd")
 const ArenaColiseo = preload("res://arena_coliseo.gd")
 const PalancaEscena = preload("res://palanca_boton.tscn")
 const BunkerVisualKit = preload("res://bunker_visual_kit.gd")
+const VfxCombate = preload("res://vfx_combate.gd")
 const MetaprogresoManager = preload("res://metaprogreso_manager.gd")
 
 enum EstadoBoton { ACTIVO, ENCADENADO, SOBRECARGA_FRENESI }
@@ -46,6 +47,29 @@ signal chasis_cambiado(id_chasis: String)
 var calor_actual: float = 0.0
 var sobrecalentado: bool = false
 var _tiempo_sin_clic: float = 0.0
+
+# Valores base idempotentes para escalado por Chasis + Árbol de Habilidades
+var _base_chasis_rapidez: float = 2.6
+var _base_chasis_rapidez_max: float = 9.5
+var _base_chasis_clics_bloqueo: int = 20
+var _base_chasis_mult_ritmo: float = 1.0
+var _base_calor_maximo: float = 100.0
+var _base_calor_por_clic: float = 16.0
+var _base_retardo_enfriamiento: float = 0.50
+var _base_velocidad_enfriamiento: float = 28.0
+var _altura_base_default: float = 1.25
+
+# Modificadores acumulados desde la rama "boton" del Árbol de Habilidades
+var _btn_dano_perfecto_pct: float = 0.0
+var _btn_dano_termico_pct: float = 0.0
+var _btn_control_orbita: float = 0.0
+var _btn_clics_bloqueo_extra: int = 0
+var _btn_frenesi_extra_seg: float = 0.0
+var _btn_keystone_criogenico: bool = false
+var _btn_keystone_rompecadenas: bool = false
+var _cooldown_nova_criogenica: float = 0.0
+var cadenas_requeridas: int = 3
+var _clics_desde_bloqueo: int = 0
 
 # Variables de estabilidad compatibles con HUD (sincronizadas con calor)
 var tiempo_estabilidad_actual: float = 100.0
@@ -151,6 +175,7 @@ func _ready():
 	if ch_meta != "":
 		chasis_inicial = ch_meta
 	aplicar_chasis(chasis_inicial)
+	call_deferred("aplicar_mejoras_arbol")
 
 	_sincronizar_telemetria_termica()
 	_actualizar_visual_termico(0.0)
@@ -162,33 +187,91 @@ func aplicar_chasis(id_chasis: String) -> void:
 	chasis_actual = id_chasis.to_lower()
 	match chasis_actual:
 		"gravitatorio":
-			rapidez_base = 1.45
-			clics_para_bloqueo = 20
+			_base_chasis_rapidez = 1.45
+			_base_chasis_clics_bloqueo = 20
 			factor_chasis_cometa = 1
-			mult_ventana_ritmo = 1.0
+			_base_chasis_mult_ritmo = 1.0
 			mult_radio_onda_chasis = 1.35
 			_configurar_paleta_chasis(Color(0.68, 0.20, 0.95), Color(0.18, 0.05, 0.28))
 		"cometa":
-			rapidez_base = 4.0
-			clics_para_bloqueo = 20
+			_base_chasis_rapidez = 4.0
+			_base_chasis_clics_bloqueo = 20
 			factor_chasis_cometa = 2
-			mult_ventana_ritmo = 1.45
+			_base_chasis_mult_ritmo = 1.45
 			mult_radio_onda_chasis = 1.0
 			_configurar_paleta_chasis(Color(0.20, 0.95, 0.92), Color(0.04, 0.28, 0.32))
 		_:
 			chasis_actual = "estandar"
-			rapidez_base = 2.6
-			clics_para_bloqueo = 20
+			_base_chasis_rapidez = 2.6
+			_base_chasis_clics_bloqueo = 20
 			factor_chasis_cometa = 1
-			mult_ventana_ritmo = 1.0
+			_base_chasis_mult_ritmo = 1.0
 			mult_radio_onda_chasis = 1.0
 			_configurar_paleta_chasis(BunkerVisualKit.COL_CYAN_ELECTRIC, Color(0.05, 0.22, 0.28))
 
-	if total_clicks > 0:
-		rapidez_movimiento = clampf(rapidez_base + (total_clicks * 0.12), rapidez_base, rapidez_maxima)
-
+	aplicar_mejoras_arbol()
 	emit_signal("chasis_cambiado", chasis_actual)
+
+func aplicar_mejoras_arbol() -> void:
+	if (jugador == null or not is_instance_valid(jugador)) and is_inside_tree() and get_tree() != null:
+		jugador = get_tree().get_first_node_in_group("jugador")
+		if jugador == null:
+			jugador = get_tree().get_first_node_in_group("player")
+
+	var bonos: Dictionary = {}
+	if jugador != null and is_instance_valid(jugador) and jugador.has_method("obtener_mejoras_boton"):
+		bonos = jugador.obtener_mejoras_boton()
+
+	var calor_red: float = float(bonos.get("calor_reduc_pct", 0.0))
+	var tam_pct: float = float(bonos.get("tamano_pct", 0.0))
+	var enf_pct: float = float(bonos.get("enfriamiento_pct", 0.0))
+	var vent_ritmo: float = float(bonos.get("ventana_ritmo_pct", 0.0))
+	var calor_max_extra: float = float(bonos.get("calor_max_extra", 0.0))
+
+	_btn_dano_perfecto_pct = float(bonos.get("dano_perfecto_pct", 0.0))
+	_btn_dano_termico_pct = float(bonos.get("dano_termico_pct", 0.0))
+	_btn_control_orbita = float(bonos.get("control_orbita_pct", 0.0))
+	_btn_clics_bloqueo_extra = int(bonos.get("clics_bloqueo_extra", 0))
+	_btn_frenesi_extra_seg = float(bonos.get("frenesi_duracion_seg", 0.0))
+	_btn_keystone_criogenico = bool(bonos.get("keystone_criogenico", false))
+	_btn_keystone_rompecadenas = bool(bonos.get("keystone_rompecadenas", false))
+
+	calor_por_clic = _base_calor_por_clic * clampf(1.0 - calor_red, 0.35, 1.0)
+	velocidad_enfriamiento = _base_velocidad_enfriamiento * (1.0 + enf_pct)
+	retardo_enfriamiento = maxf(0.18, _base_retardo_enfriamiento * (1.0 - minf(0.50, enf_pct * 0.44)))
+	calor_maximo = _base_calor_maximo + calor_max_extra
+	calor_actual = minf(calor_actual, calor_maximo)
+	mult_ventana_ritmo = _base_chasis_mult_ritmo * (1.0 + vent_ritmo)
+	clics_para_bloqueo = _base_chasis_clics_bloqueo + _btn_clics_bloqueo_extra
+	rapidez_base = _base_chasis_rapidez * maxf(0.68, 1.0 - _btn_control_orbita * 0.30)
+	rapidez_maxima = _base_chasis_rapidez_max * maxf(0.52, 1.0 - _btn_control_orbita * 0.65)
+	escala_actual = 1.0 + clampf(tam_pct, 0.0, 0.45)
+	_altura_base = _altura_base_default + (escala_actual - 1.0) * 0.28
+	if not _en_teletransporte:
+		scale = Vector3.ONE * escala_actual
+
+	if total_clicks > 0:
+		var vel_cal: float = clampf(rapidez_base + (total_clicks * 0.12 * maxf(0.45, 1.0 - _btn_control_orbita)), rapidez_base, rapidez_maxima)
+		if estado_actual == EstadoBoton.SOBRECARGA_FRENESI:
+			vel_cal = maxf(vel_cal, rapidez_base * 1.35)
+		rapidez_movimiento = vel_cal
+
+	_sincronizar_telemetria_termica()
 	_actualizar_visual_termico(0.0)
+
+func _tiene_sobrecarga_sin_freno() -> bool:
+	if jugador != null and is_instance_valid(jugador):
+		if "bendiciones_corruptas" in jugador and jugador.bendiciones_corruptas.has("corrupta_sobrecarga_sin_freno"):
+			return true
+		elif "bendiciones_run" in jugador and jugador.bendiciones_run.has("corrupta_sobrecarga_sin_freno"):
+			return true
+	return false
+
+func obtener_multiplicador_termico() -> float:
+	return 1.5 + _btn_dano_termico_pct + (0.50 if _btn_keystone_criogenico else 0.0)
+
+func obtener_multiplicador_frenesi() -> int:
+	return (5 if _tiene_sobrecarga_sin_freno() else 3) + (1 if _btn_keystone_rompecadenas else 0)
 
 func _configurar_paleta_chasis(col_emision: Color, col_albedo: Color) -> void:
 	for mat in [_mat_dron_emissive, _mat_boton_pulsable, _mat_anillo_runico]:
@@ -494,13 +577,14 @@ func _es_ventana_ritmo_perfecta() -> bool:
 
 func _physics_process(delta: float):
 	_cooldown_click = maxf(_cooldown_click - delta, 0.0)
+	_cooldown_nova_criogenica = maxf(_cooldown_nova_criogenica - delta, 0.0)
 
 	_tiempo_sin_clic += delta
 	if estado_actual == EstadoBoton.SOBRECARGA_FRENESI:
 		calor_actual = 0.0
 		sobrecalentado = false
 	elif _tiempo_sin_clic >= retardo_enfriamiento and calor_actual > 0.0:
-		var tasa: float = (velocidad_enfriamiento * 0.92) if sobrecalentado else velocidad_enfriamiento
+		var tasa: float = (velocidad_enfriamiento * (1.5 if _btn_keystone_criogenico else 0.92)) if sobrecalentado else velocidad_enfriamiento
 		calor_actual = maxf(0.0, calor_actual - tasa * delta)
 		if sobrecalentado and calor_actual <= 0.0:
 			_salir_sobrecalentamiento()
@@ -565,14 +649,17 @@ func _physics_process(delta: float):
 
 			if jugador != null and is_instance_valid(jugador):
 				var dist_pj = global_position.distance_to(jugador.global_position)
-				var radio_ideal = 7.5
+				var orb_ctrl: float = clampf(_btn_control_orbita, 0.0, 0.75)
+				var radio_ideal: float = lerpf(7.5, 4.4, orb_ctrl)
+				var peso_orbita: float = lerpf(0.55, 0.80, orb_ctrl)
 				var pos_orbita = jugador.global_position + Vector3(cos(_angulo_orbita) * radio_ideal, 0.0, sin(_angulo_orbita) * radio_ideal)
-				destino_final = destino_waypoint.lerp(pos_orbita, 0.55)
+				destino_final = destino_waypoint.lerp(pos_orbita, peso_orbita)
 
 				if dist_pj < 3.5:
 					var dir_huida = (global_position - jugador.global_position).normalized()
 					dir_huida.y = 0.0
-					_impulso_evasion = _impulso_evasion.lerp(dir_huida * (1.4 + minf(total_clicks * 0.04, 2.5)), delta * 6.0)
+					var factor_huida: float = maxf(0.25, 1.0 - _btn_control_orbita)
+					_impulso_evasion = _impulso_evasion.lerp(dir_huida * (1.4 + minf(total_clicks * 0.04, 2.5)) * factor_huida, delta * 6.0)
 
 			var plano_dir = Vector2(destino_final.x - global_position.x, destino_final.z - global_position.z)
 			var dist_wp = Vector2(destino_waypoint.x - global_position.x, destino_waypoint.z - global_position.z).length()
@@ -663,7 +750,8 @@ func pulsar_boton():
 		_sincronizar_telemetria_termica()
 		_actualizar_visual_termico(0.0)
 		AudioManager.play("escudo_bloqueo", 0.95)
-		_spawn_floating_text("🌡️ ¡SOBRECALENTADO! Deja de hacer clic (%d%%)" % int(round(calor_actual)))
+		var cal_over_pct: int = int(round((calor_actual / maxf(calor_maximo, 1.0)) * 100.0))
+		_spawn_floating_text("🌡️ ¡SOBRECALENTADO! Deja de hacer clic (%d%%)" % cal_over_pct)
 		var tw_over = create_tween()
 		var base_x := position.x
 		var base_z := position.z
@@ -674,7 +762,7 @@ func pulsar_boton():
 
 	if estado_actual == EstadoBoton.ENCADENADO:
 		AudioManager.play("escudo_bloqueo", 1.4)
-		_spawn_floating_text("🔒 ¡BLOQUEADO POR CADENAS! (%d/3 palancas)" % cadenas_activas)
+		_spawn_floating_text("🔒 ¡BLOQUEADO POR CADENAS! (%d/%d palancas)" % [cadenas_activas, cadenas_requeridas])
 		var tw_shake = create_tween()
 		tw_shake.tween_property(self, "position:x", position.x + 0.1, 0.04)
 		tw_shake.tween_property(self, "position:x", position.x - 0.1, 0.04)
@@ -707,16 +795,10 @@ func pulsar_boton():
 		_spawn_floating_text("⚡ ¡NÚCLEO ACTIVADO! [%s]" % chasis_actual.to_upper())
 		AudioManager.play("alerta_oleada", 1.25, 2.0)
 	else:
-		rapidez_movimiento = clampf(rapidez_base + (total_clicks * 0.12), rapidez_base, rapidez_maxima)
+		rapidez_movimiento = clampf(rapidez_base + (total_clicks * 0.12 * maxf(0.45, 1.0 - _btn_control_orbita)), rapidez_base, rapidez_maxima)
 
-	var tiene_sobrecarga_sin_freno: bool = false
-	if jugador != null and is_instance_valid(jugador):
-		if "bendiciones_corruptas" in jugador and jugador.bendiciones_corruptas.has("corrupta_sobrecarga_sin_freno"):
-			tiene_sobrecarga_sin_freno = true
-		elif "bendiciones_run" in jugador and jugador.bendiciones_run.has("corrupta_sobrecarga_sin_freno"):
-			tiene_sobrecarga_sin_freno = true
-
-	var mult_recompensa = (5 if tiene_sobrecarga_sin_freno else 3) if estado_actual == EstadoBoton.SOBRECARGA_FRENESI else 1
+	var tiene_sobrecarga_sin_freno: bool = _tiene_sobrecarga_sin_freno()
+	var mult_recompensa: int = obtener_multiplicador_frenesi() if estado_actual == EstadoBoton.SOBRECARGA_FRENESI else 1
 	mult_recompensa *= factor_chasis_cometa
 
 	AudioManager.play("click", 1.0 + (total_clicks % 8) * 0.04 + (0.2 if es_perfecto or mult_recompensa > 1 else 0.0))
@@ -749,8 +831,9 @@ func pulsar_boton():
 	if jugador == null:
 		jugador = get_tree().get_first_node_in_group("jugador")
 
-	var mult_termico: float = 1.5 if es_sobrecarga_termica else 1.0
-	var dano_onda_base: float = 7.5 * (1.35 if es_perfecto else 1.0) * mult_termico
+	var mult_termico: float = obtener_multiplicador_termico() if es_sobrecarga_termica else 1.0
+	var mult_perf: float = (1.35 + _btn_dano_perfecto_pct) if es_perfecto else 1.0
+	var dano_onda_base: float = 7.5 * mult_perf * mult_termico
 	if jugador != null and is_instance_valid(jugador):
 		var xp_por_clic: int = (2 if es_perfecto else 1) + (1 if es_sobrecarga_termica else 0)
 		for i in range(mult_recompensa):
@@ -762,10 +845,11 @@ func pulsar_boton():
 				jugador.ganar_xp(xp_por_clic)
 
 		var fever_mult = jugador.multiplicador_fiebre if "multiplicador_fiebre" in jugador else 1
+		var cal_pct_txt: int = int(round((calor_actual / maxf(calor_maximo, 1.0)) * 100.0))
 		if mult_recompensa > 1:
 			_spawn_floating_text("🔥 ¡SOBRECARGA x%d! (Fiebre x%d)" % [mult_recompensa, fever_mult])
 		elif calor_actual < calor_maximo and es_sobrecarga_termica:
-			_spawn_floating_text("🔥 ¡SOBRECARGA TÉRMICA! (%d%% Calor)" % int(round(calor_actual)))
+			_spawn_floating_text("🔥 ¡SOBRECARGA TÉRMICA! (%d%% Calor)" % cal_pct_txt)
 		elif es_perfecto:
 			_spawn_floating_text("✨ ¡CLIC PERFECTO! (Fiebre x%d)" % fever_mult)
 		elif calor_actual < calor_maximo:
@@ -774,19 +858,25 @@ func pulsar_boton():
 	_detonar_onda_choque(mult_recompensa > 1, es_perfecto, es_sobrecarga_termica)
 
 	if estado_actual == EstadoBoton.ACTIVO and calor_actual >= calor_maximo:
-		_entrar_sobrecalentamiento()
+		if _btn_keystone_criogenico and _cooldown_nova_criogenica <= 0.0:
+			_detonar_nova_criogenica()
+		else:
+			_entrar_sobrecalentamiento()
 	else:
 		_sincronizar_telemetria_termica()
 		_actualizar_visual_termico(0.0)
 
-	var umbral_cadenas: int = 12 if tiene_sobrecarga_sin_freno else clics_para_bloqueo
-	if total_clicks % umbral_cadenas == 0 and estado_actual == EstadoBoton.ACTIVO:
+	if estado_actual == EstadoBoton.ACTIVO:
+		_clics_desde_bloqueo += (1 * factor_chasis_cometa)
+	var umbral_cadenas: int = (12 + int(_btn_clics_bloqueo_extra / 2)) if tiene_sobrecarga_sin_freno else clics_para_bloqueo
+	if _clics_desde_bloqueo >= umbral_cadenas and estado_actual == EstadoBoton.ACTIVO:
+		_clics_desde_bloqueo = 0
 		activar_bloqueo_cadenas()
 	elif total_clicks >= 12 and total_clicks % 10 == 0 and estado_actual == EstadoBoton.ACTIVO and not sobrecalentado:
 		_ejecutar_teletransporte_seguro()
 
 func _ejecutar_pulso_gravitatorio() -> void:
-	BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position, 0.8, 8.5, Color(0.65, 0.22, 0.95, 0.55), 0.38)
+	VfxCombate.spawn_pulso_implosion(get_parent(), global_position, 8.2, Color(0.68, 0.22, 0.98), Color(0.95, 0.82, 1.0), 0.34)
 	AudioManager.play("altar_activado", 1.45, -3.0)
 
 	var radio_pull: float = 8.5
@@ -820,21 +910,20 @@ func _crear_zona_voltaica_suelo() -> void:
 	zona.add_child(col)
 
 	var mesh_inst = MeshInstance3D.new()
-	var disc = CylinderMesh.new()
-	disc.top_radius = 1.85
-	disc.bottom_radius = 1.85
-	disc.height = 0.04
+	var disc = PlaneMesh.new()
+	disc.size = Vector2(3.9, 3.9)
 	mesh_inst.mesh = disc
+	mesh_inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
-	var mat = StandardMaterial3D.new()
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.albedo_color = Color(0.04, 0.55, 0.75, 0.22)
-	mat.emission_enabled = true
-	mat.emission = Color(0.10, 0.70, 0.90)
-	mat.emission_energy_multiplier = 0.85
-	mat.metallic = 0.3
-	mat.roughness = 0.2
-	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var mat = ShaderMaterial.new()
+	mat.shader = VfxCombate.SHADER_GROUND_HAZARD
+	mat.set_shader_parameter("color_primary", Color(0.16, 0.86, 1.00))
+	mat.set_shader_parameter("color_secondary", Color(0.06, 0.35, 0.72))
+	mat.set_shader_parameter("color_core", Color(0.95, 0.99, 1.00))
+	mat.set_shader_parameter("mode", 2.0)
+	mat.set_shader_parameter("energy", 2.65)
+	mat.set_shader_parameter("alpha_mult", 0.92)
+	mat.set_shader_parameter("spin_speed", 3.2)
 	mesh_inst.material_override = mat
 	zona.add_child(mesh_inst)
 
@@ -843,7 +932,7 @@ func _crear_zona_voltaica_suelo() -> void:
 	var dano_zona = 14.0 * 0.65
 	zona.body_entered.connect(func(cuerpo: Node):
 		if cuerpo.is_in_group("enemigos") and cuerpo.has_method("recibir_dano"):
-			cuerpo.recibir_dano(dano_zona, false)
+			cuerpo.recibir_dano(dano_zona, "boton_cometa", false)
 			if cuerpo.has_method("aplicar_knockback"):
 				var dir_emp = (cuerpo.global_position - zona.global_position).normalized()
 				dir_emp.y = 0.0
@@ -851,8 +940,28 @@ func _crear_zona_voltaica_suelo() -> void:
 	)
 
 	var tw = zona.create_tween()
-	tw.tween_property(mat, "albedo_color:a", 0.0, 1.2).set_delay(0.3)
+	tw.tween_method(
+		func(a: float):
+			if is_instance_valid(mat):
+				mat.set_shader_parameter("alpha_mult", a),
+		0.92,
+		0.0,
+		1.2
+	).set_delay(0.3)
 	tw.chain().tween_callback(zona.queue_free)
+
+func _detonar_nova_criogenica() -> void:
+	_cooldown_nova_criogenica = 6.0
+	sobrecalentado = false
+	en_colapso = false
+	calor_actual = calor_maximo * 0.35
+	_tiempo_sin_clic = 0.0
+	_sincronizar_telemetria_termica()
+	_actualizar_visual_termico(0.0)
+	AudioManager.play("altar_activado", 1.45, 1.0)
+	VfxCombate.spawn_explosion_nova(get_parent(), global_position + Vector3(0, 0.35, 0), 5.4, Color(0.28, 0.94, 1.0), Color.WHITE, 0.42, true, true)
+	_detonar_onda_choque(true, true, true)
+	_spawn_floating_text("❄️💥 ¡NOVA CRIOGÉNICA! Calor purgado al 35%")
 
 func activar_bloqueo_cadenas():
 	if estado_actual == EstadoBoton.ENCADENADO:
@@ -860,12 +969,13 @@ func activar_bloqueo_cadenas():
 
 	estado_actual = EstadoBoton.ENCADENADO
 	emit_signal("estado_cambiado", estado_actual)
-	cadenas_activas = 3
+	cadenas_requeridas = 2 if _btn_keystone_rompecadenas else 3
+	cadenas_activas = cadenas_requeridas
 	_sincronizar_telemetria_termica()
 
 	if nodo_cadenas != null:
 		nodo_cadenas.visible = true
-	if cadena_1 != null: cadena_1.visible = true
+	if cadena_1 != null: cadena_1.visible = (cadenas_requeridas >= 3)
 	if cadena_2 != null: cadena_2.visible = true
 	if cadena_3 != null: cadena_3.visible = true
 	if candado_visual != null: candado_visual.visible = true
@@ -875,7 +985,10 @@ func activar_bloqueo_cadenas():
 		luz_nucleo.light_energy = 3.8
 
 	AudioManager.play("alerta_oleada", 1.45, 2.0)
-	_spawn_floating_text("⚠️ ¡NÚCLEO ENCADENADO! Activa 3 palancas ⚡")
+	if _btn_keystone_rompecadenas:
+		_spawn_floating_text("⛓️👑 ¡1ª CADENA ROTA! Activa solo 2 palancas ⚡")
+	else:
+		_spawn_floating_text("⚠️ ¡NÚCLEO ENCADENADO! Activa 3 palancas ⚡")
 
 	_reubicar_palancas_aleatorias()
 	for p in palancas_instancias:
@@ -889,13 +1002,14 @@ func _on_palanca_activada(_id: int):
 	cadenas_activas -= 1
 	AudioManager.play("corte_giratorio", 1.6, 2.0)
 
+	var rotas: int = cadenas_requeridas - cadenas_activas
 	match cadenas_activas:
 		2:
 			if cadena_1 != null: cadena_1.visible = false
-			_spawn_floating_text("⛓️ ¡Cadena 1/3 Rota!")
+			_spawn_floating_text("⛓️ ¡Cadena %d/%d Rota!" % [rotas, cadenas_requeridas])
 		1:
 			if cadena_2 != null: cadena_2.visible = false
-			_spawn_floating_text("⛓️ ¡Cadena 2/3 Rota!")
+			_spawn_floating_text("⛓️ ¡Cadena %d/%d Rota!" % [rotas, cadenas_requeridas])
 		0:
 			if cadena_3 != null: cadena_3.visible = false
 			if candado_visual != null: candado_visual.visible = false
@@ -904,20 +1018,15 @@ func _on_palanca_activada(_id: int):
 
 func _iniciar_frenesi_sobrecarga():
 	estado_actual = EstadoBoton.SOBRECARGA_FRENESI
+	_clics_desde_bloqueo = 0
 	calor_actual = 0.0
 	sobrecalentado = false
 	_tiempo_sin_clic = 0.0
 	_sincronizar_telemetria_termica()
 	emit_signal("estado_cambiado", estado_actual)
 
-	var tiene_sobrecarga_sin_freno: bool = false
-	if jugador != null and is_instance_valid(jugador):
-		if "bendiciones_corruptas" in jugador and jugador.bendiciones_corruptas.has("corrupta_sobrecarga_sin_freno"):
-			tiene_sobrecarga_sin_freno = true
-		elif "bendiciones_run" in jugador and jugador.bendiciones_run.has("corrupta_sobrecarga_sin_freno"):
-			tiene_sobrecarga_sin_freno = true
-
-	_tiempo_frenesi = 24.0 if tiene_sobrecarga_sin_freno else 12.0
+	var tiene_sobrecarga_sin_freno: bool = _tiene_sobrecarga_sin_freno()
+	_tiempo_frenesi = (24.0 if tiene_sobrecarga_sin_freno else 12.0) + _btn_frenesi_extra_seg
 
 	for p in palancas_instancias:
 		if p != null and is_instance_valid(p):
@@ -931,7 +1040,7 @@ func _iniciar_frenesi_sobrecarga():
 		luz_nucleo.light_energy = 5.5
 
 	rapidez_movimiento = rapidez_base * 1.35
-	var mult_txt = 5 if tiene_sobrecarga_sin_freno else 3
+	var mult_txt: int = obtener_multiplicador_frenesi()
 	_spawn_floating_text("🔥 ¡SOBRECARGA LIBERADA! (x%d CLICS & ORO - %ds) 🔥" % [mult_txt, int(_tiempo_frenesi)])
 
 func _terminar_frenesi():
@@ -969,8 +1078,11 @@ func _ejecutar_teletransporte_seguro():
 	global_position = ArenaColiseo.clamping_y_ajustar_a_suelo(ruta[indice_ruta], 1.8, _altura_base)
 
 	var tw_pop = create_tween()
-	tw_pop.tween_property(self, "scale", Vector3.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	_detonar_onda_choque(false, false, false)
+	tw_pop.tween_property(self, "scale", Vector3.ONE * escala_actual, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_detonar_onda_choque(_btn_keystone_rompecadenas, _btn_keystone_rompecadenas, false)
+	if _btn_keystone_rompecadenas:
+		BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position, 0.75, 4.8, BunkerVisualKit.COL_VAULT_GOLD, 0.40)
+		_spawn_floating_text("⚡ ¡TELETRANSPORTE SUPERNOVA!")
 	_en_teletransporte = false
 
 func _detonar_onda_choque(es_supernova: bool, es_perfecto: bool = false, es_sobrecarga_termica: bool = false):
@@ -983,11 +1095,24 @@ func _detonar_onda_choque(es_supernova: bool, es_perfecto: bool = false, es_sobr
 	var mult_empuje: float = float(bonus_onda.get("mult_empuje", 1.0))
 	var mult_dano: float = float(bonus_onda.get("mult_dano_clic", bonus_onda.get("dano_mult", 1.0)))
 	var es_crit: bool = bool(bonus_onda.get("es_critico", false)) or es_perfecto or es_sobrecarga_termica
-	var mult_termico: float = 1.5 if es_sobrecarga_termica else 1.0
+	var mult_termico: float = obtener_multiplicador_termico() if es_sobrecarga_termica else 1.0
+	var mult_perf_onda: float = (1.35 + _btn_dano_perfecto_pct) if es_perfecto else 1.0
 
-	var radio_efectivo = (radio_onda_choque + radio_extra) * radio_mult * (2.2 if es_supernova else (1.25 if es_perfecto else 1.0)) * mult_termico * mult_radio_onda_chasis
+	var radio_efectivo = (radio_onda_choque + radio_extra) * radio_mult * (2.2 if es_supernova else (1.25 if es_perfecto else 1.0)) * (1.5 if es_sobrecarga_termica else 1.0) * mult_radio_onda_chasis
 	var empuje_efectivo = empuje_onda * mult_empuje * (2.2 if es_supernova else (1.35 if es_perfecto else 1.0)) * (1.25 if es_sobrecarga_termica else 1.0)
-	var dano_base = (28.0 if es_supernova else 15.0) * mult_dano * (1.35 if es_perfecto else 1.0) * mult_termico * float(factor_chasis_cometa)
+	var dano_base = (28.0 if es_supernova else 15.0) * mult_dano * mult_perf_onda * mult_termico * float(factor_chasis_cometa)
+
+	var col_onda := BunkerVisualKit.COL_CYAN_ELECTRIC
+	if es_sobrecarga_termica:
+		col_onda = Color(1.00, 0.45, 0.08)
+	elif es_supernova or es_perfecto:
+		col_onda = Color(1.00, 0.84, 0.18)
+	elif chasis_actual == "gravitatorio":
+		col_onda = Color(0.68, 0.22, 0.98)
+	var r_vis := clampf(radio_efectivo * 0.72, 2.2, 9.5)
+	VfxCombate.spawn_explosion_nova(get_parent(), global_position + Vector3(0, 0.35, 0), r_vis, col_onda, Color.WHITE, 0.28 if es_supernova else 0.22, es_perfecto or es_supernova or es_sobrecarga_termica, true)
+	if es_supernova:
+		BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position, 0.8, clampf(radio_efectivo * 0.92, 4.0, 12.0), BunkerVisualKit.COL_CYAN_ELECTRIC, 0.34)
 
 	var enemigos = get_tree().get_nodes_in_group("enemigos").duplicate()
 	for r in get_tree().get_nodes_in_group("rompibles"):
@@ -1000,6 +1125,8 @@ func _detonar_onda_choque(es_supernova: bool, es_perfecto: bool = false, es_sobr
 			if dist <= radio_efectivo:
 				if e.has_method("desactivar_escudo_runico"):
 					e.desactivar_escudo_runico(8.0)
+				if "solo_dano_boton" in e and e.solo_dano_boton and get_parent() != null:
+					BunkerVisualKit.spawn_shockwave_ring(get_parent(), e.global_position + Vector3(0, 1.0, 0), 0.35, 1.65, BunkerVisualKit.COL_CYAN_ELECTRIC, 0.22)
 				if e.has_method("recibir_dano"):
 					alcanzados_onda += 1
 					e.recibir_dano(dano_base, "onda", es_crit)

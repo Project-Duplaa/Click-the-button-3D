@@ -228,13 +228,19 @@ static func transferir_recursos_run(oro_run: int, clics_run: int, bajas_run: int
 	runs_jugadas += 1
 	if es_victoria:
 		victorias += 1
-	oro_banco += max(0, oro_run)
-	clics_banco += max(0, clics_run)
+	var ratio_oro: float = 1.0 if es_victoria else 0.45
+	var ratio_clics: float = 1.0 if es_victoria else 0.50
+	var oro_extraido: int = int(floor(float(max(0, oro_run)) * ratio_oro))
+	var clics_extraidos: int = int(floor(float(max(0, clics_run)) * ratio_clics))
+	oro_banco += oro_extraido
+	clics_banco += clics_extraidos
 	bajas_historicas += max(0, bajas_run)
 	guardar()
 	return {
-		"oro_transferido": oro_run,
-		"clics_transferidos": clics_run,
+		"oro_transferido": oro_extraido,
+		"clics_transferidos": clics_extraidos,
+		"ratio_oro": ratio_oro,
+		"ratio_clics": ratio_clics,
 		"oro_total": oro_banco,
 		"clics_totales": clics_banco,
 		"runs": runs_jugadas,
@@ -272,6 +278,15 @@ static func obtener_multiplicador_prestigio() -> float:
 		return 1.0
 	return 1.0 + float(nivel_prestigio) * 0.15
 
+static func obtener_niveles_totales_arbol() -> int:
+	asegurar_inicializado()
+	var total: int = 0
+	for k in mejoras_arbol.keys():
+		if str(k) == "nodo_origen":
+			continue
+		total += maxi(0, int(mejoras_arbol[k]))
+	return total
+
 static func puede_hacer_prestigio() -> bool:
 	asegurar_inicializado()
 	if int(mejoras_arbol.get("apex_keystone_ascension", 0)) > 0:
@@ -279,17 +294,17 @@ static func puede_hacer_prestigio() -> bool:
 	var niveles_normales: int = 0
 	for k in mejoras_arbol.keys():
 		var id_str = str(k)
+		if id_str == "nodo_origen":
+			continue
 		if not id_str.begins_with("inf_") and not id_str.begins_with("cosm_"):
 			niveles_normales += int(mejoras_arbol[k])
-	return niveles_normales >= 35
+	return niveles_normales >= 45
 
 static func calcular_esquirlas_prestigio() -> int:
 	asegurar_inicializado()
-	var niveles_totales: int = 0
-	for k in mejoras_arbol.keys():
-		niveles_totales += int(mejoras_arbol[k])
-	var base = 10 + (niveles_totales * 2) + (victorias * 5) + int(floor(float(bajas_historicas) / 250.0))
-	return max(10, base)
+	var niveles_totales: int = obtener_niveles_totales_arbol()
+	var base = 8 + niveles_totales + (victorias * 4) + int(floor(float(bajas_historicas) / 400.0))
+	return max(8, base)
 
 static func ejecutar_renacimiento_astral() -> int:
 	asegurar_inicializado()
@@ -492,7 +507,7 @@ static func actualizar_record_diario(fecha_seed: int, bajas_run: int, tiempo_run
 # ==============================================================================
 static func puede_comprar(nodo: SkillNodeData) -> bool:
 	asegurar_inicializado()
-	var costos = nodo.calcular_costo()
+	var costos = nodo.calcular_costo(obtener_niveles_totales_arbol())
 	var c_esq = int(costos.get("esquirlas", 0))
 	if c_esq > 0 and esquirlas_astrales < c_esq:
 		return false
@@ -506,7 +521,7 @@ static func comprar_nodo(nodo_o_id, costo_oro: int = -1, costo_clics: int = -1, 
 	var c_esq = 0
 	if nodo_o_id is SkillNodeData:
 		id = nodo_o_id.id
-		var costos = nodo_o_id.calcular_costo()
+		var costos = nodo_o_id.calcular_costo(obtener_niveles_totales_arbol())
 		c_oro = int(costos.get("oro", 0))
 		c_clk = int(costos.get("clics", 0))
 		c_esq = int(costos.get("esquirlas", 0))

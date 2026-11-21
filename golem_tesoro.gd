@@ -24,9 +24,9 @@ func _asegurar_componentes():
 		var col = CollisionShape3D.new()
 		col.name = "CollisionShape3D"
 		var box_s = BoxShape3D.new()
-		box_s.size = Vector3(1.2, 1.4, 1.2)
+		box_s.size = Vector3(1.45, 1.85, 1.45)
 		col.shape = box_s
-		col.position = Vector3(0, 0.7, 0)
+		col.position = Vector3(0, 0.92, 0)
 		add_child(col)
 
 	var modelo = get_node_or_null("Modelo")
@@ -35,7 +35,11 @@ func _asegurar_componentes():
 		if escena_mod:
 			modelo = escena_mod.instantiate()
 			modelo.name = "Modelo"
+			modelo.scale = Vector3.ONE * 1.28
 			add_child(modelo)
+	if modelo != null:
+		_anim_ctrl.vincular_modelo(modelo)
+		_anim_ctrl.reproducir_bucle("idle")
 
 	if get_node_or_null("AreaPinataDorada") == null:
 		var area_clic = Area3D.new()
@@ -59,6 +63,14 @@ func _process(delta: float) -> void:
 	if _baliza_superior != null:
 		_baliza_superior.rotate_y(delta * 3.2)
 
+func _physics_process(delta: float) -> void:
+	if _muerto:
+		return
+	_anim_ctrl.actualizar(delta)
+	super._physics_process(delta)
+	if not _anim_ctrl.esta_bloqueado():
+		_anim_ctrl.actualizar_locomocion(Vector2(velocity.x, velocity.z).length(), true, is_on_floor(), rapidez)
+
 func _calcular_velocidad_ia(delta: float) -> Vector3:
 	_tiempo_escape -= delta
 	if _tiempo_escape <= 0.0 and not muerto:
@@ -75,6 +87,10 @@ func _calcular_velocidad_ia(delta: float) -> Vector3:
 	if dir_huida.length_squared() < 0.01:
 		dir_huida = Vector3.FORWARD
 	dir_huida = dir_huida.normalized()
+	var destino_huida := ArenaColiseo.clamping_y_ajustar_a_suelo(global_position + dir_huida * 8.0, 2.6, 0.0)
+	var dir_nav := ArenaColiseo.calcular_direccion_persecucion(self, destino_huida, _nav_estado, delta)
+	if dir_nav.length_squared() > 0.01:
+		dir_huida = dir_nav
 	# Evitar quedar atrapado en muros del dodecágono girando tangencialmente por la pasarela
 	if ArenaColiseo.apotema_en_pos(global_position.x, global_position.z) > ArenaColiseo.APOTEMA_EXTERIOR - 3.5:
 		var inward: Vector3 = ArenaColiseo.obtener_normal_pared_cercana(global_position)
@@ -82,6 +98,8 @@ func _calcular_velocidad_ia(delta: float) -> Vector3:
 		if dir_huida.dot(tang) < 0.0:
 			tang = -tang
 		dir_huida = (tang * 0.72 + inward * 0.28).normalized()
+	if dir_huida.length_squared() > 0.0025:
+		look_at(global_position + dir_huida, Vector3.UP)
 	return dir_huida * rapidez
 
 func _golpear_pinata_clic():
@@ -89,12 +107,17 @@ func _golpear_pinata_clic():
 		return
 	AudioManager.play("altar_activado", 1.55, -2.0)
 	if _mat_nucleo_dorado != null and is_instance_valid(_mat_nucleo_dorado):
-		_mat_nucleo_dorado.emission_energy_multiplier = 5.2
+		_mat_nucleo_dorado.emission_energy_multiplier = 0.85
 		var tw_flash := create_tween()
-		tw_flash.tween_property(_mat_nucleo_dorado, "emission_energy_multiplier", 2.4, 0.14)
+		tw_flash.tween_property(_mat_nucleo_dorado, "emission_energy_multiplier", 0.40, 0.14)
 	if jugador != null and jugador.has_method("recoger_drop"):
 		jugador.recoger_drop(0, 4)
 	recibir_dano(14.0, true)
+
+func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false) -> void:
+	if not _muerto:
+		_anim_ctrl.disparar_golpe()
+	super.recibir_dano(cantidad, fuente, es_critico)
 
 func morir() -> void:
 	if _muerto:

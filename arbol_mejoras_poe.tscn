@@ -1,71 +1,209 @@
-[gd_scene load_steps=8 format=3 uid="uid://cpoeskilltree3d"]
+[gd_scene load_steps=19 format=3 uid="uid://cpoeskilltree3d"]
 
 [ext_resource type="Script" path="res://arbol_mejoras_poe.gd" id="1_poe"]
 [ext_resource type="Script" path="res://lienzo_arbol_habilidades.gd" id="2_lienzo"]
+[ext_resource type="Shader" path="res://shaders/hud_scifi_panel.gdshader" id="3_panel_shader"]
+[ext_resource type="Texture2D" path="res://ui_assets/icon_prism_hades.svg" id="4_ico_prism"]
+[ext_resource type="Texture2D" path="res://ui_assets/icon_gold_hades.svg" id="5_ico_gold"]
+[ext_resource type="Texture2D" path="res://ui_assets/icon_clicks_hades.svg" id="6_ico_clicks"]
+[ext_resource type="Texture2D" path="res://ui_assets/icon_frost_hades.svg" id="7_ico_frost"]
+[ext_resource type="Texture2D" path="res://ui_assets/icon_victory_hades.svg" id="8_ico_victory"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBox_TopBar"]
-bg_color = Color(0.05, 0.065, 0.085, 0.96)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.12, 0.72, 0.45, 0.85)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-shadow_color = Color(0, 0, 0, 0.8)
-shadow_size = 10
+[sub_resource type="ShaderMaterial" id="ShaderMat_HeaderMain"]
+shader = ExtResource("3_panel_shader")
+shader_parameter/panel_size = Vector2(1252, 46)
+shader_parameter/glow_pad = 3.0
+shader_parameter/corner_radius = 2.0
+shader_parameter/border_thickness = 1.4
+shader_parameter/slope_left = 0.0
+shader_parameter/slope_right = 0.0
+shader_parameter/chamfer_tl = 10.0
+shader_parameter/chamfer_tr = 4.0
+shader_parameter/chamfer_bl = 4.0
+shader_parameter/chamfer_br = 10.0
+shader_parameter/bg_top = Color(0.024, 0.052, 0.098, 0.94)
+shader_parameter/bg_bot = Color(0.012, 0.025, 0.055, 0.96)
+shader_parameter/border_color = Color(0.18, 0.82, 0.96, 0.9)
+shader_parameter/glow_color = Color(0.06, 0.62, 0.95, 0.42)
+shader_parameter/top_accent_color = Color(0.961, 0.722, 0.239, 0.85)
+shader_parameter/top_accent_width = 0.34
+shader_parameter/bottom_corner_flare = 0.35
+shader_parameter/flare_side = 0.0
+shader_parameter/overdrive_pulse = 0.0
 
-[sub_resource type="StyleBoxFlat" id="StyleBox_PillTop"]
-bg_color = Color(0.07, 0.09, 0.12, 0.94)
+[sub_resource type="ShaderMaterial" id="ShaderMat_HeaderActions"]
+shader = ExtResource("3_panel_shader")
+shader_parameter/panel_size = Vector2(1252, 32)
+shader_parameter/glow_pad = 2.5
+shader_parameter/corner_radius = 2.0
+shader_parameter/border_thickness = 1.2
+shader_parameter/slope_left = 0.0
+shader_parameter/slope_right = 0.0
+shader_parameter/chamfer_tl = 8.0
+shader_parameter/chamfer_tr = 4.0
+shader_parameter/chamfer_bl = 4.0
+shader_parameter/chamfer_br = 8.0
+shader_parameter/bg_top = Color(0.02, 0.042, 0.082, 0.9)
+shader_parameter/bg_bot = Color(0.012, 0.022, 0.048, 0.93)
+shader_parameter/border_color = Color(0.14, 0.58, 0.78, 0.78)
+shader_parameter/glow_color = Color(0.05, 0.45, 0.75, 0.28)
+shader_parameter/top_accent_color = Color(0.961, 0.722, 0.239, 0)
+shader_parameter/top_accent_width = 0.0
+shader_parameter/bottom_corner_flare = 0.0
+shader_parameter/flare_side = 0.0
+shader_parameter/overdrive_pulse = 0.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMat_Minimap"]
+shader = ExtResource("3_panel_shader")
+shader_parameter/panel_size = Vector2(168, 168)
+shader_parameter/glow_pad = 3.0
+shader_parameter/corner_radius = 2.0
+shader_parameter/border_thickness = 1.3
+shader_parameter/slope_left = 0.0
+shader_parameter/slope_right = 0.0
+shader_parameter/chamfer_tl = 8.0
+shader_parameter/chamfer_tr = 4.0
+shader_parameter/chamfer_bl = 4.0
+shader_parameter/chamfer_br = 8.0
+shader_parameter/bg_top = Color(0.02, 0.045, 0.086, 0.93)
+shader_parameter/bg_bot = Color(0.01, 0.02, 0.045, 0.96)
+shader_parameter/border_color = Color(0.16, 0.76, 0.95, 0.85)
+shader_parameter/glow_color = Color(0.06, 0.58, 0.9, 0.32)
+shader_parameter/top_accent_color = Color(0.961, 0.722, 0.239, 0)
+shader_parameter/top_accent_width = 0.0
+shader_parameter/bottom_corner_flare = 0.2
+shader_parameter/flare_side = -1.0
+shader_parameter/overdrive_pulse = 0.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMat_DockCam"]
+shader = ExtResource("3_panel_shader")
+shader_parameter/panel_size = Vector2(268, 36)
+shader_parameter/glow_pad = 2.5
+shader_parameter/corner_radius = 2.0
+shader_parameter/border_thickness = 1.2
+shader_parameter/slope_left = 0.0
+shader_parameter/slope_right = 0.0
+shader_parameter/chamfer_tl = 6.0
+shader_parameter/chamfer_tr = 4.0
+shader_parameter/chamfer_bl = 4.0
+shader_parameter/chamfer_br = 6.0
+shader_parameter/bg_top = Color(0.022, 0.046, 0.088, 0.92)
+shader_parameter/bg_bot = Color(0.012, 0.024, 0.05, 0.95)
+shader_parameter/border_color = Color(0.16, 0.7, 0.88, 0.8)
+shader_parameter/glow_color = Color(0.06, 0.52, 0.85, 0.28)
+shader_parameter/top_accent_color = Color(0.961, 0.722, 0.239, 0)
+shader_parameter/top_accent_width = 0.0
+shader_parameter/bottom_corner_flare = 0.0
+shader_parameter/flare_side = 0.0
+shader_parameter/overdrive_pulse = 0.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMat_PanelHint"]
+shader = ExtResource("3_panel_shader")
+shader_parameter/panel_size = Vector2(470, 28)
+shader_parameter/glow_pad = 2.0
+shader_parameter/corner_radius = 2.0
+shader_parameter/border_thickness = 1.1
+shader_parameter/slope_left = 0.0
+shader_parameter/slope_right = 0.0
+shader_parameter/chamfer_tl = 6.0
+shader_parameter/chamfer_tr = 4.0
+shader_parameter/chamfer_bl = 4.0
+shader_parameter/chamfer_br = 6.0
+shader_parameter/bg_top = Color(0.018, 0.036, 0.068, 0.9)
+shader_parameter/bg_bot = Color(0.01, 0.02, 0.04, 0.94)
+shader_parameter/border_color = Color(0.16, 0.48, 0.68, 0.72)
+shader_parameter/glow_color = Color(0.05, 0.35, 0.6, 0.22)
+shader_parameter/top_accent_color = Color(0.961, 0.722, 0.239, 0)
+shader_parameter/top_accent_width = 0.0
+shader_parameter/bottom_corner_flare = 0.0
+shader_parameter/flare_side = 0.0
+shader_parameter/overdrive_pulse = 0.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMat_PanelDetalle"]
+shader = ExtResource("3_panel_shader")
+shader_parameter/panel_size = Vector2(368, 346)
+shader_parameter/glow_pad = 4.0
+shader_parameter/corner_radius = 2.5
+shader_parameter/border_thickness = 1.5
+shader_parameter/slope_left = 0.0
+shader_parameter/slope_right = 0.0
+shader_parameter/chamfer_tl = 12.0
+shader_parameter/chamfer_tr = 5.0
+shader_parameter/chamfer_bl = 5.0
+shader_parameter/chamfer_br = 12.0
+shader_parameter/bg_top = Color(0.024, 0.05, 0.095, 0.95)
+shader_parameter/bg_bot = Color(0.012, 0.024, 0.05, 0.97)
+shader_parameter/border_color = Color(0.2, 0.85, 0.98, 0.92)
+shader_parameter/glow_color = Color(0.08, 0.62, 0.95, 0.45)
+shader_parameter/top_accent_color = Color(0.961, 0.722, 0.239, 0.7)
+shader_parameter/top_accent_width = 0.42
+shader_parameter/bottom_corner_flare = 0.45
+shader_parameter/flare_side = 1.0
+shader_parameter/overdrive_pulse = 0.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_PillDark"]
+content_margin_left = 8.0
+content_margin_top = 3.0
+content_margin_right = 8.0
+content_margin_bottom = 3.0
+bg_color = Color(0.035, 0.068, 0.122, 0.88)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.18, 0.55, 0.42, 0.8)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBox_PanelDetalleSlate"]
-bg_color = Color(0.045, 0.06, 0.08, 0.97)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.15, 0.80, 0.50, 0.9)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
-shadow_color = Color(0, 0, 0, 0.85)
-shadow_size = 14
-
-[sub_resource type="StyleBoxFlat" id="StyleBox_BtnAccion"]
-bg_color = Color(0.06, 0.20, 0.22, 0.95)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 2
-border_color = Color(0.20, 0.85, 0.55, 0.9)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
+border_color = Color(0.18, 0.56, 0.76, 0.75)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_BtnCerrar"]
-bg_color = Color(0.28, 0.08, 0.10, 0.95)
+content_margin_left = 10.0
+content_margin_top = 3.0
+content_margin_right = 10.0
+content_margin_bottom = 3.0
+bg_color = Color(0.28, 0.07, 0.1, 0.94)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.85, 0.25, 0.28, 0.9)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
+border_color = Color(0.92, 0.3, 0.35, 0.9)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_BtnCompact"]
+content_margin_left = 8.0
+content_margin_top = 3.0
+content_margin_right = 8.0
+content_margin_bottom = 3.0
+bg_color = Color(0.05, 0.13, 0.2, 0.94)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.22, 0.72, 0.9, 0.85)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_Well"]
+content_margin_left = 10.0
+content_margin_top = 7.0
+content_margin_right = 10.0
+content_margin_bottom = 7.0
+bg_color = Color(0.015, 0.03, 0.06, 0.88)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.14, 0.34, 0.5, 0.55)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
 
 [node name="ArbolMejorasPoE" type="CanvasLayer"]
 process_mode = 3
@@ -89,18 +227,35 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("2_lienzo")
 
-[node name="PanelTop" type="Panel" parent="Control"]
+[node name="TopHeader" type="Control" parent="Control"]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
-offset_left = 20.0
-offset_top = 14.0
-offset_right = -20.0
-offset_bottom = 62.0
+offset_bottom = 96.0
 grow_horizontal = 2
-theme_override_styles/panel = SubResource("StyleBox_TopBar")
+mouse_filter = 2
 
-[node name="HBox" type="HBoxContainer" parent="Control/PanelTop"]
+[node name="HeaderMain" type="Control" parent="Control/TopHeader"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 14.0
+offset_top = 10.0
+offset_right = -14.0
+offset_bottom = 56.0
+grow_horizontal = 2
+
+[node name="Backdrop" type="ColorRect" parent="Control/TopHeader/HeaderMain"]
+material = SubResource("ShaderMat_HeaderMain")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="HBox" type="HBoxContainer" parent="Control/TopHeader/HeaderMain"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -111,83 +266,433 @@ offset_right = -14.0
 offset_bottom = -6.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 8
 
-[node name="LabelTitulo" type="Label" parent="Control/PanelTop/HBox"]
+[node name="LeftIdentity" type="HBoxContainer" parent="Control/TopHeader/HeaderMain/HBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="IconoMatriz" type="TextureRect" parent="Control/TopHeader/HeaderMain/HBox/LeftIdentity"]
+modulate = Color(0.4, 0.98, 0.76, 1)
+custom_minimum_size = Vector2(18, 18)
+layout_mode = 2
+size_flags_vertical = 4
+texture = ExtResource("4_ico_prism")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LabelTitulo" type="Label" parent="Control/TopHeader/HeaderMain/HBox/LeftIdentity"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.76, 0.96, 1, 1)
+theme_override_font_sizes/font_size = 13
+text = "MATRIZ DEL REACTOR CERO"
+vertical_alignment = 1
+
+[node name="PillProgreso" type="PanelContainer" parent="Control/TopHeader/HeaderMain/HBox/LeftIdentity"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBox_PillDark")
+
+[node name="LabelProgreso" type="Label" parent="Control/TopHeader/HeaderMain/HBox/LeftIdentity/PillProgreso"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.38, 0.96, 0.68, 1)
+theme_override_font_sizes/font_size = 11
+text = "1 / 80 Nodos"
+vertical_alignment = 1
+
+[node name="Spacer1" type="Control" parent="Control/TopHeader/HeaderMain/HBox"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.25, 0.95, 0.55, 1)
-theme_override_font_sizes/font_size = 15
-text = "☢️ TERMINAL DE BIOCONTENCIÓN · MATRIZ DEL REACTOR CERO"
+
+[node name="CenterBank" type="HBoxContainer" parent="Control/TopHeader/HeaderMain/HBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PanelOro" type="PanelContainer" parent="Control/TopHeader/HeaderMain/HBox/CenterBank"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBox_PillDark")
+
+[node name="HBox" type="HBoxContainer" parent="Control/TopHeader/HeaderMain/HBox/CenterBank/PanelOro"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Icon" type="TextureRect" parent="Control/TopHeader/HeaderMain/HBox/CenterBank/PanelOro/HBox"]
+custom_minimum_size = Vector2(14, 14)
+layout_mode = 2
+size_flags_vertical = 4
+texture = ExtResource("5_ico_gold")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LabelOro" type="Label" parent="Control/TopHeader/HeaderMain/HBox/CenterBank/PanelOro/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.99, 0.85, 0.35, 1)
+theme_override_font_sizes/font_size = 12
+text = "0 Oro"
 vertical_alignment = 1
 
-[node name="PanelOro" type="PanelContainer" parent="Control/PanelTop/HBox"]
-custom_minimum_size = Vector2(140, 0)
+[node name="PanelClics" type="PanelContainer" parent="Control/TopHeader/HeaderMain/HBox/CenterBank"]
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBox_PillTop")
+theme_override_styles/panel = SubResource("StyleBox_PillDark")
 
-[node name="LabelOro" type="Label" parent="Control/PanelTop/HBox/PanelOro"]
+[node name="HBox" type="HBoxContainer" parent="Control/TopHeader/HeaderMain/HBox/CenterBank/PanelClics"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.96, 0.82, 0.35, 1)
-theme_override_font_sizes/font_size = 14
-text = "🧪 0 Isótopos"
-horizontal_alignment = 1
+theme_override_constants/separation = 5
+
+[node name="Icon" type="TextureRect" parent="Control/TopHeader/HeaderMain/HBox/CenterBank/PanelClics/HBox"]
+custom_minimum_size = Vector2(14, 14)
+layout_mode = 2
+size_flags_vertical = 4
+texture = ExtResource("6_ico_clicks")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LabelClics" type="Label" parent="Control/TopHeader/HeaderMain/HBox/CenterBank/PanelClics/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.36, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 12
+text = "0 Clics"
 vertical_alignment = 1
 
-[node name="PanelClics" type="PanelContainer" parent="Control/PanelTop/HBox"]
-custom_minimum_size = Vector2(180, 0)
+[node name="PanelEsquirlas" type="PanelContainer" parent="Control/TopHeader/HeaderMain/HBox/CenterBank"]
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBox_PillTop")
+theme_override_styles/panel = SubResource("StyleBox_PillDark")
 
-[node name="LabelClics" type="Label" parent="Control/PanelTop/HBox/PanelClics"]
+[node name="HBox" type="HBoxContainer" parent="Control/TopHeader/HeaderMain/HBox/CenterBank/PanelEsquirlas"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.35, 0.88, 1, 1)
-theme_override_font_sizes/font_size = 14
-text = "⚡ 0 Clics"
-horizontal_alignment = 1
+theme_override_constants/separation = 5
+
+[node name="Icon" type="TextureRect" parent="Control/TopHeader/HeaderMain/HBox/CenterBank/PanelEsquirlas/HBox"]
+modulate = Color(0.84, 0.62, 1, 1)
+custom_minimum_size = Vector2(14, 14)
+layout_mode = 2
+size_flags_vertical = 4
+texture = ExtResource("7_ico_frost")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LabelEsquirlas" type="Label" parent="Control/TopHeader/HeaderMain/HBox/CenterBank/PanelEsquirlas/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.78, 1, 1)
+theme_override_font_sizes/font_size = 12
+text = "0 Esquirlas"
 vertical_alignment = 1
 
-[node name="BtnCentrar" type="Button" parent="Control/PanelTop/HBox"]
-custom_minimum_size = Vector2(100, 0)
+[node name="Spacer2" type="Control" parent="Control/TopHeader/HeaderMain/HBox"]
 layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBox_BtnAccion")
-text = "🎯 Núcleo Cero"
+size_flags_horizontal = 3
 
-[node name="BtnZoomIn" type="Button" parent="Control/PanelTop/HBox"]
-custom_minimum_size = Vector2(36, 0)
+[node name="RightCluster" type="HBoxContainer" parent="Control/TopHeader/HeaderMain/HBox"]
 layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBox_BtnAccion")
-text = "➕"
+theme_override_constants/separation = 8
 
-[node name="BtnZoomOut" type="Button" parent="Control/PanelTop/HBox"]
-custom_minimum_size = Vector2(36, 0)
+[node name="PanelPrestigio" type="PanelContainer" parent="Control/TopHeader/HeaderMain/HBox/RightCluster"]
 layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBox_BtnAccion")
-text = "➖"
+theme_override_styles/panel = SubResource("StyleBox_PillDark")
 
-[node name="BtnCerrar" type="Button" parent="Control/PanelTop/HBox"]
-custom_minimum_size = Vector2(130, 0)
+[node name="HBox" type="HBoxContainer" parent="Control/TopHeader/HeaderMain/HBox/RightCluster/PanelPrestigio"]
 layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Icon" type="TextureRect" parent="Control/TopHeader/HeaderMain/HBox/RightCluster/PanelPrestigio/HBox"]
+custom_minimum_size = Vector2(14, 14)
+layout_mode = 2
+size_flags_vertical = 4
+texture = ExtResource("8_ico_victory")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LabelPrestigio" type="Label" parent="Control/TopHeader/HeaderMain/HBox/RightCluster/PanelPrestigio/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.88, 0.42, 1)
+theme_override_font_sizes/font_size = 11
+text = "Prestigio Nv. 0 (+0%)"
+vertical_alignment = 1
+
+[node name="BtnCerrar" type="Button" parent="Control/TopHeader/HeaderMain/HBox/RightCluster"]
+custom_minimum_size = Vector2(144, 28)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.9, 0.9, 1)
+theme_override_font_sizes/font_size = 11
 theme_override_styles/normal = SubResource("StyleBox_BtnCerrar")
-text = "✕ Desconectar [U]"
+text = "DESCONECTAR [U]"
 
-[node name="PanelDetalle" type="PanelContainer" parent="Control"]
+[node name="HeaderActions" type="Control" parent="Control/TopHeader"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 14.0
+offset_top = 60.0
+offset_right = -14.0
+offset_bottom = 92.0
+grow_horizontal = 2
+
+[node name="Backdrop" type="ColorRect" parent="Control/TopHeader/HeaderActions"]
+material = SubResource("ShaderMat_HeaderActions")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="HBox" type="HBoxContainer" parent="Control/TopHeader/HeaderActions"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 3.0
+offset_right = -12.0
+offset_bottom = -3.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="LeftActions" type="HBoxContainer" parent="Control/TopHeader/HeaderActions/HBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="BtnRenacimientoAstral" type="Button" parent="Control/TopHeader/HeaderActions/HBox/LeftActions"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBox_BtnCompact")
+text = "RENACIMIENTO (0/35 Nv)"
+
+[node name="BtnRunPura" type="Button" parent="Control/TopHeader/HeaderActions/HBox/LeftActions"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBox_BtnCompact")
+text = "Run Pura: OFF"
+
+[node name="BtnResetMeta" type="Button" parent="Control/TopHeader/HeaderActions/HBox/LeftActions"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBox_BtnCerrar")
+text = "Reset Meta"
+
+[node name="Spacer" type="Control" parent="Control/TopHeader/HeaderActions/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RightSectors" type="HBoxContainer" parent="Control/TopHeader/HeaderActions/HBox"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="BtnSectorNucleo" type="Button" parent="Control/TopHeader/HeaderActions/HBox/RightSectors"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBox_BtnCompact")
+text = "Núcleo"
+
+[node name="BtnSectorCinetico" type="Button" parent="Control/TopHeader/HeaderActions/HBox/RightSectors"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBox_BtnCompact")
+text = "Cinético"
+
+[node name="BtnSectorBoton" type="Button" parent="Control/TopHeader/HeaderActions/HBox/RightSectors"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBox_BtnCompact")
+text = "Botón"
+
+[node name="BtnSectorBastion" type="Button" parent="Control/TopHeader/HeaderActions/HBox/RightSectors"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBox_BtnCompact")
+text = "Bastión"
+
+[node name="BtnSectorArsenal" type="Button" parent="Control/TopHeader/HeaderActions/HBox/RightSectors"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBox_BtnCompact")
+text = "Arsenal"
+
+[node name="BtnSectorCosmica" type="Button" parent="Control/TopHeader/HeaderActions/HBox/RightSectors"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBox_BtnCompact")
+text = "Cósmica"
+
+[node name="BtnSectorTodo" type="Button" parent="Control/TopHeader/HeaderActions/HBox/RightSectors"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBox_BtnCompact")
+text = "Ver Todo"
+
+[node name="PanelMinimap" type="Control" parent="Control"]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -222.0
+offset_right = 184.0
+offset_bottom = -54.0
+grow_vertical = 0
+
+[node name="Backdrop" type="ColorRect" parent="Control/PanelMinimap"]
+material = SubResource("ShaderMat_Minimap")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="MinimapCanvas" type="Control" parent="Control/PanelMinimap"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 6.0
+offset_top = 6.0
+offset_right = -6.0
+offset_bottom = -6.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="DockCamara" type="Control" parent="Control"]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 196.0
+offset_top = -90.0
+offset_right = 464.0
+offset_bottom = -54.0
+grow_vertical = 0
+
+[node name="Backdrop" type="ColorRect" parent="Control/DockCamara"]
+material = SubResource("ShaderMat_DockCam")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="HBox" type="HBoxContainer" parent="Control/DockCamara"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 5.0
+offset_right = -8.0
+offset_bottom = -5.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 4
+
+[node name="BtnZoomOut" type="Button" parent="Control/DockCamara/HBox"]
+custom_minimum_size = Vector2(28, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleBox_BtnCompact")
+text = "−"
+
+[node name="BtnZoomReset" type="Button" parent="Control/DockCamara/HBox"]
+custom_minimum_size = Vector2(52, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBox_BtnCompact")
+text = "75%"
+
+[node name="BtnZoomIn" type="Button" parent="Control/DockCamara/HBox"]
+custom_minimum_size = Vector2(28, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleBox_BtnCompact")
+text = "+"
+
+[node name="BtnCentrar" type="Button" parent="Control/DockCamara/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBox_BtnCompact")
+text = "Núcleo"
+
+[node name="BtnFitAll" type="Button" parent="Control/DockCamara/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBox_BtnCompact")
+text = "Todo"
+
+[node name="PanelHint" type="Control" parent="Control"]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -44.0
+offset_right = 486.0
+offset_bottom = -16.0
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="Backdrop" type="ColorRect" parent="Control/PanelHint"]
+material = SubResource("ShaderMat_PanelHint")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="LabelHint" type="Label" parent="Control/PanelHint"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 2.0
+offset_right = -12.0
+offset_bottom = -2.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.74, 0.8, 0.9, 1)
+theme_override_font_sizes/font_size = 11
+text = "Arrastrar: Mover · Rueda: Zoom · Doble Clic / [Espacio]: Mejorar · [U] Cerrar"
+vertical_alignment = 1
+
+[node name="PanelDetalle" type="Control" parent="Control"]
+clip_contents = true
 layout_mode = 1
 anchors_preset = 3
 anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -390.0
-offset_top = -320.0
-offset_right = -20.0
-offset_bottom = -20.0
+offset_left = -420.0
+offset_top = -384.0
+offset_right = -16.0
+offset_bottom = -16.0
 grow_horizontal = 0
 grow_vertical = 0
-theme_override_styles/panel = SubResource("StyleBox_PanelDetalleSlate")
+
+[node name="Backdrop" type="ColorRect" parent="Control/PanelDetalle"]
+material = SubResource("ShaderMat_PanelDetalle")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 
 [node name="Margin" type="MarginContainer" parent="Control/PanelDetalle"]
-layout_mode = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 theme_override_constants/margin_left = 16
 theme_override_constants/margin_top = 14
 theme_override_constants/margin_right = 16
@@ -195,104 +700,146 @@ theme_override_constants/margin_bottom = 14
 
 [node name="VBox" type="VBoxContainer" parent="Control/PanelDetalle/Margin"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 7
 
 [node name="HBoxEncabezado" type="HBoxContainer" parent="Control/PanelDetalle/Margin/VBox"]
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="IconoGrande" type="Label" parent="Control/PanelDetalle/Margin/VBox/HBoxEncabezado"]
+[node name="MedallonIcono" type="Control" parent="Control/PanelDetalle/Margin/VBox/HBoxEncabezado"]
+custom_minimum_size = Vector2(56, 56)
 layout_mode = 2
-theme_override_font_sizes/font_size = 28
-text = "⭐"
+
+[node name="IconoGrande" type="TextureRect" parent="Control/PanelDetalle/Margin/VBox/HBoxEncabezado/MedallonIcono"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -16.0
+offset_top = -16.0
+offset_right = 16.0
+offset_bottom = 16.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("4_ico_prism")
+expand_mode = 1
+stretch_mode = 5
 
 [node name="VBoxInfo" type="VBoxContainer" parent="Control/PanelDetalle/Margin/VBox/HBoxEncabezado"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 1
-
-[node name="LabelNombre" type="Label" parent="Control/PanelDetalle/Margin/VBox/HBoxEncabezado/VBoxInfo"]
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 16
-text = "Nombre del Nodo"
+size_flags_vertical = 4
+theme_override_constants/separation = 2
 
 [node name="LabelRama" type="Label" parent="Control/PanelDetalle/Margin/VBox/HBoxEncabezado/VBoxInfo"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.45, 0.73, 0.95, 1)
-theme_override_font_sizes/font_size = 11
-text = "🔵 PODER ACTIVO"
-
-[node name="LabelNivel" type="Label" parent="Control/PanelDetalle/Margin/VBox/HBoxEncabezado"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.9, 0.85, 0.5, 1)
-theme_override_font_sizes/font_size = 14
-text = "Nivel 0 / 5"
-
-[node name="HSeparator1" type="HSeparator" parent="Control/PanelDetalle/Margin/VBox"]
-layout_mode = 2
-
-[node name="LabelDesc" type="Label" parent="Control/PanelDetalle/Margin/VBox"]
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_colors/font_color = Color(0.85, 0.88, 0.92, 1)
-theme_override_font_sizes/font_size = 12
-text = "Descripción detallada del efecto del nodo dentro de la constelación de habilidades."
+theme_override_colors/font_color = Color(0.42, 0.86, 1, 1)
+theme_override_font_sizes/font_size = 10
+text = "PODER ACTIVO DE CLIC"
 autowrap_mode = 3
 
-[node name="LabelBono" type="Label" parent="Control/PanelDetalle/Margin/VBox"]
+[node name="LabelNombre" type="Label" parent="Control/PanelDetalle/Margin/VBox/HBoxEncabezado/VBoxInfo"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.35, 0.82, 0.55, 1)
-theme_override_font_sizes/font_size = 12
-text = "Efecto: +10% Daño"
+theme_override_colors/font_color = Color(0.96, 0.98, 1, 1)
+theme_override_font_sizes/font_size = 15
+text = "Nombre del Nodo"
+autowrap_mode = 3
 
-[node name="LabelEstado" type="Label" parent="Control/PanelDetalle/Margin/VBox"]
+[node name="PillNivel" type="PanelContainer" parent="Control/PanelDetalle/Margin/VBox/HBoxEncabezado"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.5, 0.8, 1, 1)
+size_flags_vertical = 4
+theme_override_styles/panel = SubResource("StyleBox_PillDark")
+
+[node name="LabelNivel" type="Label" parent="Control/PanelDetalle/Margin/VBox/HBoxEncabezado/PillNivel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.88, 0.5, 1)
 theme_override_font_sizes/font_size = 11
-text = "✓ Listo para desbloquear"
+text = "Nv. 0/5"
 
-[node name="HSeparator2" type="HSeparator" parent="Control/PanelDetalle/Margin/VBox"]
+[node name="BarraPips" type="Control" parent="Control/PanelDetalle/Margin/VBox"]
+custom_minimum_size = Vector2(0, 12)
 layout_mode = 2
 
-[node name="HBoxAccion" type="HBoxContainer" parent="Control/PanelDetalle/Margin/VBox"]
+[node name="DescWell" type="PanelContainer" parent="Control/PanelDetalle/Margin/VBox"]
 layout_mode = 2
-theme_override_constants/separation = 10
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBox_Well")
 
-[node name="LabelCosto" type="Label" parent="Control/PanelDetalle/Margin/VBox/HBoxAccion"]
+[node name="LabelDesc" type="Label" parent="Control/PanelDetalle/Margin/VBox/DescWell"]
+layout_mode = 2
+size_flags_vertical = 1
+theme_override_colors/font_color = Color(0.86, 0.9, 0.95, 1)
+theme_override_font_sizes/font_size = 12
+text = "Descripción detallada del efecto del nodo."
+autowrap_mode = 3
+
+[node name="TelemetryBox" type="PanelContainer" parent="Control/PanelDetalle/Margin/VBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBox_Well")
+
+[node name="VBoxTele" type="VBoxContainer" parent="Control/PanelDetalle/Margin/VBox/TelemetryBox"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="LabelBono" type="Label" parent="Control/PanelDetalle/Margin/VBox/TelemetryBox/VBoxTele"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.38, 0.94, 0.64, 1)
+theme_override_font_sizes/font_size = 12
+text = "Siguiente: +8%"
+autowrap_mode = 3
+
+[node name="LabelEstado" type="Label" parent="Control/PanelDetalle/Margin/VBox/TelemetryBox/VBoxTele"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.45, 0.84, 1, 1)
+theme_override_font_sizes/font_size = 11
+text = "Circuito enlazado: listo para inyectar"
+autowrap_mode = 3
+
+[node name="LabelPrerequisito" type="Label" parent="Control/PanelDetalle/Margin/VBox/TelemetryBox/VBoxTele"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.65, 0.45, 1)
+theme_override_font_sizes/font_size = 10
+text = "Prerequisito: ..."
+autowrap_mode = 3
+
+[node name="RecursosHBox" type="HBoxContainer" parent="Control/PanelDetalle/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ChipBanco" type="PanelContainer" parent="Control/PanelDetalle/Margin/VBox/RecursosHBox"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 13
-text = "Costo: 10 ⚡ Clics"
-vertical_alignment = 1
+theme_override_styles/panel = SubResource("StyleBox_PillDark")
 
-[node name="BtnComprar" type="Button" parent="Control/PanelDetalle/Margin/VBox/HBoxAccion"]
-custom_minimum_size = Vector2(150, 36)
+[node name="LabelBanco" type="Label" parent="Control/PanelDetalle/Margin/VBox/RecursosHBox/ChipBanco"]
 layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBox_BtnAccion")
-text = "Desbloquear"
-
-[node name="PanelHint" type="PanelContainer" parent="Control"]
-layout_mode = 1
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 20.0
-offset_top = -48.0
-offset_right = 530.0
-offset_bottom = -18.0
-grow_vertical = 0
-theme_override_styles/panel = SubResource("StyleBox_PillTop")
-
-[node name="Margin" type="MarginContainer" parent="Control/PanelHint"]
-layout_mode = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_right = 10
-
-[node name="LabelHint" type="Label" parent="Control/PanelHint/Margin"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.70, 0.74, 0.82, 1)
+theme_override_colors/font_color = Color(0.78, 0.85, 0.95, 1)
 theme_override_font_sizes/font_size = 11
-text = "🔬 Telemetría del Reactor: Clic Derecho / Fondo para Arrastrar · Rueda: Zoom Óptico · [U] o [B]: Alternar Terminal"
+text = "Banco: 0"
+horizontal_alignment = 1
 vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="ChipCosto" type="PanelContainer" parent="Control/PanelDetalle/Margin/VBox/RecursosHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBox_PillDark")
+
+[node name="LabelCosto" type="Label" parent="Control/PanelDetalle/Margin/VBox/RecursosHBox/ChipCosto"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.86, 0.42, 1)
+theme_override_font_sizes/font_size = 11
+text = "Costo: 70 Clics"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="BtnComprar" type="Button" parent="Control/PanelDetalle/Margin/VBox"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleBox_BtnCompact")
+text = "INYECTAR NV. 1 [Espacio]"

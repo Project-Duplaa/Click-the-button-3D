@@ -14,6 +14,7 @@ class_name EventosColiseoManager
 const AudioManager = preload("res://audio_manager.gd")
 const ArenaColiseo = preload("res://arena_coliseo.gd")
 const BunkerVisualKit = preload("res://bunker_visual_kit.gd")
+const VfxCombate = preload("res://vfx_combate.gd")
 const MetaprogresoManager = preload("res://metaprogreso_manager.gd")
 const CatalogoBendiciones = preload("res://catalogo_bendiciones.gd")
 
@@ -268,7 +269,7 @@ func _on_cristal_recibir_dano(dano: float, cristal: Node3D) -> void:
 
 func _detonar_cristal_escarcha(pos: Vector3) -> void:
 	AudioManager.play("orbe_explosion", 1.45)
-	BunkerVisualKit.spawn_shockwave_ring(get_parent(), pos, 0.6, 7.5, Color(0.35, 0.85, 1.0, 0.7), 0.35)
+	VfxCombate.spawn_explosion_nova(get_parent(), pos + Vector3(0, 0.4, 0), 6.2, Color(0.32, 0.88, 1.0), Color.WHITE, 0.40, true, true)
 
 	# Ralentizar y dañar a enemigos circundantes
 	var radio: float = 8.0
@@ -278,9 +279,11 @@ func _detonar_cristal_escarcha(pos: Vector3) -> void:
 				e.recibir_dano(28.0, true)
 			if "rapidez" in e:
 				e.rapidez = maxf(e.rapidez * 0.50, 0.8)
+				var e_ref: WeakRef = weakref(e)
 				get_tree().create_timer(3.5).timeout.connect(func():
-					if is_instance_valid(e) and "rapidez" in e:
-						e.rapidez = e.rapidez * 2.0
+					var target = e_ref.get_ref()
+					if target != null and is_instance_valid(target) and "rapidez" in target:
+						target.rapidez = target.rapidez * 2.0
 				)
 
 func _erupcionar_geyser_solar() -> void:
@@ -310,7 +313,7 @@ func _erupcionar_geyser_solar() -> void:
 
 	# 2. Erupción activa de fuego
 	AudioManager.play("alerta_oleada", 1.6, 2.0)
-	BunkerVisualKit.spawn_shockwave_ring(arena, pos, 0.5, 3.2, Color(1.0, 0.55, 0.15), 0.45)
+	VfxCombate.spawn_columna_fuego(arena, pos, 2.8, Color(1.0, 0.52, 0.12), Color(1.0, 0.94, 0.65), 0.55)
 
 	# Comprobar si el Botón Móvil cruza el géiser -> Entra inmediatamente en Frenesí
 	var boton = get_tree().get_first_node_in_group("boton_movil")

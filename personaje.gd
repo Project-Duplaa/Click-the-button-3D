@@ -2,6 +2,9 @@ extends CharacterBody3D
 
 const AudioManager = preload("res://audio_manager.gd")
 const ArenaColiseo = preload("res://arena_coliseo.gd")
+const VfxCombate = preload("res://vfx_combate.gd")
+const PROYECTIL_ESCENA = preload("res://proyectil.tscn")
+const ORBE_ARCANO_ESCENA = preload("res://orbe_arcano.tscn")
 const EvolucionManager = preload("res://evolucion_manager.gd")
 const ArbolMejorasDatos = preload("res://arbol_mejoras_datos.gd")
 const MetaprogresoManager = preload("res://metaprogreso_manager.gd")
@@ -176,6 +179,22 @@ var detonacion_oro_pct: float = 0.0
 var terremoto_clic_vida: int = 0
 var oro_salud_conversion: int = 0
 
+# Mejoras dedicadas al Botón Móvil y Palancas (Rama "boton")
+var btn_calor_reduc_pct: float = 0.0
+var btn_tamano_pct: float = 0.0
+var btn_enfriamiento_pct: float = 0.0
+var btn_ventana_ritmo_pct: float = 0.0
+var btn_dano_perfecto_pct: float = 0.0
+var btn_control_orbita_pct: float = 0.0
+var btn_clics_bloqueo_extra: int = 0
+var btn_calor_max_extra: float = 0.0
+var btn_dano_termico_pct: float = 0.0
+var btn_alcance_palancas: float = 0.0
+var btn_frenesi_duracion_seg: float = 0.0
+var btn_fiebre_eficiencia_pct: float = 0.0
+var keystone_btn_criogenico: bool = false
+var keystone_btn_rompecadenas: bool = false
+
 # Keystones Supremos
 var keystone_cataclismo: bool = false
 var keystone_soberania: bool = false
@@ -225,8 +244,9 @@ var _preview_arco: Node3D = null
 var _anim_ctrl: AnimadorEntidad = null
 var _modelo_pos_base: Vector3 = Vector3.ZERO
 var _modelo_rot_base: Vector3 = Vector3.ZERO
-var _modelo_escala_base: Vector3 = Vector3(-5.5, 5.5, -5.5)
+var _modelo_escala_base: Vector3 = Vector3(-2.8, 2.8, -2.8)
 var _tween_modelo_ataque: Tween = null
+var _inclinacion_giro: float = 0.0
 var _turno_ataque_novato: bool = false
 var _arma_der_ref: Node3D = null
 var _arma_izq_ref: Node3D = null
@@ -272,14 +292,23 @@ func _ready():
 func _on_malla_cambiada(nuevo_modelo: Node3D) -> void:
 	if nuevo_modelo == null:
 		return
+	if _tween_modelo_ataque != null and _tween_modelo_ataque.is_valid():
+		_tween_modelo_ataque.kill()
+		_tween_modelo_ataque = null
+	nuevo_modelo.position = Vector3.ZERO
+	nuevo_modelo.rotation = Vector3(0.0, PI, 0.0)
+	nuevo_modelo.scale = Vector3(2.8, 2.8, 2.8)
 	_modelo_pos_base = nuevo_modelo.position
 	_modelo_rot_base = nuevo_modelo.rotation
 	_modelo_escala_base = nuevo_modelo.scale
+	_inclinacion_giro = 0.0
 	if _anim_ctrl == null:
 		_anim_ctrl = AnimadorEntidad.new(nuevo_modelo)
 	else:
 		_anim_ctrl.vincular_modelo(nuevo_modelo)
 	anim = _anim_ctrl.obtener_animation_player()
+	if _anim_ctrl.esta_listo():
+		_anim_ctrl.reproducir_bucle("idle", 0.05, 1.0, 0)
 	equipar_armas_clase(clase)
 
 func equipar_armas_clase(nombre_clase: String) -> void:
@@ -358,12 +387,18 @@ func _intentar_dash_tactico():
 		dir_mov = -global_transform.basis.z.normalized()
 		dir_mov.y = 0.0
 	_dash_direccion = dir_mov.normalized()
+	if _anim_ctrl != null and _anim_ctrl.esta_listo():
+		_anim_ctrl.reproducir_accion("dash", 3, 0.04, 1.4, 0.24)
 
 	AudioManager.play("corte_espada", 1.35)
 	if bendiciones_run.has("global_dash_frenetico"):
 		_repeler_enemigos_alrededor(3.6, 9.0, dano * 0.85 * float(bendiciones_run["global_dash_frenetico"]))
+		VfxCombate.spawn_explosion_nova(get_parent(), global_position + Vector3(0, 0.4, 0), 3.4, Color(0.25, 0.92, 1.0), Color.WHITE, 0.24, true, true)
 	if sinergias_activas.has("sinergia_juggernaut"):
 		_repeler_enemigos_alrededor(4.8, 14.0, (dano + armadura_plana * 1.5))
+		VfxCombate.spawn_explosion_nova(get_parent(), global_position + Vector3(0, 0.5, 0), 4.6, Color(1.0, 0.55, 0.12), Color(1.0, 0.95, 0.65), 0.30, true, true)
+	elif not bendiciones_run.has("global_dash_frenetico"):
+		BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position, 0.3, 1.9, BunkerVisualKit.COL_CYAN_ELECTRIC, 0.20)
 
 func aplicar_knockback(impulso: Vector3, _duracion_stun: float = 0.08):
 	if resistencia_estados_pct >= 0.95:
@@ -432,8 +467,20 @@ func _physics_process(delta):
 	if is_on_floor():
 		velocity.y = minf(velocity.y, 0.0)
 
-	if direction.length() > 0:
-		basis = Basis.looking_at(direction)
+	var tasa_giro_visual := 0.0
+	if direction.length_squared() > 0.01:
+		var yaw_objetivo := atan2(-direction.x, -direction.z)
+		var yaw_prev := rotation.y
+		var vel_giro := 15.0 if not bloqueando else 10.5
+		rotation.y = lerp_angle(rotation.y, yaw_objetivo, minf(1.0, delta * vel_giro))
+		tasa_giro_visual = angle_difference(yaw_prev, rotation.y) / maxf(delta, 0.001)
+	var rapidez_horiz := Vector2(velocity.x, velocity.z).length()
+	var factor_vel := clampf(rapidez_horiz / maxf(1.0, speed_correr), 0.0, 1.0)
+	var banco_obj := clampf(-tasa_giro_visual * 0.018 * factor_vel, -0.14, 0.14)
+	_inclinacion_giro = lerpf(_inclinacion_giro, banco_obj, minf(1.0, delta * 12.0))
+	var modelo_nodo_giro := get_node_or_null("Modelo") as Node3D
+	if modelo_nodo_giro != null and (_tween_modelo_ataque == null or not _tween_modelo_ataque.is_valid()):
+		modelo_nodo_giro.rotation.z = _modelo_rot_base.z + _inclinacion_giro
 
 	move_and_slide()
 
@@ -469,7 +516,7 @@ func _procesar_fiebre_y_bendiciones(delta: float):
 			_frenesi_clic_stacks = 0
 
 	if medidor_fiebre > 0.0:
-		var decay = 6.5
+		var decay = 6.5 * maxf(0.35, 1.0 - btn_fiebre_eficiencia_pct * 0.80)
 		if bendiciones_run.has("clic_fiebre_eterna"):
 			decay *= pow(0.65, float(bendiciones_run["clic_fiebre_eterna"]))
 		medidor_fiebre = maxf(0.0, medidor_fiebre - decay * delta)
@@ -481,6 +528,7 @@ func _procesar_fiebre_y_bendiciones(delta: float):
 			_temporizador_estela_fuego = 0.0
 			var stacks_estela = int(bendiciones_run["global_estela_fuego"])
 			_repeler_enemigos_alrededor(2.6, 2.0, dano * 0.45 * float(stacks_estela))
+			BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position, 0.25, 2.4, BunkerVisualKit.COL_PLASMA_ORANGE, 0.30)
 
 	# Efectos continuos de Bendiciones Corruptas
 	if bendiciones_corruptas.has("corrupta_coloso_inamovible") and Vector2(velocity.x, velocity.z).length() > 0.8:
@@ -488,6 +536,7 @@ func _procesar_fiebre_y_bendiciones(delta: float):
 		if _temporizador_paso_coloso >= 0.45:
 			_temporizador_paso_coloso = 0.0
 			_repeler_enemigos_alrededor(2.8, 5.5, dano * 0.55)
+			BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position, 0.3, 2.7, Color(0.95, 0.55, 0.15), 0.26)
 
 	if bendiciones_corruptas.has("corrupta_avaricia_sangrienta") and vida > 1.0 and not _muerto_definitivo:
 		vida = maxf(1.0, vida - 1.0 * delta)
@@ -559,17 +608,26 @@ func _obtener_enemigo_cercano() -> Node3D:
 	if not is_inside_tree() or get_tree() == null:
 		return null
 	var enemigos = _obtener_todos_los_enemigos()
-	var mas_cercano: Node3D = null
-	var menor_dist = 9999.0
+	var mas_cercano_normal: Node3D = null
+	var menor_dist_normal: float = 9999.0
+	var mas_cercano_respaldo: Node3D = null
+	var menor_dist_respaldo: float = 9999.0
 	for e in enemigos:
 		if is_instance_valid(e) and e is Node3D:
 			if "muerto" in e and e.muerto:
 				continue
-			var dist = global_position.distance_to(e.global_position)
-			if dist < menor_dist:
-				menor_dist = dist
-				mas_cercano = e
-	return mas_cercano
+			var dist: float = global_position.distance_to(e.global_position)
+			var es_inmune_arma: bool = ("solo_dano_boton" in e and bool(e.solo_dano_boton))
+			if not es_inmune_arma:
+				if dist < menor_dist_normal:
+					menor_dist_normal = dist
+					mas_cercano_normal = e
+			elif dist < menor_dist_respaldo:
+				menor_dist_respaldo = dist
+				mas_cercano_respaldo = e
+	if mas_cercano_normal != null and menor_dist_normal <= rango_ataque:
+		return mas_cercano_normal
+	return mas_cercano_normal if mas_cercano_normal != null else mas_cercano_respaldo
 
 func _ejecutar_ataque(enemigo: Node3D):
 	var origen_disp := global_position + Vector3(0.0, 0.9, 0.0)
@@ -690,6 +748,7 @@ func _ejecutar_ataque(enemigo: Node3D):
 						if e.has_method("recibir_dano"):
 							e.recibir_dano(dano_melee, es_crit)
 							registrar_dano_telemetria("armas", dano_melee)
+						VfxCombate.spawn_impacto(get_parent(), e.global_position + Vector3(0.0, 0.95, 0.0), Color(1.0, 0.84, 0.2) if es_crit else Color(0.28, 0.90, 1.0), Color.WHITE, 0.95, es_crit)
 						AudioManager.play("golpe_impacto", randf_range(0.95, 1.15))
 	elif clase in ["Guerrero", "Murmillo"]:
 		# CORTE GIRATORIO MELEE EN ÁREA 360° (Whirlwind)
@@ -702,17 +761,17 @@ func _ejecutar_ataque(enemigo: Node3D):
 			_anim_ctrl.reproducir_accion("cast-magic", 2, 0.05, 1.1)
 		_ejecutar_animacion_procedural_ataque("mago")
 		_pulsar_orbe_mago()
-		var orbe_escena = load("res://orbe_arcano.tscn")
-		if orbe_escena != null:
+		if ORBE_ARCANO_ESCENA != null:
 			var cant_orbes = 1 + (1 if bendiciones_run.get("mago_orbe_triple", 0) > 0 else 0) + int(bendiciones_run.get("mago_orbe_triple", 0))
 			var paso_orbe = 14.0
 			var inicio_orbe = -((cant_orbes - 1) * paso_orbe) * 0.5
+			var origen_m = global_position + Vector3(0, 0.9, 0)
+			VfxCombate.spawn_destello_disparo(get_parent(), origen_m, dir_3d, Color(0.70, 0.35, 1.0), 0.72)
 			for i in range(cant_orbes):
-				var orbe = orbe_escena.instantiate()
-				var origen = global_position + Vector3(0, 0.9, 0)
+				var orbe = ORBE_ARCANO_ESCENA.instantiate()
 				var dir_o = dir_3d.rotated(Vector3.UP, deg_to_rad(inicio_orbe + i * paso_orbe)).normalized()
 				get_parent().add_child(orbe)
-				orbe.iniciar(origen, dir_o, dano_ataque_actual, enemigo)
+				orbe.iniciar(origen_m, dir_o, dano_ataque_actual, enemigo, "orbe_arcano")
 			registrar_dano_telemetria("armas", dano_ataque_actual * float(cant_orbes))
 	else:
 		# Especialidad Cazador/Sagittario: Disparo múltiple de flechas (Multishot) en abanico
@@ -739,18 +798,18 @@ func _ejecutar_ataque(enemigo: Node3D):
 		var vel_flecha = 16.0
 		var dano_flecha = dano_ataque_actual * 0.60
 		var origen = global_position + Vector3(0, 0.9, 0)
-		var proyectil_escena = load("res://proyectil.tscn")
+		VfxCombate.spawn_destello_disparo(get_parent(), origen, dir_3d, Color(1.0, 0.85, 0.2) if es_crit else Color(0.20, 0.92, 1.0), 0.68)
 
-		if proyectil_escena != null:
+		if PROYECTIL_ESCENA != null:
 			var angulo_inicio = -((cant_flechas - 1) * angulo_paso) * 0.5
 			for i in range(cant_flechas):
 				var angulo = angulo_inicio + (i * angulo_paso)
 				var dir_flecha = dir_3d.rotated(Vector3.UP, deg_to_rad(angulo)).normalized()
-				var p = proyectil_escena.instantiate()
+				var p = PROYECTIL_ESCENA.instantiate()
 				get_parent().add_child(p)
 				if "rebotes_restantes" in p:
 					p.rebotes_restantes = rebotes_armas
-				p.iniciar(origen, dir_flecha, dano_flecha, vel_flecha, perforaciones, es_crit)
+				p.iniciar(origen, dir_flecha, dano_flecha, vel_flecha, perforaciones, es_crit, "flecha")
 			registrar_dano_telemetria("armas", dano_flecha * float(cant_flechas))
 
 func _crear_onda_solar(dir: Vector3, es_crit: bool, dano_onda: float) -> void:
@@ -758,22 +817,30 @@ func _crear_onda_solar(dir: Vector3, es_crit: bool, dano_onda: float) -> void:
 	var es_t3 = subclase_tier2 in ["Paladín del Sol Invictus", "Paladín Solar"]
 	var r_onda = (rango_ataque + 1.8) if es_t3 else (rango_ataque + 1.2)
 	_repeler_enemigos_alrededor(r_onda, 8.0, dano_onda)
-	_crear_tajo_espada(dir, es_crit or true)
+	var parent_n := get_parent()
+	VfxCombate.spawn_tajo(parent_n, global_position + Vector3(0.0, 0.95, 0.0), dir, r_onda * 0.92, Color(1.0, 0.80, 0.14), Color(1.0, 0.99, 0.85), Color(1.0, 0.42, 0.06), false, 0.24, 10.0)
+	VfxCombate.spawn_explosion_nova(parent_n, global_position + Vector3(0.0, 0.45, 0.0) + dir * 1.1, r_onda * 0.72, Color(1.0, 0.72, 0.12), Color(1.0, 0.98, 0.82), 0.30, true, true)
+	if es_t3 or es_crit:
+		VfxCombate.spawn_columna_fuego(parent_n, global_position + dir * 1.8, 1.9, Color(1.0, 0.78, 0.18), Color(1.0, 0.98, 0.85), 0.34)
 
 func _ejecutar_corte_giratorio_berserker(es_crit: bool, dano_corte: float) -> void:
 	accion = "whirlwind"
-	_reloj_anim_accion = 0.25
+	_reloj_anim_accion = 0.30
+	var tiene_clip_whirl := _anim_ctrl != null and _anim_ctrl.tiene_clip("whirlwind")
 	if _anim_ctrl != null:
 		_anim_ctrl.reproducir_accion("whirlwind", 3, 0.04, 1.4)
+	if not tiene_clip_whirl:
+		_girar_modelo_360(0.24)
 	AudioManager.play("corte_giratorio", 1.3)
-	_crear_efecto_disco_cortante(rango_ataque + 0.4)
+	_crear_efecto_disco_cortante(rango_ataque + 0.65, true, es_crit)
 	_repeler_enemigos_alrededor(rango_ataque + 0.8, 9.5, dano_corte)
-	var _c := es_crit
 
 func _disparar_riel_astral(dir: Vector3, dano_riel: float, es_crit: bool) -> void:
 	AudioManager.play("disparo_arco", 1.45)
 	var objetivos = _obtener_todos_los_enemigos()
-	var origen = global_position + Vector3(0, 0.9, 0)
+	var origen = global_position + Vector3(0, 0.95, 0)
+	var col_riel := Color(1.0, 0.84, 0.2) if es_crit else Color(0.20, 0.92, 1.0)
+	VfxCombate.spawn_riel_laser(get_parent(), origen, dir, 13.0, col_riel, Color.WHITE, 0.28)
 	var impacto_alguno := false
 	for e in objetivos:
 		if is_instance_valid(e) and e is Node3D:
@@ -784,56 +851,59 @@ func _disparar_riel_astral(dir: Vector3, dano_riel: float, es_crit: bool) -> voi
 				if e.has_method("recibir_dano"):
 					e.recibir_dano(dano_riel, es_crit)
 					impacto_alguno = true
+				VfxCombate.spawn_impacto(get_parent(), e.global_position + Vector3(0.0, 0.95, 0.0), col_riel, Color.WHITE, 1.15, true)
 	if impacto_alguno:
 		AudioManager.play("golpe_impacto", 1.3)
 
 func _disparar_espiral_dagas_sombras(dano_daga: float, es_crit: bool, cant_dagas: int = 8) -> void:
 	AudioManager.play("corte_espada", 1.4)
-	var proyectil_escena = load("res://proyectil.tscn")
-	if proyectil_escena != null and get_parent() != null:
+	if PROYECTIL_ESCENA != null and get_parent() != null:
 		var num_dagas = cant_dagas + proyectiles_extra
 		var origen = global_position + Vector3(0, 0.8, 0)
+		BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position, 0.25, 2.5, Color(0.70, 0.20, 1.0), 0.24)
 		for i in range(num_dagas):
 			var ang = (TAU / float(num_dagas)) * float(i)
 			var dir_d = Vector3(cos(ang), 0.0, sin(ang)).normalized()
-			var p = proyectil_escena.instantiate()
+			var p = PROYECTIL_ESCENA.instantiate()
 			get_parent().add_child(p)
-			p.iniciar(origen, dir_d, dano_daga, 20.0, 1 + perforacion_armas, es_crit)
+			p.iniciar(origen, dir_d, dano_daga, 20.0, 1 + perforacion_armas, es_crit, "sombra")
 
 func _crear_senuelo_sombra(pos: Vector3) -> void:
 	if get_parent() == null:
 		return
-	var deco = MeshInstance3D.new()
-	var box = BoxMesh.new()
-	box.size = Vector3(0.5, 1.2, 0.5)
-	deco.mesh = box
-	var mat = StandardMaterial3D.new()
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.albedo_color = Color(0.65, 0.15, 1.0, 0.75)
-	mat.emission_enabled = true
-	mat.emission = Color(0.6, 0.1, 1.0)
-	mat.emission_energy_multiplier = 3.0
-	deco.material_override = mat
+	var deco = Node3D.new()
+	var mat_holo := BunkerVisualKit.create_hologram_material(Color(0.68, 0.18, 1.0), Color(0.95, 0.72, 1.0), 3.0, 28.0, 3.5)
+	var cuerpo_m := MeshInstance3D.new()
+	var caps := CapsuleMesh.new()
+	caps.radius = 0.28
+	caps.height = 1.25
+	cuerpo_m.mesh = caps
+	cuerpo_m.position = Vector3(0, 0.75, 0)
+	cuerpo_m.material_override = mat_holo
+	deco.add_child(cuerpo_m)
+
+	var anillo_m := BunkerVisualKit.make_torus(deco, "AuraSenuelo", 0.55, 0.68, mat_holo, Vector3(0, 0.14, 0))
 	get_parent().add_child(deco)
-	deco.global_position = pos + Vector3(0, 0.6, 0)
+	deco.global_position = ArenaColiseo.clamping_y_ajustar_a_suelo(pos, 1.2, 0.0)
 	var tw = deco.create_tween()
-	tw.tween_interval(0.22)
+	tw.tween_property(anillo_m, "rotation:y", PI * 1.5, 0.22)
 	tw.tween_callback(func():
 		if is_instance_valid(self):
 			_repeler_enemigos_alrededor(4.5, 10.0, dano * 1.25)
 			registrar_dano_telemetria("armas", dano * 1.25)
 			AudioManager.play("orbe_explosion", 1.4)
 		if is_instance_valid(deco):
+			VfxCombate.spawn_explosion_nova(deco.get_parent(), deco.global_position + Vector3(0, 0.6, 0), 3.6, Color(0.72, 0.20, 1.0), Color(0.98, 0.82, 1.0), 0.30, true, true)
 			deco.queue_free()
 	)
 
 func _lanzar_orbe_vacio(dir: Vector3, enemigo: Node3D, dano_v: float, _es_crit: bool) -> void:
-	var orbe_escena = load("res://orbe_arcano.tscn")
-	if orbe_escena != null and get_parent() != null:
-		var orbe = orbe_escena.instantiate()
+	if ORBE_ARCANO_ESCENA != null and get_parent() != null:
+		var orbe = ORBE_ARCANO_ESCENA.instantiate()
 		var origen = global_position + Vector3(0, 0.9, 0)
 		get_parent().add_child(orbe)
-		orbe.iniciar(origen, dir, dano_v, enemigo)
+		orbe.iniciar(origen, dir, dano_v, enemigo, "orbe_vacio")
+		VfxCombate.spawn_destello_disparo(get_parent(), origen, dir, Color(0.60, 0.16, 1.0), 0.75)
 		var pos_ref = enemigo.global_position if is_instance_valid(enemigo) else global_position + dir * 4.5
 		var tw_sing = create_tween()
 		tw_sing.tween_interval(0.32)
@@ -846,24 +916,24 @@ func _lanzar_orbe_vacio(dir: Vector3, enemigo: Node3D, dano_v: float, _es_crit: 
 func _crear_vortice_vacio(pos: Vector3) -> void:
 	if get_parent() == null:
 		return
-	var vortice = MeshInstance3D.new()
-	var torus = TorusMesh.new()
-	torus.inner_radius = 1.1
-	torus.outer_radius = 2.6
-	vortice.mesh = torus
-	var mat = StandardMaterial3D.new()
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.albedo_color = Color(0.55, 0.10, 0.95, 0.72)
-	mat.emission_enabled = true
-	mat.emission = Color(0.65, 0.15, 1.0)
-	mat.emission_energy_multiplier = 3.2
-	vortice.material_override = mat
-	get_parent().add_child(vortice)
-	vortice.global_position = ArenaColiseo.clamping_y_ajustar_a_suelo(pos, 1.5, 0.14)
+	var pos_suelo := ArenaColiseo.clamping_y_ajustar_a_suelo(pos, 1.5, 0.04)
+	var vortice: Node3D = VfxCombate.crear_zona_suelo_shader(
+		get_parent(),
+		pos_suelo,
+		3.1,
+		0,
+		Color(0.58, 0.14, 1.00),
+		Color(0.18, 0.03, 0.45),
+		Color(0.95, 0.78, 1.00),
+		2.5
+	)
+	if vortice == null:
+		return
 	var tick_state := [0.0]
 	var tw = vortice.create_tween()
 	tw.tween_method(func(_v):
-		vortice.rotation.y += 0.18
+		if not is_instance_valid(vortice):
+			return
 		var now = Time.get_ticks_msec() / 1000.0
 		if now - tick_state[0] < 0.35:
 			return
@@ -872,25 +942,24 @@ func _crear_vortice_vacio(pos: Vector3) -> void:
 			return
 		for e in _obtener_todos_los_enemigos():
 			if is_instance_valid(e) and e is Node3D:
-				var dist = pos.distance_to(e.global_position)
+				var dist = pos_suelo.distance_to(e.global_position)
 				if dist <= 5.5 and dist > 0.4:
-					var hacia = (pos - e.global_position).normalized()
+					var hacia = (pos_suelo - e.global_position).normalized()
 					if e.has_method("aplicar_knockback"):
 						e.aplicar_knockback(hacia * 4.5)
 					if e.has_method("recibir_dano"):
 						var mult_tick = 0.14 if (subclase_tier2 in ["Pontífice del Vacío Estelar", "Archimago del Vacío"]) else 0.16
 						e.recibir_dano(dano * mult_tick, false)
 						registrar_dano_telemetria("armas", dano * mult_tick)
-	, 0.0, 1.0, 2.5)
-	tw.chain().tween_callback(vortice.queue_free)
+	, 0.0, 1.0, 2.45)
 
 func _lanzar_meteoro_magma(dir: Vector3, enemigo: Node3D, dano_m: float, _es_crit: bool) -> void:
-	var orbe_escena = load("res://orbe_arcano.tscn")
-	if orbe_escena != null and get_parent() != null:
-		var orbe = orbe_escena.instantiate()
+	if ORBE_ARCANO_ESCENA != null and get_parent() != null:
+		var orbe = ORBE_ARCANO_ESCENA.instantiate()
 		var origen = global_position + Vector3(0, 0.9, 0)
 		get_parent().add_child(orbe)
-		orbe.iniciar(origen, dir, dano_m, enemigo)
+		orbe.iniciar(origen, dir, dano_m, enemigo, "orbe_magma")
+		VfxCombate.spawn_destello_disparo(get_parent(), origen, dir, Color(1.0, 0.48, 0.08), 0.78)
 		var pos_ref = enemigo.global_position if is_instance_valid(enemigo) else global_position + dir * 4.5
 		var tw_m = create_tween()
 		tw_m.tween_interval(0.32)
@@ -903,24 +972,25 @@ func _lanzar_meteoro_magma(dir: Vector3, enemigo: Node3D, dano_m: float, _es_cri
 func _crear_charco_magma(pos: Vector3) -> void:
 	if get_parent() == null:
 		return
-	var charco = MeshInstance3D.new()
-	var cyl = CylinderMesh.new()
-	cyl.top_radius = 2.4
-	cyl.bottom_radius = 2.4
-	cyl.height = 0.04
-	charco.mesh = cyl
-	var mat = StandardMaterial3D.new()
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.albedo_color = Color(1.0, 0.45, 0.05, 0.85)
-	mat.emission_enabled = true
-	mat.emission = Color(1.0, 0.4, 0.05)
-	mat.emission_energy_multiplier = 2.5
-	charco.material_override = mat
-	get_parent().add_child(charco)
-	charco.global_position = ArenaColiseo.clamping_y_ajustar_a_suelo(pos, 1.5, 0.03)
+	var pos_suelo := ArenaColiseo.clamping_y_ajustar_a_suelo(pos, 1.5, 0.04)
+	VfxCombate.spawn_explosion_nova(get_parent(), pos_suelo + Vector3(0, 0.2, 0), 2.5, Color(1.0, 0.44, 0.06), Color(1.0, 0.94, 0.48), 0.30, true, false)
+	var charco: Node3D = VfxCombate.crear_zona_suelo_shader(
+		get_parent(),
+		pos_suelo,
+		2.65,
+		1,
+		Color(1.00, 0.42, 0.06),
+		Color(0.62, 0.10, 0.02),
+		Color(1.00, 0.92, 0.45),
+		2.8
+	)
+	if charco == null:
+		return
 	var tick_state := [0.0]
 	var tw = charco.create_tween()
 	tw.tween_method(func(_v):
+		if not is_instance_valid(charco):
+			return
 		var now = Time.get_ticks_msec() / 1000.0
 		if now - tick_state[0] < 0.35:
 			return
@@ -928,23 +998,40 @@ func _crear_charco_magma(pos: Vector3) -> void:
 		if not is_instance_valid(self):
 			return
 		for e in _obtener_todos_los_enemigos():
-			if is_instance_valid(e) and e is Node3D and charco.global_position.distance_to(e.global_position) <= 2.4:
+			if is_instance_valid(e) and e is Node3D and charco.global_position.distance_to(e.global_position) <= 2.55:
 				if e.has_method("recibir_dano"):
 					var mult_burn = 0.16 if (subclase_tier2 in ["Señor del Magma Imperial", "Piromante Cataclísmico"]) else 0.18
 					e.recibir_dano(dano * mult_burn, false)
 					registrar_dano_telemetria("armas", dano * mult_burn)
-	, 0.0, 1.0, 2.8)
-	tw.chain().tween_callback(charco.queue_free)
+	, 0.0, 1.0, 2.75)
 
 func _ejecutar_golpe_avatar_resonancia(dir: Vector3, dano_g: float, _es_crit: bool) -> void:
 	AudioManager.play("corte_espada", 1.35)
 	_repeler_enemigos_alrededor(5.0, 10.0, dano_g * 1.25)
-	_crear_tajo_espada(dir, true)
+	VfxCombate.spawn_tajo(get_parent(), global_position + Vector3(0, 0.95, 0), dir, 4.2, Color(0.18, 0.94, 1.0), Color(1.0, 0.96, 0.55), Color(0.28, 0.55, 1.0), false, 0.24, 14.0)
+	VfxCombate.spawn_tajo(get_parent(), global_position + Vector3(0, 1.05, 0), dir, 4.0, Color(1.0, 0.82, 0.18), Color.WHITE, Color(0.25, 0.92, 1.0), true, 0.22, 22.0)
+	VfxCombate.spawn_explosion_nova(get_parent(), global_position + Vector3(0, 0.65, 0) + dir * 0.9, 4.4, Color(0.22, 0.92, 1.0), Color(1.0, 0.95, 0.65), 0.32, true, true)
 
 func click_attack():
 	# El combate es 100% automático (Autobattler continuo por proximidad).
 	# La única interacción de clic permitida en el juego es sobre el Botón Móvil 3D.
 	pass
+
+func _girar_modelo_360(duracion: float) -> void:
+	var modelo_nodo := get_node_or_null("Modelo") as Node3D
+	if modelo_nodo == null:
+		return
+	if _tween_modelo_ataque != null and _tween_modelo_ataque.is_valid():
+		_tween_modelo_ataque.kill()
+	modelo_nodo.position = _modelo_pos_base
+	modelo_nodo.rotation = _modelo_rot_base
+	_tween_modelo_ataque = create_tween()
+	_tween_modelo_ataque.tween_property(modelo_nodo, "rotation:y", _modelo_rot_base.y - TAU, maxf(0.12, duracion)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_tween_modelo_ataque.tween_callback(func():
+		if is_instance_valid(modelo_nodo):
+			modelo_nodo.rotation.y = _modelo_rot_base.y
+	)
+
 
 func _ejecutar_animacion_procedural_ataque(tipo_ataque: String):
 	var mod = get_node_or_null("Modelo") as Node3D
@@ -953,22 +1040,21 @@ func _ejecutar_animacion_procedural_ataque(tipo_ataque: String):
 	if _tween_modelo_ataque != null and _tween_modelo_ataque.is_valid():
 		_tween_modelo_ataque.kill()
 		mod.position = _modelo_pos_base
-		mod.rotation = _modelo_rot_base
 	_tween_modelo_ataque = create_tween()
 	match tipo_ataque:
 		"melee":
-			# Embestida frontal (-Z local) y retorno sin deriva acumulativa
-			_tween_modelo_ataque.tween_property(mod, "position:z", _modelo_pos_base.z - 0.28, 0.06).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-			_tween_modelo_ataque.tween_property(mod, "position:z", _modelo_pos_base.z, 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			# Embestida sutil en el sitio para no deslizar ni levantar la pisada esquelética
+			_tween_modelo_ataque.tween_property(mod, "position:z", _modelo_pos_base.z - 0.04, 0.06).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			_tween_modelo_ataque.tween_property(mod, "position:z", _modelo_pos_base.z, 0.14).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		"arco":
-			# Breve retroceso al tensar (+Z) y proyección al soltar (-Z)
-			_tween_modelo_ataque.tween_property(mod, "position:z", _modelo_pos_base.z + 0.12, 0.04).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-			_tween_modelo_ataque.tween_property(mod, "position:z", _modelo_pos_base.z - 0.10, 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-			_tween_modelo_ataque.tween_property(mod, "position:z", _modelo_pos_base.z, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			# Micro retroceso al tensar (+Z) y retorno limpio al soltar (-Z)
+			_tween_modelo_ataque.tween_property(mod, "position:z", _modelo_pos_base.z + 0.025, 0.05).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			_tween_modelo_ataque.tween_property(mod, "position:z", _modelo_pos_base.z - 0.020, 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			_tween_modelo_ataque.tween_property(mod, "position:z", _modelo_pos_base.z, 0.12).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		"mago":
-			# Elevación de levitación mística
-			_tween_modelo_ataque.tween_property(mod, "position:y", _modelo_pos_base.y + 0.24, 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-			_tween_modelo_ataque.tween_property(mod, "position:y", _modelo_pos_base.y, 0.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			# Sutil elevación arcana al proyectar hechizo sin despegar pies
+			_tween_modelo_ataque.tween_property(mod, "position:y", _modelo_pos_base.y + 0.025, 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			_tween_modelo_ataque.tween_property(mod, "position:y", _modelo_pos_base.y, 0.14).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 func _pulsar_orbe_mago() -> void:
 	if _luz_orbe_ref != null and is_instance_valid(_luz_orbe_ref):
@@ -976,45 +1062,39 @@ func _pulsar_orbe_mago() -> void:
 		tw_luz.tween_property(_luz_orbe_ref, "light_energy", 3.6, 0.08)
 		tw_luz.tween_property(_luz_orbe_ref, "light_energy", 1.6, 0.18)
 
-static var _mesh_tajo_torus: TorusMesh = null
-
-
 func _crear_tajo_espada(dir_ataque: Vector3, es_critico: bool = false):
 	if not is_inside_tree() or get_parent() == null:
 		return
-	var tajo = Node3D.new()
-	get_parent().add_child(tajo)
-	var altura = global_position.y + 0.9
-	tajo.global_position = Vector3(global_position.x, altura, global_position.z) + dir_ataque * 1.0
-
-	if dir_ataque.length_squared() > 0.001 and absf(dir_ataque.dot(Vector3.UP)) < 0.999:
-		tajo.look_at(tajo.global_position + dir_ataque, Vector3.UP)
-
-	if _mesh_tajo_torus == null:
-		_mesh_tajo_torus = TorusMesh.new()
-		_mesh_tajo_torus.inner_radius = 0.9
-		_mesh_tajo_torus.outer_radius = 1.45
-
-	var mesh_inst = MeshInstance3D.new()
-	mesh_inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var mat = StandardMaterial3D.new()
-	mat.shading_mode = StandardMaterial3D.SHADING_MODE_UNSHADED
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	var color_base = Color(1.0, 0.88, 0.25, 0.95) if es_critico else (Color(1.0, 0.55, 0.15, 0.95) if es_arquetipo("Guerrero") else Color(0.35, 0.85, 1.0, 0.95))
-	mat.albedo_color = color_base
-	mesh_inst.mesh = _mesh_tajo_torus
-	mesh_inst.material_override = mat
-
-	mesh_inst.scale = Vector3(1.4, 0.05, 0.8)
-	mesh_inst.position = Vector3(0, 0, -0.3)
-	tajo.add_child(mesh_inst)
-
-	var tw = create_tween()
-	tw.set_parallel(true)
-	tw.tween_property(mesh_inst, "scale", Vector3(2.6, 0.03, 1.7), 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tw.tween_property(mesh_inst, "position:z", -1.2, 0.16)
-	tw.tween_property(mat, "albedo_color:a", 0.0, 0.16)
-	tw.chain().tween_callback(tajo.queue_free)
+	var invertir_tajo: bool = not _turno_ataque_novato
+	var c_main := Color(1.00, 0.84, 0.16) if es_critico else (Color(1.00, 0.56, 0.14) if es_arquetipo("Guerrero") else Color(0.20, 0.90, 1.00))
+	var c_core := Color(1.00, 0.98, 0.85) if es_critico else Color(0.96, 0.99, 1.00)
+	var c_edge := Color(1.00, 0.36, 0.06) if (es_critico or es_arquetipo("Guerrero")) else Color(0.08, 0.38, 0.95)
+	var r_tajo := clampf(rango_ataque * 0.95, 2.3, 4.2)
+	VfxCombate.spawn_tajo(
+		get_parent(),
+		Vector3(global_position.x, global_position.y + 0.92, global_position.z),
+		dir_ataque,
+		r_tajo,
+		c_main,
+		c_core,
+		c_edge,
+		invertir_tajo,
+		0.20,
+		15.0
+	)
+	if es_critico:
+		VfxCombate.spawn_tajo(
+			get_parent(),
+			Vector3(global_position.x, global_position.y + 1.00, global_position.z),
+			dir_ataque,
+			r_tajo * 0.92,
+			Color(1.00, 0.55, 0.10),
+			Color.WHITE,
+			c_main,
+			not invertir_tajo,
+			0.18,
+			-18.0
+		)
 
 func recibir_dano(cantidad: float, fuente: String = ""):
 	if fuente != "":
@@ -1054,7 +1134,7 @@ func _recibir_dano_interno(cantidad: float):
 
 	# 1. Mitigación Pasiva por Armadura Rúnica y Constitución (Fórmula asintótica PoE)
 	var mitigacion_armadura = armadura_plana / (armadura_plana + 120.0)
-	var mitigacion_total = clampf(mitigacion_pasiva_pct + mitigacion_armadura, 0.0, 0.78)
+	var mitigacion_total = clampf(mitigacion_pasiva_pct + mitigacion_armadura, 0.0, 0.68)
 	cantidad *= (1.0 - mitigacion_total)
 
 	# 2. Mitigación por Bloqueo Activo de Escudo (Mecánica Tanque del Guerrero / Subclases)
@@ -1130,6 +1210,8 @@ func _recibir_dano_interno(cantidad: float):
 	vida = maxf(vida - cantidad, 0.0)
 	if vida > 0.0 and cantidad > 0.0:
 		_reloj_invulnerable = maxf(_reloj_invulnerable, 0.45 + minf(bonus_invulnerable_seg * 0.25, 0.45))
+		if _anim_ctrl != null and _anim_ctrl.esta_listo():
+			_anim_ctrl.disparar_golpe()
 	AudioManager.play("danio_jugador", randf_range(0.9, 1.1))
 	var tree_dmg = _obtener_tree()
 	if tree_dmg != null:
@@ -1156,9 +1238,10 @@ func ganar_xp(cantidad: int):
 func recoger_drop(tipo: int, valor: int):
 	match tipo:
 		0: # ORO
-			var bonus_mult = (1.0 + oro_por_baja_pct + (float(mejoras_arbol.get("mon_oro", 0)) * 0.25)) * float(multiplicador_fiebre_actual) * multiplicador_abismo_recompensas
+			var factor_fiebre_oro: float = 1.0 + float(multiplicador_fiebre_actual - 1) * 0.35
+			var bonus_mult = (1.0 + oro_por_baja_pct + (float(mejoras_arbol.get("mon_oro", 0)) * 0.25)) * factor_fiebre_oro * multiplicador_abismo_recompensas
 			if ascension_suprema:
-				bonus_mult *= 2.0
+				bonus_mult *= 1.5
 			if orbes_oro_duplicados_pct > 0.0 and FortunaManager.tirar(orbes_oro_duplicados_pct):
 				bonus_mult *= 2.0
 			oro += int(ceil(float(valor) * bonus_mult))
@@ -1199,7 +1282,7 @@ func registrar_baja():
 			clics_totales += 1
 		vida = minf(vida + vida_por_baja, vida_maxima)
 	ganar_xp(3)
-	recoger_drop(0, 2)
+	recoger_drop(0, 1)
 	if evolucion_manager != null and evolucion_manager.has_method("notificar_baja"):
 		evolucion_manager.notificar_baja()
 
@@ -1292,7 +1375,8 @@ func aplicar_interes_oleada():
 		pct_total += float(bendiciones_run["global_interes_compuesto"]) * 0.08
 	if pct_total <= 0.0 or oro <= 0:
 		return
-	var dividendo = max(1, int(round(float(oro) * pct_total)))
+	var tasa_ef: float = pct_total * 0.50
+	var dividendo = mini(220, max(1, int(round(float(oro) * tasa_ef))))
 	oro += dividendo
 	_spawn_texto_3d("📈 ¡DIVIDENDO DE OLEADA: +%d ORO!" % dividendo, Color(1.0, 0.88, 0.25))
 	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
@@ -1605,6 +1689,22 @@ func recalcular_stats_incrementales():
 	keystone_zenit = false
 	ascension_suprema = false
 
+	# Mejoras del Botón Móvil (Rama "boton")
+	btn_calor_reduc_pct = 0.0
+	btn_tamano_pct = 0.0
+	btn_enfriamiento_pct = 0.0
+	btn_ventana_ritmo_pct = 0.0
+	btn_dano_perfecto_pct = 0.0
+	btn_control_orbita_pct = 0.0
+	btn_clics_bloqueo_extra = 0
+	btn_calor_max_extra = 0.0
+	btn_dano_termico_pct = 0.0
+	btn_alcance_palancas = 0.0
+	btn_frenesi_duracion_seg = 0.0
+	btn_fiebre_eficiencia_pct = 0.0
+	keystone_btn_criogenico = false
+	keystone_btn_rompecadenas = false
+
 	var bonus_vida_plana: float = bono_run_vida_plana
 
 	# 3. Mapeo completo de los 55 nodos de ArbolInterconectadoDatos
@@ -1732,6 +1832,32 @@ func recalcular_stats_incrementales():
 				mult_critico = maxf(mult_critico, 3.0)
 			"ascension_suprema":
 				ascension_suprema = true
+			"btn_calor_reduc_pct":
+				btn_calor_reduc_pct += (val * 0.01)
+			"btn_tamano_pct":
+				btn_tamano_pct += (val * 0.01)
+			"btn_enfriamiento_pct":
+				btn_enfriamiento_pct += (val * 0.01)
+			"btn_ventana_ritmo_pct":
+				btn_ventana_ritmo_pct += (val * 0.01)
+				btn_dano_perfecto_pct += float(lvl) * 0.10
+			"btn_control_orbita_pct":
+				btn_control_orbita_pct += (val * 0.01)
+			"btn_clics_bloqueo_extra":
+				btn_clics_bloqueo_extra += int(val)
+			"btn_calor_max_extra":
+				btn_calor_max_extra += val
+				btn_dano_termico_pct += float(lvl) * 0.12
+			"btn_alcance_palancas":
+				btn_alcance_palancas += val
+			"btn_frenesi_duracion_seg":
+				btn_frenesi_duracion_seg += val
+			"btn_fiebre_eficiencia_pct":
+				btn_fiebre_eficiencia_pct += (val * 0.01)
+			"keystone_btn_criogenico":
+				keystone_btn_criogenico = true
+			"keystone_btn_rompecadenas":
+				keystone_btn_rompecadenas = true
 
 	# 4. Conexión completa de IDs legacy y directos (ArbolMejorasDatos + alias)
 	bonus_dano_pct += float(mejoras_arbol.get("mon_dano", 0)) * 0.18
@@ -1986,8 +2112,32 @@ func recalcular_stats_incrementales():
 		s.vida_inicial = int(vida_maxima)
 		s.reapariciones = reapariciones
 
+	var _tree_btn = _obtener_tree()
+	if _tree_btn != null:
+		var _btn_mov = _tree_btn.get_first_node_in_group("boton_movil")
+		if _btn_mov != null and _btn_mov.has_method("aplicar_mejoras_arbol"):
+			_btn_mov.aplicar_mejoras_arbol()
+
 	emit_signal("stats_actualizadas", vida, vida_maxima, xp, xp_siguiente_nivel, nivel, oro, bajas)
 	emit_signal("economia_actualizada", oro, clics_disponibles, clics_totales)
+
+func obtener_mejoras_boton() -> Dictionary:
+	return {
+		"calor_reduc_pct": btn_calor_reduc_pct,
+		"tamano_pct": btn_tamano_pct,
+		"enfriamiento_pct": btn_enfriamiento_pct,
+		"ventana_ritmo_pct": btn_ventana_ritmo_pct,
+		"dano_perfecto_pct": btn_dano_perfecto_pct,
+		"control_orbita_pct": btn_control_orbita_pct,
+		"clics_bloqueo_extra": btn_clics_bloqueo_extra,
+		"calor_max_extra": btn_calor_max_extra,
+		"dano_termico_pct": btn_dano_termico_pct,
+		"alcance_palancas": btn_alcance_palancas,
+		"frenesi_duracion_seg": btn_frenesi_duracion_seg,
+		"fiebre_eficiencia_pct": btn_fiebre_eficiencia_pct,
+		"keystone_criogenico": keystone_btn_criogenico,
+		"keystone_rompecadenas": keystone_btn_rompecadenas,
+	}
 
 func puede_comprar_mejora(id: String) -> bool:
 	var nodos = ArbolInterconectadoDatos.generar_arbol()
@@ -2009,7 +2159,7 @@ func comprar_mejora(id: String) -> bool:
 ## Llamado desde BotonMovil cuando el jugador hace clic sobre el Núcleo Móvil 3D
 func registrar_clic_boton(pos_boton: Vector3, dano_onda: float, es_perfecto: bool = false):
 	# 1. Alimentar Medidor de Fiebre / Overdrive
-	var inc_fiebre = 16.0 if es_perfecto else 8.5
+	var inc_fiebre = (16.0 if es_perfecto else 8.5) * (1.0 + btn_fiebre_eficiencia_pct)
 	if bendiciones_run.has("clic_fiebre_eterna"):
 		inc_fiebre *= 1.25
 	medidor_fiebre = clampf(medidor_fiebre + inc_fiebre, 0.0, 100.0)
@@ -2038,17 +2188,17 @@ func registrar_clic_boton(pos_boton: Vector3, dano_onda: float, es_perfecto: boo
 	# 4. Efectos de Bendiciones Roguelike al hacer clic
 	var niv_dagas = int(bendiciones_run.get("dagas_fantasma", 0)) + int(bendiciones_run.get("cazador_rafaga_clic", 0))
 	if (niv_dagas > 0 or sinergias_activas.has("sinergia_verdugo_cortes") or sinergias_activas.has("sinergia_artilleria_midas")) and get_parent() != null:
-		var proyectil_escena = load("res://proyectil.tscn")
-		if proyectil_escena != null:
+		if PROYECTIL_ESCENA != null:
 			var num_f = 6 + 2 * max(niv_dagas, 1)
+			VfxCombate.spawn_destello_disparo(get_parent(), pos_boton + Vector3(0, 0.5, 0), Vector3.FORWARD, Color(0.20, 0.94, 1.0), 0.72)
 			for i in range(num_f):
 				var ang = (TAU / float(num_f)) * float(i)
 				var dir_f = Vector3(cos(ang), 0.0, sin(ang)).normalized()
-				var p = proyectil_escena.instantiate()
+				var p = PROYECTIL_ESCENA.instantiate()
 				get_parent().add_child(p)
 				if "rebotes_restantes" in p:
 					p.rebotes_restantes = (3 if sinergias_activas.has("sinergia_verdugo_cortes") else rebotes_armas)
-				p.iniciar(pos_boton + Vector3(0, 0.5, 0), dir_f, dano * 0.85, 16.0, 2, sinergias_activas.has("sinergia_verdugo_cortes"))
+				p.iniciar(pos_boton + Vector3(0, 0.5, 0), dir_f, dano * 0.85, 16.0, 2, sinergias_activas.has("sinergia_verdugo_cortes"), "clic_daga")
 
 	var niv_onda_sismica = int(bendiciones_run.get("meteoro_orbital", 0)) + int(bendiciones_run.get("guerrero_onda_sismica", 0))
 	if niv_onda_sismica > 0:
@@ -2057,6 +2207,7 @@ func registrar_clic_boton(pos_boton: Vector3, dano_onda: float, es_perfecto: boo
 	if bendiciones_run.has("nova_helada") or bendiciones_run.has("mago_singularidad_boton") or sinergias_activas.has("sinergia_singularidad_cursor") or sinergias_activas.has("sinergia_estrella_enana") or sinergias_activas.has("sinergia_horizonte_sucesos"):
 		var niv_sing = max(int(bendiciones_run.get("nova_helada", 0)), int(bendiciones_run.get("mago_singularidad_boton", 1)))
 		var radio_atr = 6.5 + 1.5 * float(niv_sing)
+		VfxCombate.spawn_pulso_implosion(get_parent(), pos_boton, minf(radio_atr, 8.5), Color(0.55, 0.22, 1.0), Color(0.75, 0.96, 1.0), 0.30)
 		for e in _obtener_todos_los_enemigos():
 			if is_instance_valid(e) and e is Node3D:
 				var dist_b = pos_boton.distance_to(e.global_position)
@@ -2069,11 +2220,12 @@ func registrar_clic_boton(pos_boton: Vector3, dano_onda: float, es_perfecto: boo
 	registrar_click_jugador(false)
 
 func registrar_click_jugador(es_anomalia: bool = false):
-	var clics_ganados = clics_por_pulsacion * multiplicador_fiebre_actual
+	var mult_fiebre_clk: int = 1 + int(floor(float(multiplicador_fiebre_actual - 1) * 0.5))
+	var clics_ganados = clics_por_pulsacion * mult_fiebre_clk
 	if ascension_suprema:
-		clics_ganados *= 2
+		clics_ganados = int(round(float(clics_ganados) * 1.5))
 	if es_anomalia:
-		clics_ganados += 3 * multiplicador_fiebre_actual
+		clics_ganados += 3 * mult_fiebre_clk
 	if multiplicador_abismo_recompensas > 1.0 or bono_clics_tormento_mult > 1.0:
 		clics_ganados = int(round(float(clics_ganados) * bono_clics_tormento_mult * multiplicador_abismo_recompensas))
 
@@ -2102,10 +2254,12 @@ func registrar_click_jugador(es_anomalia: bool = false):
 	# Puente Azul-Verde 3: Sísmica Berserker bajo 50% HP
 	if terremoto_clic_vida > 0 and vida <= vida_maxima * 0.50:
 		_repeler_enemigos_alrededor(6.5, 11.0, dano * 0.75 * float(terremoto_clic_vida))
+		VfxCombate.spawn_explosion_nova(get_parent(), global_position + Vector3(0, 0.3, 0), 5.2, Color(1.0, 0.32, 0.14), Color(1.0, 0.86, 0.45), 0.28, true, true)
 
 	# Puente Dorada-Azul 3: Tempestad de Oro
 	if tempestad_oro_dmg > 0.0:
 		_repeler_enemigos_alrededor(5.5, 4.0, tempestad_oro_dmg)
+		BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position, 0.4, 5.2, BunkerVisualKit.COL_VAULT_GOLD, 0.28)
 
 	# Sobrecarga de Tormenta
 	if mejoras_arbol.has("clk_sobrecarga_1") or mejoras_arbol.has("clk_sobrecarga") or sinergias_activas.has("sinergia_tormenta_perfecta"):
@@ -2123,6 +2277,10 @@ func registrar_click_jugador(es_anomalia: bool = false):
 			contador_cataclismo = 0
 			_reloj_ataque = 0.0
 			_repeler_enemigos_alrededor(16.0, 18.0, dano * 1.5)
+			VfxCombate.spawn_explosion_nova(get_parent(), global_position + Vector3(0, 0.5, 0), 9.5, Color(0.18, 0.90, 1.0), Color.WHITE, 0.40, true, true)
+			BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position, 0.8, 15.0, BunkerVisualKit.COL_CYAN_ELECTRIC, 0.44)
+			if camara != null and camara.has_method("sacudir"):
+				camara.sacudir(0.32)
 			_spawn_texto_3d("⚡⚡ ¡CATACLISMO CINÉTICO!", Color(0.3, 0.85, 1.0))
 			AudioManager.play("victoria", 1.25)
 
@@ -2276,6 +2434,9 @@ func _detonar_bomba_drop(radio: float = 7.0, dano_bomba: float = 140.0) -> void:
 			if e.has_method("recibir_dano"):
 				e.recibir_dano(dano_bomba + dano * 1.5, true)
 	_repeler_enemigos_alrededor(radio, 12.0)
+	VfxCombate.spawn_explosion_nova(get_parent(), global_position + Vector3(0, 0.5, 0), clampf(radio * 0.85, 2.5, 8.0), Color(1.0, 0.48, 0.08), Color(1.0, 0.95, 0.65), 0.36, true, true)
+	if camara != null and camara.has_method("sacudir"):
+		camara.sacudir(0.28)
 
 func _aplicar_mejora_interna(tipo_mejora: String, mult_rareza: float) -> void:
 	match tipo_mejora:
@@ -2316,12 +2477,19 @@ func _spawn_texto_3d(texto: String, color: Color = Color.WHITE):
 
 func _detonar_tormenta_arcana(dano_descarga: float):
 	AudioManager.play("orbe_explosion", 1.3)
+	VfxCombate.spawn_explosion_nova(get_parent(), global_position + Vector3(0, 0.5, 0), 5.5, Color(0.22, 0.90, 1.0), Color.WHITE, 0.34, true, true)
 	var enemigos = _obtener_todos_los_enemigos()
+	var rayos_vis := 0
 	for e in enemigos:
 		if is_instance_valid(e) and e is Node3D:
 			if global_position.distance_to(e.global_position) <= 24.0:
 				if e.has_method("recibir_dano"):
 					e.recibir_dano(dano_descarga, true)
+				if rayos_vis < 10:
+					rayos_vis += 1
+					VfxCombate.spawn_rayo_celestial(get_parent(), e.global_position, Color(0.22, 0.90, 1.0), Color.WHITE, 14.0, 0.28)
+	if rayos_vis == 0:
+		VfxCombate.spawn_rayo_celestial(get_parent(), global_position + Vector3(2.2, 0.0, -1.8), Color(0.22, 0.90, 1.0), Color.WHITE, 14.0, 0.28)
 	_spawn_texto_3d("🌩️ ¡SOBRECARGA DE TORMENTA!", Color(0.35, 0.9, 1.0))
 
 func _spawn_efecto_ascension():
@@ -2347,7 +2515,8 @@ func animar():
 				_anim_ctrl.reproducir_bucle("holding-both", 0.14, 1.0, 1)
 				return
 		else:
-			_anim_ctrl.reproducir_bucle("walk", 0.14, 1.0, 1)
+			var vel_blq := clampf(rapidez / maxf(1.0, speed_caminar * velocidad_bloqueo_multiplicador), 0.72, 1.35)
+			_anim_ctrl.reproducir_bucle("block-walk", 0.14, vel_blq, 1)
 			return
 	var rapidez_actual = Vector2(velocity.x, velocity.z).length()
 	_anim_ctrl.actualizar_locomocion(rapidez_actual, estado == Estado.CORRER, is_on_floor(), speed_caminar)
@@ -2412,32 +2581,28 @@ func _crear_escudo_visual():
 	_escudo_visual.name = "EscudoVisual"
 
 	var mesh_inst = MeshInstance3D.new()
-	var box = BoxMesh.new()
-	box.size = Vector3(1.35, 1.15, 0.1)
-	mesh_inst.mesh = box
+	var panel_central = BoxMesh.new()
+	panel_central.size = Vector3(0.88, 1.15, 0.06)
+	mesh_inst.mesh = panel_central
 
-	var mat = StandardMaterial3D.new()
-	mat.transparency = StandardMaterial3D.TRANSPARENCY_ALPHA
-	mat.albedo_color = Color(0.2, 0.65, 1.0, 0.7)
-	mat.emission_enabled = true
-	mat.emission = Color(0.25, 0.75, 1.0)
-	mat.emission_energy_multiplier = 2.0
-	mat.roughness = 0.2
-	mesh_inst.material_override = mat
-
-	var borde = MeshInstance3D.new()
-	var box_borde = BoxMesh.new()
-	box_borde.size = Vector3(1.42, 1.22, 0.05)
-	borde.mesh = box_borde
-	var mat_borde = StandardMaterial3D.new()
-	mat_borde.albedo_color = Color(1.0, 0.85, 0.25)
-	mat_borde.metallic = 0.85
-	mat_borde.roughness = 0.3
-	borde.material_override = mat_borde
-
+	var mat_holo = BunkerVisualKit.create_hologram_material(Color(0.18, 0.84, 1.0), Color(0.85, 0.98, 1.0), 2.4, 30.0, 2.8)
+	mesh_inst.material_override = mat_holo
 	_escudo_visual.add_child(mesh_inst)
-	_escudo_visual.add_child(borde)
-	_escudo_visual.position = Vector3(0, 0.9, -0.65)
+
+	var mat_borde = BunkerVisualKit.get_titanium_mat()
+	BunkerVisualKit.make_box(_escudo_visual, "MarcoSup", Vector3(1.42, 0.07, 0.09), mat_borde, Vector3(0, 0.59, 0))
+	BunkerVisualKit.make_box(_escudo_visual, "MarcoInf", Vector3(1.36, 0.07, 0.09), mat_borde, Vector3(0, -0.59, 0))
+	for lado in [-1.0, 1.0]:
+		var ala = MeshInstance3D.new()
+		var wing_mesh = BoxMesh.new()
+		wing_mesh.size = Vector3(0.38, 1.08, 0.06)
+		ala.mesh = wing_mesh
+		ala.material_override = mat_holo
+		ala.position = Vector3(lado * 0.56, 0.0, 0.09)
+		ala.rotation_degrees.y = lado * -26.0
+		_escudo_visual.add_child(ala)
+
+	_escudo_visual.position = Vector3(0, 0.95, -0.72)
 	_escudo_visual.visible = false
 	add_child(_escudo_visual)
 
@@ -2445,11 +2610,23 @@ func _parpadear_escudo():
 	if _escudo_visual == null or not is_instance_valid(_escudo_visual):
 		return
 	var mesh_inst = _escudo_visual.get_child(0) as MeshInstance3D
-	if mesh_inst != null and mesh_inst.material_override != null:
-		var mat = mesh_inst.material_override as StandardMaterial3D
+	if mesh_inst != null and mesh_inst.material_override is ShaderMaterial:
+		var mat = mesh_inst.material_override as ShaderMaterial
 		var tw = create_tween()
-		tw.tween_property(mat, "emission_energy_multiplier", 4.5, 0.06)
-		tw.tween_property(mat, "emission_energy_multiplier", 2.0, 0.15)
+		tw.tween_method(
+			func(e: float):
+				if is_instance_valid(mat):
+					mat.set_shader_parameter("energy", e),
+			4.8,
+			2.4,
+			0.18
+		)
+	elif mesh_inst != null and mesh_inst.material_override is StandardMaterial3D:
+		var mat_s = mesh_inst.material_override as StandardMaterial3D
+		var tw_s = create_tween()
+		tw_s.tween_property(mat_s, "emission_energy_multiplier", 4.5, 0.06)
+		tw_s.tween_property(mat_s, "emission_energy_multiplier", 2.0, 0.15)
+	VfxCombate.spawn_impacto(get_parent(), global_position + (-global_transform.basis.z * 0.85) + Vector3(0, 0.95, 0), Color(0.22, 0.92, 1.0), Color.WHITE, 0.85, false)
 
 func _obtener_tree() -> SceneTree:
 	if is_inside_tree():
@@ -2478,26 +2655,15 @@ func _repeler_enemigos_alrededor(radio: float, fuerza: float, dano_extra: float 
 
 func _ejecutar_corte_giratorio_guerrero(es_click: bool = false, es_crit: bool = false, dano_custom: float = -1.0):
 	accion = "whirlwind"
-	_reloj_anim_accion = 0.32
+	_reloj_anim_accion = 0.36
+	var tiene_clip_whirl := _anim_ctrl != null and _anim_ctrl.tiene_clip("whirlwind")
 	if _anim_ctrl != null:
 		_anim_ctrl.reproducir_accion("whirlwind", 3, 0.05, 1.2)
 	
 	AudioManager.play("corte_giratorio", randf_range(0.95, 1.15))
-	
-	var modelo_nodo = get_node_or_null("Modelo") as Node3D
-	if modelo_nodo != null:
-		if _tween_modelo_ataque != null and _tween_modelo_ataque.is_valid():
-			_tween_modelo_ataque.kill()
-		modelo_nodo.position = _modelo_pos_base
-		modelo_nodo.rotation.y = _modelo_rot_base.y
-		_tween_modelo_ataque = create_tween()
-		_tween_modelo_ataque.tween_property(modelo_nodo, "rotation:y", _modelo_rot_base.y + TAU, 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		_tween_modelo_ataque.tween_callback(func():
-			if is_instance_valid(modelo_nodo):
-				modelo_nodo.rotation.y = _modelo_rot_base.y
-		)
-
-	_crear_efecto_disco_cortante(rango_ataque)
+	if not tiene_clip_whirl:
+		_girar_modelo_360(0.28)
+	_crear_efecto_disco_cortante(rango_ataque, false, es_crit or es_click)
 
 	var enemigos: Array = _obtener_todos_los_enemigos()
 	if is_inside_tree() and get_tree() != null:
@@ -2522,35 +2688,13 @@ func _ejecutar_corte_giratorio_guerrero(es_click: bool = false, es_crit: bool = 
 				elif "velocity" in e:
 					e.velocity += dir_empuje * f_emp
 
-func _crear_efecto_disco_cortante(radio: float):
+func _crear_efecto_disco_cortante(radio: float, es_berserker: bool = false, es_crit: bool = false):
 	if not is_inside_tree() or get_parent() == null:
 		return
-
-	var mesh_inst = MeshInstance3D.new()
-	var torus = TorusMesh.new()
-	torus.inner_radius = maxf(radio * 0.75, 0.5)
-	torus.outer_radius = radio * 1.05
-	torus.rings = 24
-	torus.ring_segments = 12
-	mesh_inst.mesh = torus
-
-	var mat = StandardMaterial3D.new()
-	mat.transparency = StandardMaterial3D.TRANSPARENCY_ALPHA
-	mat.albedo_color = Color(1.0, 0.75, 0.2, 0.85)
-	mat.emission_enabled = true
-	mat.emission = Color(1.0, 0.65, 0.1)
-	mat.emission_energy_multiplier = 3.2
-	mat.shading_mode = StandardMaterial3D.SHADING_MODE_UNSHADED
-	mesh_inst.material_override = mat
-
-	get_parent().add_child(mesh_inst)
-	mesh_inst.global_position = global_position + Vector3(0, 0.85, 0)
-	mesh_inst.scale = Vector3(0.2, 0.2, 0.2)
-
-	var tw = mesh_inst.create_tween().set_parallel(true)
-	tw.tween_property(mesh_inst, "scale", Vector3(1.15, 1.0, 1.15), 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tw.tween_property(mat, "albedo_color:a", 0.0, 0.25)
-	tw.chain().tween_callback(mesh_inst.queue_free)
+	var c_main := Color(1.00, 0.16, 0.22) if es_berserker else (Color(1.00, 0.84, 0.16) if es_crit else Color(1.00, 0.62, 0.14))
+	var c_core := Color(1.00, 0.78, 0.72) if es_berserker else Color(1.00, 0.98, 0.82)
+	var c_edge := Color(0.58, 0.04, 0.18) if es_berserker else Color(0.95, 0.28, 0.06)
+	VfxCombate.spawn_torbellino(get_parent(), global_position + Vector3(0, 0.86, 0), maxf(radio * 1.08, 2.2), c_main, c_core, c_edge, 0.28)
 
 # ==============================================================================
 # SISTEMA DE VIDAS, REAPARICIÓN CON I-FRAMES Y DERROTA DEFINITIVA
@@ -2617,6 +2761,15 @@ func finalizar_muerte_definitiva() -> void:
 	_muerto_definitivo = true
 	_estado_juicio_emperador = false
 	vida = 0.0
+	if _tween_modelo_ataque != null and _tween_modelo_ataque.is_valid():
+		_tween_modelo_ataque.kill()
+		_tween_modelo_ataque = null
+	var mod := get_node_or_null("Modelo") as Node3D
+	if mod != null:
+		mod.position = _modelo_pos_base
+		mod.rotation = _modelo_rot_base
+	if _anim_ctrl != null and _anim_ctrl.esta_listo():
+		_anim_ctrl.reproducir_muerte(1.0)
 
 	MetaprogresoManager.registrar_nemesis_verdugo(ultimo_atacante_tipo, ultimo_atacante_nombre, oro, clics_disponibles)
 

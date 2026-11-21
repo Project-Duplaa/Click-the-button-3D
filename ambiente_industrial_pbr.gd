@@ -397,7 +397,7 @@ func _construir_detalles_ambientales_scifi(arena: Node) -> void:
 
 		var term := SCENE_CMD_TERMINAL.instantiate() as Node3D
 		if term != null:
-			term.scale = Vector3(1.12, 1.12, 1.12)
+			term.scale = Vector3.ONE
 			consola_wrap.add_child(term)
 			var mat_yel := _get_pbr_mat("cmd_yellow", 1, Color(0.86, 0.58, 0.08), Color(0.36, 0.40, 0.46), 0.35)
 			var mat_dark := _get_pbr_mat("cmd_dark", 0, Color(0.11, 0.14, 0.18), Color(0.24, 0.28, 0.34), 0.30)

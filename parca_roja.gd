@@ -8,6 +8,7 @@ signal parca_derrotada
 
 const AudioManager = preload("res://audio_manager.gd")
 const ArenaColiseo = preload("res://arena_coliseo.gd")
+const VfxCombate = preload("res://vfx_combate.gd")
 
 @export var rapidez: float = 6.5
 @export var vida_maxima: float = 42000.0
@@ -59,7 +60,7 @@ var _nav_estado: Dictionary = {}
 
 @onready var modelo: Node3D = $Modelo if has_node("Modelo") else null
 @onready var telegraph_marca: MeshInstance3D = $TelegraphMarca
-@onready var luz_roja: OmniLight3D = $LuzParca
+@onready var luz_roja: OmniLight3D = get_node_or_null("LuzParca")
 @onready var aura_roja: MeshInstance3D = $AuraParca
 
 func _ready():
@@ -107,10 +108,6 @@ func _calcular_clics_necesarios() -> int:
 	return clics_base_escudo + int(pct_perdido * 3.99)
 
 func _crear_escudo_visual():
-	if modelo != null and (modelo.has_meta(&"modelo_oficial_custom") or (modelo.scene_file_path != null and modelo.scene_file_path.contains("parca"))):
-		# El modelo oficial 3D ya integra la Barrera Espectral Dinámica, runas y luces
-		return
-
 	_escudo_mesh = Node3D.new()
 	_escudo_mesh.name = "EscudoParcaVisual"
 
@@ -126,13 +123,13 @@ func _crear_escudo_visual():
 	mat_burbuja.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat_burbuja.albedo_color = Color(0.18, 0.85, 1.0, 0.08)
 	mat_burbuja.roughness = 0.08
-	mat_burbuja.metallic = 0.85
+	mat_burbuja.metallic = 0.45
 	mat_burbuja.rim_enabled = true
-	mat_burbuja.rim = 1.0
-	mat_burbuja.rim_tint = 0.6
+	mat_burbuja.rim = 0.42
+	mat_burbuja.rim_tint = 0.25
 	mat_burbuja.emission_enabled = true
 	mat_burbuja.emission = Color(0.15, 0.80, 1.0)
-	mat_burbuja.emission_energy_multiplier = 0.32
+	mat_burbuja.emission_energy_multiplier = 0.15
 	mat_burbuja.cull_mode = BaseMaterial3D.CULL_BACK
 	_escudo_burbuja.material_override = mat_burbuja
 	_escudo_mesh.add_child(_escudo_burbuja)
@@ -148,10 +145,10 @@ func _crear_escudo_visual():
 	_escudo_anillo1.position = Vector3(0, 2.4, 0)
 	var mat_anillo1 = StandardMaterial3D.new()
 	mat_anillo1.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat_anillo1.albedo_color = Color(0.25, 0.90, 1.0, 0.85)
+	mat_anillo1.albedo_color = Color(0.22, 0.78, 0.90, 0.45)
 	mat_anillo1.emission_enabled = true
 	mat_anillo1.emission = Color(0.20, 0.85, 1.0)
-	mat_anillo1.emission_energy_multiplier = 1.25
+	mat_anillo1.emission_energy_multiplier = 0.40
 	_escudo_anillo1.material_override = mat_anillo1
 	_escudo_mesh.add_child(_escudo_anillo1)
 
@@ -179,18 +176,11 @@ func _crear_escudo_visual():
 	_escudo_anillo_suelo.mesh = t_suelo
 	_escudo_anillo_suelo.position = Vector3(0, 0.08, 0)
 	var mat_suelo = mat_anillo1.duplicate() as StandardMaterial3D
-	mat_suelo.albedo_color = Color(0.25, 0.90, 1.0, 0.70)
+	mat_suelo.albedo_color = Color(0.22, 0.78, 0.90, 0.38)
 	_escudo_anillo_suelo.material_override = mat_suelo
 	_escudo_mesh.add_child(_escudo_anillo_suelo)
 
 	add_child(_escudo_mesh)
-
-	_luz_escudo = OmniLight3D.new()
-	_luz_escudo.light_color = Color(0.2, 0.85, 1.0)
-	_luz_escudo.light_energy = 0.85
-	_luz_escudo.omni_range = 5.0
-	_luz_escudo.position = Vector3(0, 2.4, 0)
-	add_child(_luz_escudo)
 
 func _crear_telegraph_carga():
 	_telegraph_carga = MeshInstance3D.new()
@@ -277,9 +267,11 @@ func _physics_process(delta):
 		var vel_actual = vel_base * (0.6 if not escudo_activo else 1.0)
 		var tiempo_actual_telegraph = 0.55 if _en_enrage else tiempo_telegraph
 
-		if dist > 7.5 and _reloj_carga <= 0.001 and _reloj_ataque <= 0.001:
+		var diff_y = absf(jugador.global_position.y - global_position.y)
+
+		if dist > 7.5 and diff_y <= 0.55 and _reloj_carga <= 0.001 and _reloj_ataque <= 0.001:
 			_iniciar_carga_sombria()
-		elif dist <= radio_golpe and _reloj_ataque <= 0.001:
+		elif dist <= radio_golpe and diff_y <= 0.50 and _reloj_ataque <= 0.001:
 			_iniciar_corte_guadana(tiempo_actual_telegraph)
 		else:
 			var dir_mov = ArenaColiseo.calcular_direccion_persecucion(self, jugador.global_position, _nav_estado, delta)
@@ -326,6 +318,7 @@ func _ejecutar_carga_sombria():
 
 	velocity = _dir_carga * (rapidez * 2.8)
 	AudioManager.play("corte_giratorio", 0.75, 2.0)
+	BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position, 0.5, 4.2, Color(0.95, 0.15, 0.35), 0.32)
 	_sacudir_camara(0.25)
 
 	get_tree().create_timer(0.40).timeout.connect(func():
@@ -337,6 +330,7 @@ func _ejecutar_carga_sombria():
 				jugador.recibir_dano(40.0)
 			elif jugador.has_node("Salud"):
 				jugador.get_node("Salud").recibir_golpe(40)
+			VfxCombate.spawn_explosion_nova(get_parent(), global_position + Vector3(0, 0.7, 0), 3.6, Color(0.92, 0.14, 0.38), Color(1.0, 0.85, 0.90), 0.30, true, true)
 			_sacudir_camara(0.45)
 			if jugador.has_method("aplicar_knockback"):
 				jugador.aplicar_knockback(_dir_carga * 10.0)
@@ -363,6 +357,8 @@ func _ejecutar_corte_guadana():
 	_anim_ctrl.reproducir_accion("attack-melee-right", 2, 0.08, 1.15)
 
 	AudioManager.play("danio_jugador", 0.65, 2.0)
+	var dir_guadana := -global_transform.basis.z
+	VfxCombate.spawn_tajo(get_parent(), global_position + Vector3(0, 1.35, 0), dir_guadana, 4.6, Color(1.0, 0.14, 0.36), Color(1.0, 0.85, 0.90), Color(0.55, 0.04, 0.42), false, 0.24, 10.0)
 
 	if is_instance_valid(jugador) and jugador is Node3D:
 		var dist = global_position.distance_to(jugador.global_position)
@@ -371,6 +367,7 @@ func _ejecutar_corte_guadana():
 				jugador.recibir_dano(dano_guadana)
 			elif jugador.has_node("Salud"):
 				jugador.get_node("Salud").recibir_golpe(int(dano_guadana))
+			VfxCombate.spawn_impacto(get_parent(), jugador.global_position + Vector3(0, 0.95, 0), Color(1.0, 0.14, 0.36), Color.WHITE, 1.25, true)
 			_sacudir_camara(0.4)
 
 	_disparar_ondas_guadana()
@@ -396,7 +393,7 @@ func _disparar_ondas_guadana():
 			p.seguir_terreno = true
 		get_parent().add_child(p)
 		var pos_inicio = global_position + Vector3(0, 1.4, 0) + dir_rot * 1.5
-		p.iniciar(pos_inicio, dir_rot, 22.0, 6.2)
+		p.iniciar(pos_inicio, dir_rot, 22.0, 6.2, "guadana")
 
 func _on_boton_click(_total_clicks: int):
 	if not is_instance_valid(self) or vida <= 0.0:
@@ -479,15 +476,15 @@ func _restaurar_escudo():
 			mb.emission = col_base
 		if _escudo_anillo1 != null and _escudo_anillo1.material_override is StandardMaterial3D:
 			var m1 := _escudo_anillo1.material_override as StandardMaterial3D
-			m1.albedo_color = Color(col_base.r, col_base.g, col_base.b, 0.85)
+			m1.albedo_color = Color(col_base.r, col_base.g, col_base.b, 0.45)
 			m1.emission = col_base
 		if _escudo_anillo2 != null and _escudo_anillo2.material_override is StandardMaterial3D:
 			var m2 := _escudo_anillo2.material_override as StandardMaterial3D
-			m2.albedo_color = Color(col_base.r, col_base.g, col_base.b, 0.85)
+			m2.albedo_color = Color(col_base.r, col_base.g, col_base.b, 0.45)
 			m2.emission = col_base
 		if _escudo_anillo_suelo != null and _escudo_anillo_suelo.material_override is StandardMaterial3D:
 			var ms := _escudo_anillo_suelo.material_override as StandardMaterial3D
-			ms.albedo_color = Color(col_base.r, col_base.g, col_base.b, 0.70)
+			ms.albedo_color = Color(col_base.r, col_base.g, col_base.b, 0.38)
 			ms.emission = col_base
 
 	if _luz_escudo != null:
@@ -629,27 +626,10 @@ func morir():
 	queue_free()
 
 func _crear_rayo_hacia_parca(desde_pos: Vector3):
-	var orbe = MeshInstance3D.new()
-	var esfera = SphereMesh.new()
-	esfera.radius = 0.35
-	esfera.height = 0.7
-	orbe.mesh = esfera
-
-	var mat = StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = Color(1.0, 0.85, 0.1) if _en_agonia_final else Color(0.2, 0.85, 1.0)
-	orbe.material_override = mat
-
-	if get_parent() != null:
-		get_parent().add_child(orbe)
-		orbe.global_position = desde_pos + Vector3(0, 1.0, 0)
-		var dest = global_position + Vector3(0, 2.0, 0)
-		var tw = create_tween()
-		tw.tween_property(orbe, "global_position", dest, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		tw.tween_callback(func():
-			if is_instance_valid(orbe):
-				orbe.queue_free()
-		)
+	if get_parent() == null:
+		return
+	var col := Color(1.0, 0.85, 0.1) if _en_agonia_final else Color(0.20, 0.88, 1.0)
+	VfxCombate.spawn_rayo_segmento(get_parent(), desde_pos + Vector3(0, 1.0, 0), global_position + Vector3(0, 2.0, 0), col, Color.WHITE, 0.18, 0.20, 0.35)
 
 func _crear_texto_flotante(texto: String, es_crit: bool = false):
 	var pool = get_tree().get_first_node_in_group("damage_numbers")

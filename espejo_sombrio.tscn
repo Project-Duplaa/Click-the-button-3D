@@ -4,15 +4,15 @@
 [ext_resource type="PackedScene" path="res://assets/modelos/jefe_espejo_sombrio.glb" id="2_mod"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_espejo"]
-radius = 0.55
-height = 2.4
+radius = 0.78
+height = 3.6
 
 [node name="EspejoSombrio" type="CharacterBody3D"]
 script = ExtResource("1_espejo")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 0)
 shape = SubResource("CapsuleShape3D_espejo")
 
 [node name="Modelo" parent="." instance=ExtResource("2_mod")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+transform = Transform3D(1.38, 0, 0, 0, 1.38, 0, 0, 0, 1.38, 0, 0, 0)

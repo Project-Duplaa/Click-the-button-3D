@@ -4,6 +4,7 @@ enum Estado { PERSEGUIR, PREPARAR_CARGA, CARGAR, ATURDIDO }
 
 const AudioManager = preload("res://audio_manager.gd")
 const ArenaColiseo = preload("res://arena_coliseo.gd")
+const VfxCombate = preload("res://vfx_combate.gd")
 
 @export var rapidez_caminar: float = 2.4
 @export var rapidez_carga: float = 7.5
@@ -169,15 +170,18 @@ func _ejecutar_carga():
 	_reloj_estado = duracion_carga
 	if linea_carga != null:
 		linea_carga.visible = false
+	BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position, 0.3, 2.8, Color(1.0, 0.32, 0.08), 0.26)
 	AudioManager.play("golpe_impacto", 0.8)
 
 func _impactar_jugador_en_carga():
 	_anim_ctrl.reproducir_accion("attack-melee-right", 2, 0.06, 1.15)
+	VfxCombate.spawn_tajo(get_parent(), global_position + Vector3(0, 0.9, 0), _dir_carga, 2.4, Color(1.0, 0.20, 0.14), Color.WHITE, Color(0.75, 0.05, 0.05), false, 0.18, 12.0)
 	if jugador != null and is_instance_valid(jugador):
 		if jugador.has_method("recibir_dano"):
 			jugador.recibir_dano(dano_carga)
 		elif jugador.has_node("Salud"):
 			jugador.get_node("Salud").recibir_golpe(int(dano_carga))
+		VfxCombate.spawn_impacto(get_parent(), jugador.global_position + Vector3(0, 0.9, 0), Color(1.0, 0.24, 0.12), Color.WHITE, 1.15, true)
 
 	AudioManager.play("golpe_impacto", 1.25)
 	_finalizar_carga_aturdido()

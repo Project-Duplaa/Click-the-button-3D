@@ -9,7 +9,6 @@ const MODELO_GLB: PackedScene = preload("res://assets/modelos/enemigo_heraldo_cl
 const COFRE_DORADO: PackedScene = preload("res://cofre_dorado.tscn")
 
 var _boton_movil: Node3D = null
-var _anim_ctrl: AnimadorEntidad = AnimadorEntidad.new()
 var _reloj_ataque_heraldo: float = 0.0
 
 @onready var modelo: Node3D = $Modelo if has_node("Modelo") else null
@@ -45,16 +44,17 @@ func _asegurar_componentes_3d() -> void:
 		col = CollisionShape3D.new()
 		col.name = "CollisionShape3D"
 		var cap := CapsuleShape3D.new()
-		cap.radius = 0.65
-		cap.height = 2.4
+		cap.radius = 0.75
+		cap.height = 2.9
 		col.shape = cap
-		col.position = Vector3(0.0, 1.2, 0.0)
+		col.position = Vector3(0.0, 1.45, 0.0)
 		add_child(col)
 
 	# 2. Modelo 3D oficial de arte conceptual
 	if modelo == null:
 		modelo = MODELO_GLB.instantiate()
 		modelo.name = "Modelo"
+		modelo.scale = Vector3.ONE * 1.18
 		add_child(modelo)
 
 	if modelo != null:
@@ -94,18 +94,14 @@ func _ejecutar_ataque_pinza() -> void:
 	if jugador != null and is_instance_valid(jugador) and jugador.has_method("recibir_dano"):
 		jugador.recibir_dano(dano_contacto)
 
-func _calcular_velocidad_ia(_delta: float) -> Vector3:
+func _calcular_velocidad_ia(delta: float) -> Vector3:
 	if jugador == null or not is_instance_valid(jugador):
 		jugador = get_tree().get_first_node_in_group("jugador")
 		if jugador == null:
 			return Vector3.ZERO
 
-	var dif: Vector3 = jugador.global_position - global_position
-	dif.y = 0.0
-	var dist := dif.length()
-	if dist > 0.1:
-		var dir_norm := dif / dist
-		# Orientar modelo hacia el objetivo manteniendo rotación suave
+	var dir_norm: Vector3 = ArenaColiseo.calcular_direccion_persecucion(self, jugador.global_position, _nav_estado, delta)
+	if dir_norm.length_squared() > 0.0025:
 		var look_target := global_position + dir_norm
 		look_at(Vector3(look_target.x, global_position.y, look_target.z), Vector3.UP)
 		return dir_norm * rapidez

@@ -6,6 +6,7 @@ extends CharacterBody3D
 
 const AudioManager = preload("res://audio_manager.gd")
 const ArenaColiseo = preload("res://arena_coliseo.gd")
+const VfxCombate = preload("res://vfx_combate.gd")
 
 @export var rapidez: float = 3.2
 @export var vida_maxima: float = 16.0
@@ -96,7 +97,8 @@ func _physics_process(delta):
 		if _tiempo_restante_mecha <= 0.0:
 			detonar()
 	else:
-		if dist <= 2.2:
+		var diff_y = absf(pos_jugador.y - global_position.y)
+		if dist <= 2.2 and diff_y <= 0.45:
 			_iniciar_mecha()
 		else:
 			var dir = ArenaColiseo.calcular_direccion_persecucion(self, pos_jugador, _nav_estado, delta)
@@ -115,6 +117,9 @@ func _iniciar_mecha():
 		return
 	_armado = true
 	_tiempo_restante_mecha = tiempo_mecha
+	var anillo_aviso := BunkerVisualKit.create_hazard_ground_ring(radio_explosion, Color(1.0, 0.35, 0.08), Color(1.0, 0.12, 0.08), 0.72, 0.96, 0.50, 0.18)
+	anillo_aviso.name = "AvisoDetonacion"
+	add_child(anillo_aviso)
 	AudioManager.play("alerta_oleada", 2.2, -3.0)
 
 func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
@@ -195,20 +200,10 @@ func _crear_onda_explosion():
 		queue_free()
 		return
 
-	var onda = MeshInstance3D.new()
-	var mesh = SphereMesh.new()
-	mesh.radius = 0.5
-	mesh.height = 1.0
-
-	var mat = StandardMaterial3D.new()
-	mat.shading_mode = StandardMaterial3D.SHADING_MODE_UNSHADED
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.albedo_color = Color(1.0, 0.45, 0.1, 0.9)
-	mesh.material = mat
-	onda.mesh = mesh
-
-	get_parent().add_child(onda)
-	onda.global_position = global_position
+	VfxCombate.spawn_explosion_nova(get_parent(), global_position + Vector3(0, 0.5, 0), radio_explosion * 1.15, Color(1.0, 0.44, 0.06), Color(1.0, 0.95, 0.58), 0.34, true, true)
+	var cam = get_viewport().get_camera_3d()
+	if cam != null and cam.has_method("sacudir"):
+		cam.sacudir(0.24)
 
 	if nucleo_fuego != null:
 		nucleo_fuego.visible = false
@@ -216,16 +211,16 @@ func _crear_onda_explosion():
 		anillo_magma.visible = false
 	if modelo != null:
 		modelo.visible = false
+	var aviso := get_node_or_null("AvisoDetonacion") as Node3D
+	if aviso != null:
+		aviso.visible = false
 
-	var tw = create_tween()
-	tw.set_parallel(true)
-	tw.tween_property(onda, "scale", Vector3.ONE * (radio_explosion * 2.0), 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tw.tween_property(mat, "albedo_color:a", 0.0, 0.22)
 	if luz_fuego != null:
-		tw.tween_property(luz_fuego, "light_energy", 0.0, 0.22)
-	tw.chain().tween_callback(func():
-		if is_instance_valid(onda):
-			onda.queue_free()
-		if is_instance_valid(self):
-			queue_free()
-	)
+		var tw = create_tween()
+		tw.tween_property(luz_fuego, "light_energy", 0.0, 0.18)
+		tw.tween_callback(func():
+			if is_instance_valid(self):
+				queue_free()
+		)
+	else:
+		queue_free()

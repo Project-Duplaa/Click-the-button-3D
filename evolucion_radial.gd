@@ -248,8 +248,8 @@ func _construir_decoracion_3d_rueda():
 
 func _inicializar_escenario_preview_burbuja():
 	if camara_preview != null:
-		camara_preview.look_at_from_position(Vector3(0.0, 0.390, 1.340), Vector3(0.0, 0.305, 0.0), Vector3.UP)
-		camara_preview.fov = 34.0
+		camara_preview.look_at_from_position(Vector3(0.0, 0.425, 1.480), Vector3(0.0, 0.340, 0.0), Vector3.UP)
+		camara_preview.fov = 33.0
 
 	if pivote_modelo_preview != null and _pedestal_preview == null:
 		_pedestal_preview = MeshInstance3D.new()

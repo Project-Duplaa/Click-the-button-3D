@@ -24,10 +24,10 @@ func _asegurar_componentes() -> void:
 		var col = CollisionShape3D.new()
 		col.name = "CollisionShape3D"
 		var cap = CapsuleShape3D.new()
-		cap.radius = 0.55
-		cap.height = 2.2
+		cap.radius = 0.6
+		cap.height = 2.4
 		col.shape = cap
-		col.position = Vector3(0, 1.1, 0)
+		col.position = Vector3(0, 1.2, 0)
 		add_child(col)
 
 	var modelo = get_node_or_null("Modelo")
@@ -36,38 +36,46 @@ func _asegurar_componentes() -> void:
 		if escena_mod:
 			modelo = escena_mod.instantiate()
 			modelo.name = "Modelo"
+			modelo.scale = Vector3.ONE * 1.04
 			add_child(modelo)
 
 	if get_node_or_null("OrbeVacioClicable") == null:
 		_orbe_area = Area3D.new()
 		_orbe_area.name = "OrbeVacioClicable"
-		_orbe_area.add_to_group("cristal_jefe")
-		_orbe_area.collision_layer = 1 | 8
-		_orbe_area.input_ray_pickable = true
-		_orbe_area.position = Vector3(0, 1.85, 0)
+		_orbe_area.position = Vector3(0, 1.92, 0)
 
 		var col_o = CollisionShape3D.new()
 		var sph_o = SphereShape3D.new()
 		sph_o.radius = 0.75
 		col_o.shape = sph_o
 		_orbe_area.add_child(col_o)
-
-		_orbe_area.input_event.connect(func(_cam, ev, _pos, _norm, _idx):
-			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-				_detonar_orbe_vacio()
-		)
 		add_child(_orbe_area)
 	else:
 		_orbe_area = get_node_or_null("OrbeVacioClicable") as Area3D
-		if _orbe_area != null and not _orbe_area.is_connected("input_event", Callable(self, "_on_orbe_input")):
+
+	if _orbe_area != null:
+		_orbe_area.add_to_group("cristal_jefe")
+		_orbe_area.collision_layer = 1 | 8
+		_orbe_area.input_ray_pickable = true
+		if not _orbe_area.is_connected("input_event", Callable(self, "_on_orbe_input")):
 			_orbe_area.input_event.connect(_on_orbe_input)
 
 	if modelo != null:
 		_orbe_mesh = modelo.find_child("NucleoSingularidad", true, false) as MeshInstance3D
+		_anim_ctrl.vincular_modelo(modelo)
+		_anim_ctrl.reproducir_bucle("idle")
 
 func _on_orbe_input(_cam, ev, _pos, _norm, _idx) -> void:
 	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 		_detonar_orbe_vacio()
+
+func _physics_process(delta: float) -> void:
+	if _muerto:
+		return
+	_anim_ctrl.actualizar(delta)
+	super._physics_process(delta)
+	if not _anim_ctrl.esta_bloqueado():
+		_anim_ctrl.actualizar_locomocion(Vector2(velocity.x, velocity.z).length(), false, is_on_floor(), rapidez)
 
 func _calcular_velocidad_ia(delta: float) -> Vector3:
 	_reloj_pulso += delta * 4.0
@@ -80,11 +88,25 @@ func _calcular_velocidad_ia(delta: float) -> Vector3:
 	var dif = jugador.global_position - global_position
 	dif.y = 0.0
 	var dist = dif.length()
+	if dist > 0.1:
+		look_at(global_position + (dif / dist), Vector3.UP)
 	if dist < 6.5:
-		return -dif.normalized() * (rapidez * 0.75)
+		var destino_h := ArenaColiseo.clamping_y_ajustar_a_suelo(global_position - dif.normalized() * 6.5, 2.2, 0.0)
+		var dir_h := ArenaColiseo.calcular_direccion_persecucion(self, destino_h, _nav_estado, delta)
+		if dir_h.length_squared() < 0.01:
+			dir_h = -dif.normalized()
+		return dir_h * (rapidez * 0.75)
 	elif dist > 10.5:
-		return dif.normalized() * rapidez
+		var dir_a := ArenaColiseo.calcular_direccion_persecucion(self, jugador.global_position, _nav_estado, delta)
+		if dir_a.length_squared() < 0.01:
+			dir_a = dif.normalized()
+		return dir_a * rapidez
 	return Vector3.ZERO
+
+func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false) -> void:
+	if not _muerto:
+		_anim_ctrl.disparar_golpe()
+	super.recibir_dano(cantidad, fuente, es_critico)
 
 var _orbe_detonado: bool = false
 
@@ -93,6 +115,7 @@ func _detonar_orbe_vacio():
 		return
 	_orbe_detonado = true
 	AudioManager.play("orbe_explosion", 1.35)
+	VfxCombate.spawn_explosion_nova(get_parent(), global_position + Vector3(0, 0.8, 0), 5.6, Color(0.28, 0.90, 1.0), Color(0.95, 0.80, 1.0), 0.36, true, true)
 	var pool = get_tree().get_first_node_in_group("damage_numbers")
 	if pool != null and pool.has_method("mostrar_texto"):
 		pool.mostrar_texto(global_position + Vector3(0, 2.6, 0), "💥 ¡CANALIZACIÓN ROTA!", Color(0.35, 0.95, 1.0), 1.25)
