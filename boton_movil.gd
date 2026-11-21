@@ -20,6 +20,7 @@ const PalancaEscena = preload("res://palanca_boton.tscn")
 const BunkerVisualKit = preload("res://bunker_visual_kit.gd")
 const VfxCombate = preload("res://vfx_combate.gd")
 const MetaprogresoManager = preload("res://metaprogreso_manager.gd")
+const ESCENA_DAMAGE_NUMBER_3D = preload("res://damage_number_3d.tscn")
 
 enum EstadoBoton { ACTIVO, ENCADENADO, SOBRECARGA_FRENESI }
 
@@ -346,15 +347,37 @@ func _inicializar_visual_termico_bunker():
 func esta_en_sobrecarga_termica() -> bool:
 	return not sobrecalentado and calor_actual >= umbral_sobrecarga_termica
 
+var _ult_calor_emitido: float = -1.0
+var _ult_max_emitido: float = -1.0
+var _ult_sobrecalentado_emitido: bool = false
+var _ult_colapso_emitido: bool = false
+var _visual_termico_en_reposo: bool = false
+var _ult_chasis_visual_termico: String = ""
+
 func _sincronizar_telemetria_termica():
 	tiempo_estabilidad_max = calor_maximo
 	tiempo_estabilidad_actual = clampf(calor_maximo - calor_actual, 0.0, calor_maximo)
 	en_colapso = sobrecalentado or (estado_actual == EstadoBoton.ENCADENADO)
-	emit_signal("calor_actualizado", calor_actual, calor_maximo, sobrecalentado)
-	emit_signal("estabilidad_actualizada", tiempo_estabilidad_actual, tiempo_estabilidad_max, en_colapso)
+	if absf(calor_actual - _ult_calor_emitido) >= 0.05 or absf(calor_maximo - _ult_max_emitido) >= 0.05 or sobrecalentado != _ult_sobrecalentado_emitido or en_colapso != _ult_colapso_emitido:
+		_ult_calor_emitido = calor_actual
+		_ult_max_emitido = calor_maximo
+		_ult_sobrecalentado_emitido = sobrecalentado
+		_ult_colapso_emitido = en_colapso
+		emit_signal("calor_actualizado", calor_actual, calor_maximo, sobrecalentado)
+		emit_signal("estabilidad_actualizada", tiempo_estabilidad_actual, tiempo_estabilidad_max, en_colapso)
 
 func _actualizar_visual_termico(delta: float):
 	_reloj_pulso_termico += delta
+	if _anillo_termico_suelo != null:
+		var suelo_anillo := ArenaColiseo.obtener_altura_suelo(global_position.x, global_position.z)
+		_anillo_termico_suelo.global_position.y = suelo_anillo + 0.03
+
+	var en_reposo_actual: bool = (calor_actual <= 0.001 and not sobrecalentado and estado_actual == EstadoBoton.ACTIVO)
+	if en_reposo_actual and _visual_termico_en_reposo and _ult_chasis_visual_termico == chasis_actual:
+		return
+	_visual_termico_en_reposo = en_reposo_actual
+	_ult_chasis_visual_termico = chasis_actual
+
 	var ratio_calor: float = clampf(calor_actual / maxf(calor_maximo, 1.0), 0.0, 1.0)
 
 	var col_base_chasis: Color = BunkerVisualKit.COL_CYAN_ELECTRIC
@@ -398,18 +421,15 @@ func _actualizar_visual_termico(delta: float):
 		luz_nucleo.light_color = col_emision
 		luz_nucleo.light_energy = energia_emision
 
-	if _anillo_termico_suelo != null:
-		var suelo_anillo := ArenaColiseo.obtener_altura_suelo(global_position.x, global_position.z)
-		_anillo_termico_suelo.global_position.y = suelo_anillo + 0.03
-		if _mat_anillo_termico != null:
-			_mat_anillo_termico.set_shader_parameter("progress", ratio_calor)
-			var estado_act: float = 1.0 if (sobrecalentado or calor_actual >= umbral_sobrecarga_termica) else 0.0
-			_mat_anillo_termico.set_shader_parameter("active_state", estado_act)
-			_mat_anillo_termico.set_shader_parameter("base_color", col_base_chasis)
-			_mat_anillo_termico.set_shader_parameter(
-				"active_color",
-				BunkerVisualKit.COL_CRIMSON_ALERT if sobrecalentado else BunkerVisualKit.COL_PLASMA_ORANGE
-			)
+	if _anillo_termico_suelo != null and _mat_anillo_termico != null:
+		_mat_anillo_termico.set_shader_parameter("progress", ratio_calor)
+		var estado_act: float = 1.0 if (sobrecalentado or calor_actual >= umbral_sobrecarga_termica) else 0.0
+		_mat_anillo_termico.set_shader_parameter("active_state", estado_act)
+		_mat_anillo_termico.set_shader_parameter("base_color", col_base_chasis)
+		_mat_anillo_termico.set_shader_parameter(
+			"active_color",
+			BunkerVisualKit.COL_CRIMSON_ALERT if sobrecalentado else BunkerVisualKit.COL_PLASMA_ORANGE
+		)
 
 func _entrar_sobrecalentamiento():
 	sobrecalentado = true
@@ -1154,7 +1174,7 @@ func _spawn_floating_text(txt: String):
 	if pool != null and pool.has_method("mostrar_texto"):
 		pool.mostrar_texto(global_position + Vector3(0, 1.9, 0), txt, Color(0.25, 0.95, 1.0), 1.15)
 		return
-	var escena = load("res://damage_number_3d.tscn")
+	var escena = ESCENA_DAMAGE_NUMBER_3D
 	if escena != null and get_parent() != null:
 		var num = escena.instantiate()
 		get_parent().add_child(num)

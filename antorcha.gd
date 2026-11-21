@@ -9,6 +9,7 @@ extends Node3D
 
 var _tiempo: float = 0.0
 var _offset_fase: float = 0.0
+var _acum_pulso: float = 0.0
 
 func _ready():
 	_offset_fase = randf() * 100.0
@@ -17,6 +18,9 @@ func _ready():
 		luz.omni_range = rango_luz
 		luz.shadow_enabled = false
 		luz.omni_attenuation = 1.05
+		luz.distance_fade_enabled = true
+		luz.distance_fade_begin = 26.0
+		luz.distance_fade_length = 8.0
 	_aplicar_acabado_pbr_farola()
 
 func _aplicar_acabado_pbr_farola() -> void:
@@ -68,6 +72,10 @@ func _aplicar_acabado_pbr_farola() -> void:
 
 func _process(delta):
 	_tiempo += delta * 4.5
+	_acum_pulso += delta
+	if _acum_pulso < 0.065:
+		return
+	_acum_pulso = 0.0
 	# Pulsación eléctrica industrial estable de lámpara halógena/sodio
 	var fluctuacion = sin(_tiempo + _offset_fase) * 0.045 + cos(_tiempo * 1.9 + _offset_fase) * 0.025
 	if luz != null:

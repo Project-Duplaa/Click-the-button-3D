@@ -1,6 +1,8 @@
 extends "res://enemigo_base.gd"
 class_name GolemTesoro
 
+const ESCENA_MODELO_GOLEM = preload("res://assets/modelos/enemigo_golem_tesoro.glb")
+
 ## Gólem de Tesoro — Piñata Dorada de Riesgo/Recompensa
 ## Huye del jugador durante 15 segundos antes de desvanecerse. Cada clic directo con el ratón
 ## o golpe de arma desprende monedas de oro y XP en tiempo real; abatirlo suelta un premio mayor.
@@ -31,7 +33,7 @@ func _asegurar_componentes():
 
 	var modelo = get_node_or_null("Modelo")
 	if modelo == null:
-		var escena_mod = load("res://assets/modelos/enemigo_golem_tesoro.glb") as PackedScene
+		var escena_mod = ESCENA_MODELO_GOLEM
 		if escena_mod:
 			modelo = escena_mod.instantiate()
 			modelo.name = "Modelo"

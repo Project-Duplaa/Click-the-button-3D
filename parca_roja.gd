@@ -9,6 +9,9 @@ signal parca_derrotada
 const AudioManager = preload("res://audio_manager.gd")
 const ArenaColiseo = preload("res://arena_coliseo.gd")
 const VfxCombate = preload("res://vfx_combate.gd")
+const PROYECTIL_ENEMIGO_ESCENA = preload("res://proyectil_enemigo.tscn")
+const ESPECTRO_ESCENA = preload("res://espectro.tscn")
+const ESCENA_DAMAGE_NUMBER_3D = preload("res://damage_number_3d.tscn")
 
 @export var rapidez: float = 6.5
 @export var vida_maxima: float = 42000.0
@@ -419,7 +422,7 @@ func _disparar_ondas_guadana():
 		dir_base = -global_transform.basis.z
 	dir_base = dir_base.normalized()
 
-	var escena_proyectil = load("res://proyectil_enemigo.tscn")
+	var escena_proyectil = PROYECTIL_ENEMIGO_ESCENA
 	if escena_proyectil == null:
 		return
 
@@ -539,7 +542,7 @@ func _restaurar_escudo():
 	_invocar_sombras_guardianas()
 
 func _invocar_sombras_guardianas():
-	var escena_espectro = load("res://espectro.tscn")
+	var escena_espectro = ESPECTRO_ESCENA
 	if escena_espectro == null:
 		return
 	for i in range(2):

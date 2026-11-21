@@ -1,6 +1,8 @@
 extends "res://enemigo_base.gd"
 class_name ParasitoCursor
 
+const ESCENA_MODELO_PARASITO = preload("res://assets/modelos/enemigo_parasito_cursor.glb")
+
 ## Parásito de Cursor — Enemigo Interactivo con el Ratón
 ## Ignora al jugador y persigue directamente al Botón Móvil para adherirse a él y bloquearlo.
 ## Requiere 3 clics directos (o ataques del héroe) para reventar en una lluvia de Clics y XP.
@@ -48,7 +50,7 @@ func _construir_geometria_procedural():
 
 	var modelo := get_node_or_null("Modelo") as Node3D
 	if modelo == null:
-		var escena_mod := load("res://assets/modelos/enemigo_parasito_cursor.glb") as PackedScene
+		var escena_mod := ESCENA_MODELO_PARASITO
 		if escena_mod != null:
 			modelo = escena_mod.instantiate() as Node3D
 			if modelo != null:

@@ -1410,8 +1410,11 @@ func _construir_props_e_iluminacion_sectores(parent: Node3D) -> void:
 		l.position = pos_umbrales[i]["pos"]
 		l.light_color = pos_umbrales[i]["col"]
 		l.light_energy = 1.65
-		l.omni_range = 12.0
+		l.omni_range = 10.5
 		l.shadow_enabled = false
+		l.distance_fade_enabled = true
+		l.distance_fade_begin = 28.0
+		l.distance_fade_length = 8.0
 		sect.add_child(l)
 
 	# 2. Iluminación cromática de muro/parapeto por sector (escalada 1.75x)
@@ -1440,8 +1443,11 @@ func _construir_props_e_iluminacion_sectores(parent: Node3D) -> void:
 		omni.position = info["pos"]
 		omni.light_color = info["col"]
 		omni.light_energy = info["e"]
-		omni.omni_range = info["r"]
+		omni.omni_range = minf(float(info["r"]), 15.0)
 		omni.shadow_enabled = false
+		omni.distance_fade_enabled = true
+		omni.distance_fade_begin = 32.0
+		omni.distance_fade_length = 10.0
 		sect.add_child(omni)
 
 	# 3. Foco cenital sobre el Sector Norte

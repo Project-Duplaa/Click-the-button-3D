@@ -76,12 +76,20 @@ func _ready():
 	print("⏳ [OleadasSpawner] Arena en calma. Esperando el primer clic al botón para iniciar la partida.")
 
 func _precalentar_mallas_enemigos() -> void:
-	for esc in [espectro_escena, guardia_escena, berserker_escena, mini_jefe_escena]:
+	var escenas_prewarm := [
+		espectro_escena, guardia_escena, arquero_escena, berserker_escena,
+		kamikaze_escena, bruto_escena, centurion_escena, mini_jefe_escena,
+		maestra_escena, coloso_escena, parca_roja_escena, parasito_cursor_escena,
+		canalizador_vacio_escena, golem_tesoro_escena, heraldo_clic_escena,
+		centinela_fase_escena, anulador_nucleo_escena,
+	]
+	for esc in escenas_prewarm:
 		if esc != null:
 			var inst: Node = esc.instantiate()
 			var mod: Node3D = inst.get_node_or_null("Modelo") as Node3D
 			if mod != null:
-				AnimadorEntidad.optimizar_modelo_esqueletico(mod)
+				var pre_anim := AnimadorEntidad.new(mod)
+				pre_anim.reproducir_bucle("idle")
 			inst.free()
 
 func _on_click_boton_presionado(total_clicks: int):

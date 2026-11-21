@@ -1,6 +1,8 @@
 extends "res://enemigo_base.gd"
 class_name CanalizadorVacio
 
+const ESCENA_MODELO_CANALIZADOR = preload("res://assets/modelos/enemigo_canalizador_vacio.glb")
+
 ## Canalizador del Vacío — Sacerdote con Orbe Clicable sobre la Cabeza
 ## Otorga mitigación a enemigos cercanos hasta que el jugador hace clic directo con el ratón
 ## sobre su Orbe del Vacío flotante, provocando una implosión arcana que los aturde y daña.
@@ -32,7 +34,7 @@ func _asegurar_componentes() -> void:
 
 	var modelo = get_node_or_null("Modelo")
 	if modelo == null:
-		var escena_mod = load("res://assets/modelos/enemigo_canalizador_vacio.glb") as PackedScene
+		var escena_mod = ESCENA_MODELO_CANALIZADOR
 		if escena_mod:
 			modelo = escena_mod.instantiate()
 			modelo.name = "Modelo"

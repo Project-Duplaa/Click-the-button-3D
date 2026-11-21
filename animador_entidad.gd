@@ -3843,6 +3843,7 @@ static func _adjuntar_array_empaquetado(dst: Variant, src: Variant) -> Variant:
 
 static var _outline_heroe_calibrado: StandardMaterial3D = null
 static var _outline_enemigo_calibrado: StandardMaterial3D = null
+static var _cache_materiales_calibrados: Dictionary = {}
 
 static func _crear_outline_calibrado(albedo: Color, grow_amount: float) -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
@@ -3864,6 +3865,11 @@ static func _obtener_outline_enemigo_calibrado() -> StandardMaterial3D:
 	return _outline_enemigo_calibrado
 
 static func _duplicar_material_heroe_calibrado(mat_in: BaseMaterial3D, outline_mat: StandardMaterial3D) -> BaseMaterial3D:
+	var key := "h_%d" % mat_in.get_instance_id()
+	if _cache_materiales_calibrados.has(key):
+		var cached := _cache_materiales_calibrados[key] as BaseMaterial3D
+		if is_instance_valid(cached):
+			return cached
 	var mat_dup := mat_in.duplicate() as BaseMaterial3D
 	if mat_dup == null:
 		return mat_in
@@ -3874,30 +3880,38 @@ static func _duplicar_material_heroe_calibrado(mat_in: BaseMaterial3D, outline_m
 		mat_dup.rim_tint = 0.35
 		if not mat_dup.emission_enabled:
 			mat_dup.next_pass = outline_mat
+	_cache_materiales_calibrados[key] = mat_dup
 	return mat_dup
 
-static func _duplicar_material_enemigo_calibrado(mat_in: BaseMaterial3D, outline_mat: StandardMaterial3D) -> BaseMaterial3D:
+static func _duplicar_material_enemigo_calibrado(mat_in: BaseMaterial3D, _outline_mat: StandardMaterial3D) -> BaseMaterial3D:
+	var key := "e_%d" % mat_in.get_instance_id()
+	if _cache_materiales_calibrados.has(key):
+		var cached := _cache_materiales_calibrados[key] as BaseMaterial3D
+		if is_instance_valid(cached):
+			return cached
 	var mat_dup := mat_in.duplicate() as BaseMaterial3D
 	if mat_dup == null:
 		return mat_in
 	mat_dup.resource_name = mat_in.resource_name
 	if mat_dup.shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED:
+		_cache_materiales_calibrados[key] = mat_dup
 		return mat_dup
 	mat_dup.metallic = minf(mat_dup.metallic, 0.62)
 	if mat_dup.transparency == BaseMaterial3D.TRANSPARENCY_DISABLED:
 		mat_dup.roughness = maxf(mat_dup.roughness, 0.34)
 		mat_dup.rim_enabled = true
-		mat_dup.rim = 0.24
-		mat_dup.rim_tint = 0.20
-		if not mat_dup.emission_enabled:
-			mat_dup.next_pass = outline_mat
+		mat_dup.rim = 0.28
+		mat_dup.rim_tint = 0.22
 	if mat_dup.emission_enabled:
 		mat_dup.emission_energy_multiplier = minf(mat_dup.emission_energy_multiplier, 0.68)
+	_cache_materiales_calibrados[key] = mat_dup
 	return mat_dup
 
 static func _aplicar_acabado_recursivo(nodo: Node, outline_mat: StandardMaterial3D, es_jugador: bool) -> void:
 	if nodo is MeshInstance3D:
 		var mi := nodo as MeshInstance3D
+		if not es_jugador:
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		if mi.material_override is BaseMaterial3D:
 			var mat_ov := mi.material_override as BaseMaterial3D
 			mi.material_override = _duplicar_material_heroe_calibrado(mat_ov, outline_mat) if es_jugador else _duplicar_material_enemigo_calibrado(mat_ov, outline_mat)

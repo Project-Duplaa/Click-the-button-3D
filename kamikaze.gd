@@ -7,6 +7,8 @@ extends CharacterBody3D
 const AudioManager = preload("res://audio_manager.gd")
 const ArenaColiseo = preload("res://arena_coliseo.gd")
 const VfxCombate = preload("res://vfx_combate.gd")
+const ESCENA_DROP_ITEM = preload("res://drop_item.tscn")
+const ESCENA_DAMAGE_NUMBER_3D = preload("res://damage_number_3d.tscn")
 
 @export var rapidez: float = 3.2
 @export var vida_maxima: float = 16.0
@@ -180,7 +182,7 @@ func detonar(danar_jugador: bool = true):
 					e.velocity += dir_empuje * 10.0
 
 	if not danar_jugador and is_inside_tree() and get_parent() != null:
-		var drop_escena = load("res://drop_item.tscn")
+		var drop_escena = ESCENA_DROP_ITEM
 		if drop_escena != null:
 			var drop = drop_escena.instantiate()
 			get_parent().add_child(drop)

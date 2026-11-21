@@ -6,6 +6,7 @@ class_name CentinelaFase
 ## Únicamente recibe daño de las ondas, descargas de hilo y estelas del Botón Móvil.
 
 const BunkerVisualKit = preload("res://bunker_visual_kit.gd")
+const ESCENA_MODELO_CENTINELA = preload("res://assets/modelos/enemigo_guardia_pretoriano.glb")
 
 var _anillo_orbital: MeshInstance3D = null
 var _baliza_fase: MeshInstance3D = null
@@ -39,7 +40,7 @@ func _construir_visual_fase() -> void:
 		add_child(col)
 
 	if get_node_or_null("Modelo") == null:
-		var esc_mod := load("res://assets/modelos/enemigo_guardia_pretoriano.glb") as PackedScene
+		var esc_mod := ESCENA_MODELO_CENTINELA
 		if esc_mod != null:
 			var mod := esc_mod.instantiate() as Node3D
 			if mod != null:

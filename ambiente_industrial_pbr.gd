@@ -91,8 +91,8 @@ func _aplicar_suelo_industrial_pbr(arena: Node) -> void:
 
 	var tile_plane := PlaneMesh.new()
 	tile_plane.size = Vector2(13.5, 13.5)
-	tile_plane.subdivide_width = 3
-	tile_plane.subdivide_depth = 3
+	tile_plane.subdivide_width = 0
+	tile_plane.subdivide_depth = 0
 
 	for ix: int in range(8):
 		var cx: float = -47.25 + float(ix) * 13.5
@@ -133,6 +133,9 @@ func _transformar_nucleo_central_y_rejillas(arena: Node) -> void:
 			luz_central.light_color = Color(0.0, 0.88, 1.0, 1.0)
 			luz_central.light_energy = 3.2
 			luz_central.omni_range = 14.5
+			luz_central.distance_fade_enabled = true
+			luz_central.distance_fade_begin = 32.0
+			luz_central.distance_fade_length = 10.0
 			luz_central.omni_attenuation = 1.05
 
 		if nucleo.get_node_or_null("LuzReboteSueloCyan") == null:

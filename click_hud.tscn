@@ -195,7 +195,7 @@ shadow_offset = Vector2(0, 3)
 
 [sub_resource type="ShaderMaterial" id="ShaderMat_BarJefe"]
 shader = ExtResource("9_sh_bar")
-shader_parameter/bar_size = Vector2(492, 20)
+shader_parameter/bar_size = Vector2(330, 14)
 shader_parameter/hp_ratio = 1.0
 shader_parameter/trail_ratio = 1.0
 shader_parameter/shield_ratio = 0.0
@@ -372,7 +372,7 @@ own_world_3d = true
 transparent_bg = true
 handle_input_locally = false
 msaa_3d = 0
-size = Vector2i(192, 192)
+size = Vector2i(128, 128)
 render_target_update_mode = 1
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ClusterHeroe/AvatarSocket/AvatarFrame/SubViewportContainer/SubViewport"]
@@ -743,12 +743,12 @@ layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
-offset_left = -260.0
-offset_top = 64.0
-offset_right = 260.0
-offset_bottom = 121.0
+offset_left = -175.0
+offset_top = 56.0
+offset_right = 175.0
+offset_bottom = 100.0
 grow_horizontal = 2
-pivot_offset = Vector2(260, 0)
+pivot_offset = Vector2(175, 0)
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBox_PanelJefe")
 
@@ -757,24 +757,24 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 14.0
-offset_top = 5.0
-offset_right = -14.0
-offset_bottom = -6.0
+offset_left = 10.0
+offset_top = 4.0
+offset_right = -10.0
+offset_bottom = -5.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-theme_override_constants/separation = 4
+theme_override_constants/separation = 3
 
 [node name="HBoxHeaderJefe" type="HBoxContainer" parent="Control/PanelJefe/VBoxJefe"]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 6
 alignment = 1
 
 [node name="DagaJefeIzq" type="TextureRect" parent="Control/PanelJefe/VBoxJefe/HBoxHeaderJefe"]
 modulate = Color(1, 0.65, 0.54, 0.98)
-custom_minimum_size = Vector2(68, 15)
+custom_minimum_size = Vector2(42, 11)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
@@ -784,7 +784,7 @@ stretch_mode = 5
 flip_h = true
 
 [node name="IconoJefe" type="TextureRect" parent="Control/PanelJefe/VBoxJefe/HBoxHeaderJefe"]
-custom_minimum_size = Vector2(15, 15)
+custom_minimum_size = Vector2(13, 13)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
@@ -797,14 +797,14 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.99, 0.72, 0.72, 1)
 theme_override_colors/font_outline_color = Color(0.20, 0.02, 0.04, 1)
 theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 11
 text = "JEFE DE LA ARENA"
 horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="DagaJefeDer" type="TextureRect" parent="Control/PanelJefe/VBoxJefe/HBoxHeaderJefe"]
 modulate = Color(1, 0.65, 0.54, 0.98)
-custom_minimum_size = Vector2(68, 15)
+custom_minimum_size = Vector2(42, 11)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
@@ -813,7 +813,7 @@ expand_mode = 1
 stretch_mode = 5
 
 [node name="BarVidaJefe" type="ProgressBar" parent="Control/PanelJefe/VBoxJefe"]
-custom_minimum_size = Vector2(0, 20)
+custom_minimum_size = Vector2(0, 14)
 layout_mode = 2
 mouse_filter = 2
 theme_override_styles/background = SubResource("StyleBox_Transparent")

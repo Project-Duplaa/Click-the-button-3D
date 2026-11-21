@@ -23,6 +23,7 @@ var _reloj_tick: float = 0.0
 var _mult_dano_hilo: float = 1.0
 var _jaula_faraday_activa: bool = false
 var _color_haz_actual: Color = Color(0.2, 0.85, 1.0, 0.85)
+var _ultimo_nivel_fiebre: int = -1
 
 # Elementos visuales 3D del rayo
 var _mesh_haz: MeshInstance3D = null
@@ -168,6 +169,9 @@ func _actualizar_color_por_fiebre():
 	var nivel_fiebre = 0
 	if jugador != null and "nivel_fiebre" in jugador:
 		nivel_fiebre = int(jugador.nivel_fiebre)
+	if nivel_fiebre == _ultimo_nivel_fiebre:
+		return
+	_ultimo_nivel_fiebre = nivel_fiebre
 		
 	match nivel_fiebre:
 		0, 1:

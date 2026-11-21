@@ -544,7 +544,7 @@ func _animar_retrato_sutil(delta: float) -> void:
 		return
 	_avatar_reloj_idle += delta
 	_avatar_reloj_redraw += delta
-	if _avatar_reloj_redraw >= 0.055:
+	if _avatar_reloj_redraw >= 0.11:
 		_avatar_reloj_redraw = 0.0
 		modelo_avatar_nodo.rotation_degrees.y = 20.0 + sin(_avatar_reloj_idle * 0.9) * 3.0
 		if subviewport_avatar != null:
@@ -620,7 +620,14 @@ func _on_bendicion_adquirida(_id_bendicion: String, _nivel_actual: int) -> void:
 		tw.tween_property(avatar_frame, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_CUBIC)
 
 
+var _ult_vidas_restantes: int = -1
+var _ult_vidas_maximas: int = -1
+
 func _actualizar_corazones_dinamicos(vidas_restantes: int, vidas_maximas: int) -> void:
+	if vidas_restantes == _ult_vidas_restantes and vidas_maximas == _ult_vidas_maximas:
+		return
+	_ult_vidas_restantes = vidas_restantes
+	_ult_vidas_maximas = vidas_maximas
 	if label_vidas != null:
 		label_vidas.text = "%d/%d" % [vidas_restantes, vidas_maximas]
 	if hbox_corazones == null:
@@ -1849,12 +1856,12 @@ func _aplicar_estado_visual_jefe(estado: String, subtitulo: String = "") -> void
 func _recalcular_altura_panel_jefe() -> void:
 	if panel_jefe == null:
 		return
-	var altura := 190.0
+	var alto_panel := 44.0
 	if _pill_estado_jefe != null and _pill_estado_jefe.visible:
-		altura += 22.0
+		alto_panel += 20.0
 	if _contenedor_stagger_jefe != null and _contenedor_stagger_jefe.visible:
-		altura += 24.0
-	panel_jefe.offset_bottom = altura
+		alto_panel += 22.0
+	panel_jefe.offset_bottom = panel_jefe.offset_top + alto_panel
 
 
 func mostrar_barra_stagger(clics_restantes: int, clics_totales: int, tiempo_restante: float) -> void:
@@ -1907,7 +1914,9 @@ func mostrar_barra_jefe(nombre: String, max_hp: float, hp_actual: float) -> void
 		bar_vida_jefe.max_value = safe_max
 		bar_vida_jefe.value = hp_actual
 	if label_vida_jefe != null:
-		label_vida_jefe.text = "%s / %s HP" % [_formatear_numero(int(ceil(hp_actual))), _formatear_numero(int(round(safe_max)))]
+		var max_hp_int := maxi(1, int(round(safe_max)))
+		var cur_hp_int := clampi(int(ceil(hp_actual)), 0, max_hp_int)
+		label_vida_jefe.text = "%s / %s HP" % [_formatear_numero(cur_hp_int), _formatear_numero(max_hp_int)]
 	if estaba_oculto:
 		panel_jefe.scale = Vector2(0.90, 0.90)
 		panel_jefe.modulate.a = 0.0
@@ -1930,7 +1939,9 @@ func actualizar_barra_jefe(hp_actual: float, texto_nombre: String = "", estado_t
 
 	bar_vida_jefe.value = hp_actual
 	if label_vida_jefe != null:
-		label_vida_jefe.text = "%s / %s HP" % [_formatear_numero(int(ceil(hp_actual))), _formatear_numero(int(round(safe_max)))]
+		var max_hp_int := maxi(1, int(round(safe_max)))
+		var cur_hp_int := clampi(int(ceil(hp_actual)), 0, max_hp_int)
+		label_vida_jefe.text = "%s / %s HP" % [_formatear_numero(cur_hp_int), _formatear_numero(max_hp_int)]
 	if texto_nombre != "" or estado_tag != "":
 		var partes := _extraer_nombre_y_subtitulo_jefe(texto_nombre)
 		var estado := _detectar_estado_jefe(texto_nombre, estado_tag)
@@ -1943,6 +1954,28 @@ func actualizar_barra_jefe(hp_actual: float, texto_nombre: String = "", estado_t
 		_aplicar_estado_visual_jefe(estado, str(partes["subtitulo"]))
 
 
+func _formatear_nombre_jefe_nodo(nodo: Node) -> String:
+	if nodo == null:
+		return "JEFE DE LA ARENA"
+	var raw := str(nodo.name)
+	var low := raw.to_lower()
+	if low.contains("heraldo"):
+		return "HERALDO DEL CLIC"
+	if low.contains("espejo"):
+		return "EL ESPEJO SOMBRÍO"
+	if low.contains("centurion"):
+		return "CENTURIÓN CORRUPTO"
+	if low.contains("mini_jefe") or low.contains("gladiador"):
+		return "GLADIADOR DE ÉLITE"
+	if low.contains("maestra"):
+		return "MAESTRA SANGUINARIA"
+	if low.contains("coloso"):
+		return "COLOSO DE BRONCE"
+	if low.contains("parca"):
+		return "LA PARCA ROJA"
+	return raw
+
+
 func ocultar_barra_jefe() -> void:
 	ocultar_barra_stagger()
 	var jefes_vivos := _obtener_jefes_vivos()
@@ -1951,7 +1984,7 @@ func ocultar_barra_jefe() -> void:
 		var max_hp := float(otro.vida_maxima) if "vida_maxima" in otro else 500.0
 		var hp := float(otro.vida) if "vida" in otro else max_hp
 		_habia_jefe_en_grupo = true
-		mostrar_barra_jefe(str(otro.name), max_hp, hp)
+		mostrar_barra_jefe(_formatear_nombre_jefe_nodo(otro), max_hp, hp)
 		return
 	_habia_jefe_en_grupo = false
 	_aplicar_estado_visual_jefe("NORMAL", "")
@@ -1979,11 +2012,16 @@ func _sincronizar_jefe_prioritario() -> void:
 				panel_jefe.visible = false
 	else:
 		_habia_jefe_en_grupo = true
+		var j = vivos[0]
+		var max_hp := float(j.vida_maxima) if "vida_maxima" in j else 500.0
+		var hp := float(j.vida) if "vida" in j else max_hp
 		if not panel_jefe.visible:
-			var j = vivos[0]
-			var max_hp := float(j.vida_maxima) if "vida_maxima" in j else 500.0
-			var hp := float(j.vida) if "vida" in j else max_hp
-			mostrar_barra_jefe(str(j.name), max_hp, hp)
+			mostrar_barra_jefe(_formatear_nombre_jefe_nodo(j), max_hp, hp)
+		elif not ("hud" in j) and bar_vida_jefe != null:
+			if absf(bar_vida_jefe.max_value - max_hp) > 0.5:
+				bar_vida_jefe.max_value = maxf(max_hp, 1.0)
+			if absf(bar_vida_jefe.value - hp) > 0.1:
+				actualizar_barra_jefe(hp)
 
 
 func _input(event: InputEvent) -> void:

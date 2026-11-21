@@ -6,6 +6,7 @@ class_name AnuladorNucleo
 ## (forzando clics con ritmo perfecto cerca del núcleo) y garantiza 1 Esquirla Astral al caer.
 
 const BunkerVisualKit = preload("res://bunker_visual_kit.gd")
+const ESCENA_MODELO_ANULADOR = preload("res://assets/modelos/enemigo_canalizador_vacio.glb")
 
 const RANGO_SIFON: float = 6.5
 
@@ -45,7 +46,7 @@ func _construir_visual_anulador() -> void:
 		add_child(col)
 
 	if get_node_or_null("Modelo") == null:
-		var esc_mod := load("res://assets/modelos/enemigo_canalizador_vacio.glb") as PackedScene
+		var esc_mod := ESCENA_MODELO_ANULADOR
 		if esc_mod != null:
 			var mod := esc_mod.instantiate() as Node3D
 			if mod != null:

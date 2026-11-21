@@ -9,6 +9,8 @@ signal jefe_derrotado
 const AudioManager = preload("res://audio_manager.gd")
 const ArenaColiseo = preload("res://arena_coliseo.gd")
 const VfxCombate = preload("res://vfx_combate.gd")
+const PROYECTIL_ENEMIGO_ESCENA = preload("res://proyectil_enemigo.tscn")
+const ESCENA_DAMAGE_NUMBER_3D = preload("res://damage_number_3d.tscn")
 
 @export var rapidez: float = 4.85
 @export var vida_maxima: float = 10500.0
@@ -227,7 +229,7 @@ func _physics_process(delta):
 func _disparar_rafaga(dir_frente: Vector3):
 	_anim_ctrl.reproducir_accion("attack-ranged", 2, 0.06, 1.2)
 	AudioManager.play("disparo_arquero", 1.1)
-	var escena_flecha = load("res://proyectil_enemigo.tscn")
+	var escena_flecha = PROYECTIL_ENEMIGO_ESCENA
 	if escena_flecha == null:
 		return
 

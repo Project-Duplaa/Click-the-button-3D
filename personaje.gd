@@ -14,6 +14,7 @@ const DamageNumbersPoolScript = preload("res://damage_numbers_pool.gd")
 const AudioDopaminaScript = preload("res://audio_dopamina.gd")
 const CursorTacticoScript = preload("res://cursor_tactico.gd")
 const LogrosManagerScript = preload("res://logros_manager.gd")
+const ESCENA_DAMAGE_NUMBER_3D = preload("res://damage_number_3d.tscn")
 
 enum Estado { QUIETO, CAMINAR, CORRER, AIRE }
 const RUIDO = [0.0, 2.5, 6.5, 0.0]
@@ -578,20 +579,9 @@ func _obtener_todos_los_enemigos() -> Array:
 	var tree = _obtener_tree()
 	if tree == null:
 		return []
-	var lista: Array = []
-	var vistos: Dictionary = {}
-	for e in tree.get_nodes_in_group("enemigos"):
-		if is_instance_valid(e):
-			var id_e: int = e.get_instance_id()
-			if not vistos.has(id_e):
-				vistos[id_e] = true
-				lista.append(e)
-	for e in tree.get_nodes_in_group("enemies"):
-		if is_instance_valid(e):
-			var id_e: int = e.get_instance_id()
-			if not vistos.has(id_e):
-				vistos[id_e] = true
-				lista.append(e)
+	var lista: Array = tree.get_nodes_in_group("enemigos")
+	if lista.is_empty():
+		lista = tree.get_nodes_in_group("enemies")
 	return lista
 
 func _procesar_autobattler(delta: float):
@@ -604,6 +594,10 @@ func _procesar_autobattler(delta: float):
 			if d <= rango_ataque:
 				_ejecutar_ataque(objetivo)
 				_reloj_ataque = cadencia_ataque
+			else:
+				_reloj_ataque = 0.045
+		else:
+			_reloj_ataque = 0.06
 
 func _obtener_enemigo_cercano() -> Node3D:
 	if not is_inside_tree() or get_tree() == null:
@@ -2464,7 +2458,7 @@ func _spawn_texto_3d(texto: String, color: Color = Color.WHITE):
 	if pool != null and pool.has_method("mostrar_texto"):
 		pool.mostrar_texto(global_position + Vector3(0, 2.3, 0), texto, color, 1.0)
 		return
-	var escena = load("res://damage_number_3d.tscn")
+	var escena = ESCENA_DAMAGE_NUMBER_3D
 	if escena != null:
 		var txt = escena.instantiate()
 		var pos = global_position + Vector3(0, 2.4, 0)

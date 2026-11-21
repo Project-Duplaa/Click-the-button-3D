@@ -5,7 +5,14 @@ extends RefCounted
 ## Constelación masiva de 80 nodos interconectados en 6 Tiers + Rama Ingeniería del Botón.
 ## Tier 6 incluye la Constelación Cósmica y 3 Nodos de Maestría Infinita (Nivel Máx. 999).
 
+static var _cache_arbol: Dictionary = {}
+
 static func generar_arbol() -> Dictionary:
+	if not _cache_arbol.is_empty():
+		for k in _cache_arbol.keys():
+			var nd: SkillNodeData = _cache_arbol[k]
+			nd.nivel_actual = 1 if String(k) == "nodo_origen" else 0
+		return _cache_arbol
 	var nodos: Dictionary = {}
 	
 	var registrar = func(id: String, nom: String, desc: String, rama: String, pos: Vector2, max_lvl: int,
@@ -630,6 +637,7 @@ static func generar_arbol() -> Dictionary:
 				if not vecino.nodos_conectados.has(n_id):
 					vecino.nodos_conectados.append(n_id)
 
+	_cache_arbol = nodos
 	return nodos
 
 static func nivel_requerido_vecino(v: SkillNodeData) -> int:

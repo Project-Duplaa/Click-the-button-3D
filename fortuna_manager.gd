@@ -1,6 +1,7 @@
 extends Node
 
 const ArenaColiseo = preload("res://arena_coliseo.gd")
+const ESCENA_DROP_ITEM = preload("res://drop_item.tscn")
 
 ## FortunaManager - Singleton Autoload del Sistema de Fortuna (Clicklike 3D)
 ## Gestiona el RNG con semilla por run, tiradas binarias con suerte no lineal,
@@ -349,7 +350,7 @@ func soltar_drops(nodo_padre: Node, posicion: Vector3, tipo_enemigo: String = "c
 	var creados: Array = []
 	if nodo_padre == null or not is_instance_valid(nodo_padre):
 		return creados
-	var escena = load("res://drop_item.tscn")
+	var escena = ESCENA_DROP_ITEM
 	if escena == null:
 		return creados
 

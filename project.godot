@@ -21,7 +21,7 @@ FortunaManager="*res://fortuna_manager.gd"
 
 [debug]
 
-settings/stdout/verbose_stdout=true
+settings/stdout/verbose_stdout=false
 
 [display]
 

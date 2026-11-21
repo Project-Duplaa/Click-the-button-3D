@@ -5,6 +5,7 @@ enum Estado { PERSEGUIR, PREPARAR_CARGA, CARGAR, ATURDIDO }
 const AudioManager = preload("res://audio_manager.gd")
 const ArenaColiseo = preload("res://arena_coliseo.gd")
 const VfxCombate = preload("res://vfx_combate.gd")
+const ESCENA_DAMAGE_NUMBER_3D = preload("res://damage_number_3d.tscn")
 
 @export var rapidez_caminar: float = 2.4
 @export var rapidez_carga: float = 7.5
@@ -196,9 +197,11 @@ func _finalizar_carga_aturdido():
 
 func desactivar_escudo_runico(duracion: float = 7.0):
 	_reloj_escudo_roto = duracion
-	var escena_num = load("res://damage_number_3d.tscn")
-	if escena_num != null and is_inside_tree() and get_parent() != null:
-		var n = escena_num.instantiate()
+	var dmg_pool = get_tree().get_first_node_in_group("damage_numbers") if is_inside_tree() else null
+	if dmg_pool != null and dmg_pool.has_method("mostrar_texto"):
+		dmg_pool.mostrar_texto(global_position + Vector3(0, 2.4, 0), "¡ESCUDO ROTO! ⚡", Color(0.25, 0.95, 1.0), 1.15)
+	elif ESCENA_DAMAGE_NUMBER_3D != null and is_inside_tree() and get_parent() != null:
+		var n = ESCENA_DAMAGE_NUMBER_3D.instantiate()
 		var pos_num = global_position + Vector3(0, 2.4, 0)
 		get_parent().add_child(n)
 		n.global_position = pos_num
@@ -214,9 +217,11 @@ func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 
 	if tiene_escudo_runico and _reloj_escudo_roto <= 0.0:
 		cantidad *= 0.40
-		var escena_esc = load("res://damage_number_3d.tscn")
-		if escena_esc != null and is_inside_tree() and get_parent() != null:
-			var n = escena_esc.instantiate()
+		var dmg_pool_esc = get_tree().get_first_node_in_group("damage_numbers") if is_inside_tree() else null
+		if dmg_pool_esc != null and dmg_pool_esc.has_method("mostrar_texto"):
+			dmg_pool_esc.mostrar_texto(global_position + Vector3(0, 2.4, 0), "🛡️ ESCUDO RÚNICO", Color(0.65, 0.85, 1.0), 0.92)
+		elif ESCENA_DAMAGE_NUMBER_3D != null and is_inside_tree() and get_parent() != null:
+			var n = ESCENA_DAMAGE_NUMBER_3D.instantiate()
 			var pos_num = global_position + Vector3(0, 2.4, 0)
 			get_parent().add_child(n)
 			n.global_position = pos_num
