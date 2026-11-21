@@ -45,7 +45,8 @@ var _en_agonia_final: bool = false
 var _reloj_carga: float = 5.0
 var _esta_cargando: bool = false
 var _dir_carga: Vector3 = Vector3.ZERO
-var _telegraph_carga: MeshInstance3D = null
+var _decal_carga: ThreatDecal3D = null
+var _decal_guadana: ThreatDecal3D = null
 
 var _escudo_mesh: Node3D = null
 var _escudo_burbuja: MeshInstance3D = null
@@ -58,8 +59,15 @@ var _escala_base: Vector3 = Vector3.ONE
 var _anim_ctrl: AnimadorEntidad = AnimadorEntidad.new()
 var _nav_estado: Dictionary = {}
 
+# Controlador de 3 Fases y Stagger + Peligros Fase 2 (Cuchillas Espectrales Orbitales)
+var _fase_ctrl: JefeFaseController = null
+var _cuchillas_fase2: Array = []
+var _angulo_cuchillas_f2: float = 0.0
+var _reloj_iframe_cuchillas: float = 0.0
+var _ultimo_seg_hud_parca: int = -1
+
 @onready var modelo: Node3D = $Modelo if has_node("Modelo") else null
-@onready var telegraph_marca: MeshInstance3D = $TelegraphMarca
+@onready var telegraph_marca: MeshInstance3D = $TelegraphMarca if has_node("TelegraphMarca") else null
 @onready var luz_roja: OmniLight3D = get_node_or_null("LuzParca")
 @onready var aura_roja: MeshInstance3D = $AuraParca
 
@@ -81,9 +89,23 @@ func _ready():
 
 	if telegraph_marca != null:
 		telegraph_marca.visible = false
+		telegraph_marca.queue_free()
+		telegraph_marca = null
 
 	_crear_escudo_visual()
-	_crear_telegraph_carga()
+	_crear_telegraphs_decal()
+
+	_fase_ctrl = JefeFaseController.new()
+	_fase_ctrl.name = "JefeFaseController"
+	_fase_ctrl.configurar(self, 8, 6.0, 14.5, 18.0)
+	add_child(_fase_ctrl)
+	_fase_ctrl.fase_cambiada.connect(_on_fase_cambiada)
+	_fase_ctrl.stagger_iniciado.connect(_on_stagger_iniciado)
+	_fase_ctrl.stagger_progreso.connect(_on_stagger_progreso)
+	_fase_ctrl.stagger_completado.connect(_on_stagger_completado)
+	_fase_ctrl.stagger_fallado.connect(_on_stagger_fallado)
+	_fase_ctrl.conmocion_terminada.connect(_on_conmocion_terminada)
+
 	call_deferred("_conectar_boton_movil")
 
 	print("=====================================================")
@@ -182,19 +204,20 @@ func _crear_escudo_visual():
 
 	add_child(_escudo_mesh)
 
-func _crear_telegraph_carga():
-	_telegraph_carga = MeshInstance3D.new()
-	var box = BoxMesh.new()
-	box.size = Vector3(2.4, 0.05, 10.0)
-	_telegraph_carga.mesh = box
-	var mat = StandardMaterial3D.new()
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.albedo_color = Color(1.0, 0.08, 0.08, 0.5)
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	_telegraph_carga.material_override = mat
-	_telegraph_carga.position = Vector3(0, 0.04, -5.0)
-	_telegraph_carga.visible = false
-	add_child(_telegraph_carga)
+	_luz_escudo = OmniLight3D.new()
+	_luz_escudo.light_color = Color(0.2, 0.85, 1.0)
+	_luz_escudo.light_energy = 0.85
+	_luz_escudo.omni_range = 5.0
+	_luz_escudo.position = Vector3(0, 2.4, 0)
+	add_child(_luz_escudo)
+
+func _crear_telegraphs_decal():
+	_decal_carga = BunkerVisualKit.create_threat_decal(self, "DecalCargaParca")
+	var largo_inicial := maxf(rapidez * 2.8 * 0.40 + 2.2, 8.5)
+	_decal_carga.configurar_carril(2.6, largo_inicial, Color(0.88, 0.08, 0.16, 1.0), Color(1.0, 0.24, 0.16, 1.0), Color(1.0, 0.74, 0.34, 1.0))
+
+	_decal_guadana = BunkerVisualKit.create_threat_decal(self, "DecalGuadanaParca")
+	_decal_guadana.configurar_arco(radio_golpe + 1.0, 175.0, Color(0.92, 0.08, 0.20, 1.0), Color(1.0, 0.22, 0.26, 1.0), Color(1.0, 0.78, 0.42, 1.0))
 
 func _conectar_boton_movil():
 	_boton_movil = get_tree().get_first_node_in_group("boton_movil")
@@ -211,6 +234,9 @@ func _physics_process(delta):
 
 	_anim_ctrl.actualizar(delta)
 	_knockback_velocity = _knockback_velocity.move_toward(Vector3.ZERO, 16.0 * delta)
+	_actualizar_cuchillas_fase2(delta)
+	if _fase_ctrl != null and not _en_agonia_final:
+		_fase_ctrl.actualizar(delta, hud, not muerto and not _en_agonia_final)
 	if aura_roja != null:
 		aura_roja.rotate_y(delta * 2.5)
 	if _escudo_mesh != null and _escudo_mesh.visible:
@@ -237,13 +263,20 @@ func _physics_process(delta):
 
 	if not escudo_activo:
 		_reloj_vulnerabilidad -= delta
+		var seg_v := maxi(1, int(ceil(_reloj_vulnerabilidad)))
 		if _reloj_vulnerabilidad <= 0.0:
+			_ultimo_seg_hud_parca = -1
 			_restaurar_escudo()
+		elif seg_v != _ultimo_seg_hud_parca:
+			_ultimo_seg_hud_parca = seg_v
+			_actualizar_hud_jefe()
 
-	if _esta_telegrafando:
+	var bloqueado_por_fase := _fase_ctrl != null and (_fase_ctrl.esta_en_transicion() or _fase_ctrl.esta_canalizando() or _fase_ctrl.esta_conmocionado())
+	if _esta_telegrafando or bloqueado_por_fase:
 		velocity.x = move_toward(velocity.x, 0.0, 15.0 * delta) + _knockback_velocity.x
 		velocity.z = move_toward(velocity.z, 0.0, 15.0 * delta) + _knockback_velocity.z
-		_anim_ctrl.reproducir_bucle("telegraph", 0.12, 1.0, 1)
+		var es_stun_anim := _fase_ctrl != null and _fase_ctrl.esta_conmocionado()
+		_anim_ctrl.reproducir_bucle("stunned" if es_stun_anim else "telegraph", 0.12, 1.0, 1)
 		move_and_slide()
 		return
 
@@ -297,22 +330,22 @@ func _iniciar_carga_sombria():
 	if is_instance_valid(jugador):
 		var dir = (jugador.global_position - global_position)
 		dir.y = 0.0
-		_dir_carga = dir.normalized()
-		look_at(global_position + _dir_carga, Vector3.UP)
+		if dir.length_squared() > 0.001:
+			_dir_carga = dir.normalized()
+			look_at(global_position + _dir_carga, Vector3.UP)
 
-	if _telegraph_carga != null:
-		_telegraph_carga.visible = true
-		_telegraph_carga.scale = Vector3(0.2, 1.0, 1.0)
-		var tw = create_tween()
-		tw.tween_property(_telegraph_carga, "scale", Vector3(1.0, 1.0, 1.0), 0.55).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	if _decal_carga != null and is_instance_valid(_decal_carga):
+		var largo_carga := maxf(rapidez * 2.8 * 0.40 + 2.2, 8.5)
+		_decal_carga.configurar_carril(2.6, largo_carga, Color(0.88, 0.08, 0.16, 1.0), Color(1.0, 0.24, 0.16, 1.0), Color(1.0, 0.74, 0.34, 1.0))
+		_decal_carga.iniciar_cuenta_regresiva(0.55, false)
 
 	get_tree().create_timer(0.55).timeout.connect(_ejecutar_carga_sombria)
 
 func _ejecutar_carga_sombria():
-	if _telegraph_carga != null:
-		_telegraph_carga.visible = false
+	if _decal_carga != null and is_instance_valid(_decal_carga):
+		_decal_carga.cancelar()
 	_esta_telegrafando = false
-	if muerto or _en_agonia_final:
+	if muerto or _en_agonia_final or not _esta_cargando:
 		_esta_cargando = false
 		return
 
@@ -339,20 +372,27 @@ func _ejecutar_carga_sombria():
 func _iniciar_corte_guadana(tiempo_tel: float = 0.85):
 	_esta_telegrafando = true
 
-	if telegraph_marca != null:
-		telegraph_marca.visible = true
-		telegraph_marca.scale = Vector3(0.1, 1.0, 0.1)
-		var tw = create_tween()
-		tw.tween_property(telegraph_marca, "scale", Vector3(1.0, 1.0, 1.0), tiempo_tel).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	if _decal_guadana != null and is_instance_valid(_decal_guadana):
+		_decal_guadana.configurar_arco(radio_golpe + 1.0, 175.0, Color(0.92, 0.08, 0.20, 1.0), Color(1.0, 0.22, 0.26, 1.0), Color(1.0, 0.78, 0.42, 1.0))
+		_decal_guadana.iniciar_cuenta_regresiva(tiempo_tel, false)
 
 	get_tree().create_timer(tiempo_tel).timeout.connect(_ejecutar_corte_guadana)
 
 func _ejecutar_corte_guadana():
-	if telegraph_marca != null:
-		telegraph_marca.visible = false
-	_esta_telegrafando = false
-	if muerto or _en_agonia_final:
+	if muerto or _en_agonia_final or not _esta_telegrafando:
+		_esta_telegrafando = false
+		if _decal_guadana != null and is_instance_valid(_decal_guadana):
+			_decal_guadana.cancelar()
 		return
+	var en_arco := false
+	if is_instance_valid(jugador) and jugador is Node3D:
+		if _decal_guadana != null and is_instance_valid(_decal_guadana):
+			en_arco = _decal_guadana.punto_en_area(jugador.global_position)
+		else:
+			en_arco = global_position.distance_to(jugador.global_position) <= (radio_golpe + 1.0)
+	if _decal_guadana != null and is_instance_valid(_decal_guadana):
+		_decal_guadana.cancelar()
+	_esta_telegrafando = false
 	_reloj_ataque = 1.15
 	_anim_ctrl.reproducir_accion("attack-melee-right", 2, 0.08, 1.15)
 
@@ -360,15 +400,13 @@ func _ejecutar_corte_guadana():
 	var dir_guadana := -global_transform.basis.z
 	VfxCombate.spawn_tajo(get_parent(), global_position + Vector3(0, 1.35, 0), dir_guadana, 4.6, Color(1.0, 0.14, 0.36), Color(1.0, 0.85, 0.90), Color(0.55, 0.04, 0.42), false, 0.24, 10.0)
 
-	if is_instance_valid(jugador) and jugador is Node3D:
-		var dist = global_position.distance_to(jugador.global_position)
-		if dist <= radio_golpe + 1.0:
-			if jugador.has_method("recibir_dano"):
-				jugador.recibir_dano(dano_guadana)
-			elif jugador.has_node("Salud"):
-				jugador.get_node("Salud").recibir_golpe(int(dano_guadana))
-			VfxCombate.spawn_impacto(get_parent(), jugador.global_position + Vector3(0, 0.95, 0), Color(1.0, 0.14, 0.36), Color.WHITE, 1.25, true)
-			_sacudir_camara(0.4)
+	if en_arco and is_instance_valid(jugador) and jugador is Node3D:
+		if jugador.has_method("recibir_dano"):
+			jugador.recibir_dano(dano_guadana)
+		elif jugador.has_node("Salud"):
+			jugador.get_node("Salud").recibir_golpe(int(dano_guadana))
+		VfxCombate.spawn_impacto(get_parent(), jugador.global_position + Vector3(0, 0.95, 0), Color(1.0, 0.14, 0.36), Color.WHITE, 1.25, true)
+		_sacudir_camara(0.4)
 
 	_disparar_ondas_guadana()
 
@@ -396,7 +434,7 @@ func _disparar_ondas_guadana():
 		p.iniciar(pos_inicio, dir_rot, 22.0, 6.2, "guadana")
 
 func _on_boton_click(_total_clicks: int):
-	if not is_instance_valid(self) or vida <= 0.0:
+	if not is_instance_valid(self) or vida <= 0.0 or muerto:
 		return
 
 	var pos_origen = global_position
@@ -405,18 +443,23 @@ func _on_boton_click(_total_clicks: int):
 
 	_crear_rayo_hacia_parca(pos_origen)
 
-	if _esta_cargando and _telegraph_carga != null and _telegraph_carga.visible:
+	if _en_agonia_final:
+		_ejecutar_golpe_gracia_final()
+		return
+
+	# Prioridad absoluta: Canalización de Stagger en Enrage (<25% HP) sobre escudo y carga
+	if _fase_ctrl != null and _fase_ctrl.registrar_clic_nucleo(hud):
+		_sacudir_camara(0.24)
+		return
+
+	if _esta_cargando and _decal_carga != null and is_instance_valid(_decal_carga) and _decal_carga.visible:
 		_esta_cargando = false
 		_esta_telegrafando = false
-		_telegraph_carga.visible = false
+		_decal_carga.cancelar()
 		AudioManager.play("puzzle_completo", 1.25)
 		_sacudir_camara(0.35)
 		_crear_texto_flotante("💥 ¡CARGA SOMBRÍA DESVIADA!", true)
 		aplicar_knockback(-_dir_carga * 12.0)
-		return
-
-	if _en_agonia_final:
-		_ejecutar_golpe_gracia_final()
 		return
 
 	if escudo_activo:
@@ -530,17 +573,21 @@ func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 		return
 	_i_frame_timer = 0.14
 
-	# Armadura natural de la Parca Roja (absorbe 15% del daño base)
-	var dano_final = cantidad * 0.85 * (1.0 + MetaprogresoManager.obtener_bono_bestiario("parca"))
+	# Armadura natural de la Parca Roja (absorbe 15% del daño base), amplificado x2 durante Conmoción
+	var mult_stagger := _fase_ctrl.obtener_mult_dano() if _fase_ctrl != null else 1.0
+	var dano_final = cantidad * 0.85 * mult_stagger * (1.0 + MetaprogresoManager.obtener_bono_bestiario("parca"))
 
-	# TOPE DE DAÑO POR GOLPE: Ningún impacto supera el 4% de la vida máxima
-	var max_dano_por_golpe = vida_maxima * 0.04
+	# TOPE DE DAÑO POR GOLPE: Ningún impacto supera el 4% de la vida máxima (o 8% conmocionada)
+	var max_dano_por_golpe = vida_maxima * (0.08 if mult_stagger > 1.0 else 0.04)
 	dano_final = minf(dano_final, max_dano_por_golpe)
 
 	vida = maxf(vida - dano_final, 1.0)
 	_anim_ctrl.disparar_golpe()
 
 	clics_para_romper_escudo = _calcular_clics_necesarios()
+
+	if _fase_ctrl != null and vida > 1.0:
+		_fase_ctrl.evaluar_vida(vida, vida_maxima, not _en_agonia_final and not muerto, hud)
 
 	if not _en_enrage and vida <= (vida_maxima * 0.3):
 		_en_enrage = true
@@ -549,28 +596,40 @@ func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 			luz_roja.light_energy = 6.0
 			luz_roja.omni_range = 14.0
 
+	var es_vuln_visual := es_critico or (_fase_ctrl != null and _fase_ctrl.esta_conmocionado())
 	var pool = get_tree().get_first_node_in_group("damage_numbers")
 	var pos_num = global_position + Vector3(randf_range(-0.5, 0.5), 3.2, randf_range(-0.5, 0.5))
 	if pool != null and pool.has_method("mostrar_dano"):
-		pool.mostrar_dano(pos_num, int(round(dano_final)), es_critico, fuente_str)
+		pool.mostrar_dano(pos_num, int(round(dano_final)), es_vuln_visual, fuente_str)
 	else:
 		var escena_num = load("res://damage_number_3d.tscn")
 		if escena_num != null and is_inside_tree() and get_parent() != null:
 			var n = escena_num.instantiate()
 			get_parent().add_child(n)
 			n.global_position = pos_num
-			n.iniciar(dano_final, es_critico, false)
+			n.iniciar(dano_final, es_vuln_visual, false)
 
 	_actualizar_hud_jefe()
 
 	if vida <= 1.0:
 		_iniciar_agonia_final()
 
+func _cancelar_decales_amenaza() -> void:
+	if _decal_carga != null and is_instance_valid(_decal_carga):
+		_decal_carga.cancelar()
+	if _decal_guadana != null and is_instance_valid(_decal_guadana):
+		_decal_guadana.cancelar()
+
 func _iniciar_agonia_final():
 	if _en_agonia_final:
 		return
 	_en_agonia_final = true
 	escudo_activo = false
+	_esta_telegrafando = false
+	_esta_cargando = false
+	_cancelar_decales_amenaza()
+	if _fase_ctrl != null and is_instance_valid(_fase_ctrl):
+		_fase_ctrl.cancelar_stagger(hud)
 	if _escudo_mesh != null:
 		_escudo_mesh.visible = false
 	if _luz_escudo != null:
@@ -582,32 +641,41 @@ func _iniciar_agonia_final():
 	_actualizar_hud_jefe()
 
 func _exit_tree():
+	_cancelar_decales_amenaza()
+	_limpiar_cuchillas_fase2(true)
+	if _fase_ctrl != null and is_instance_valid(_fase_ctrl):
+		_fase_ctrl.limpiar(hud, true)
 	if Engine.time_scale != 1.0:
 		Engine.time_scale = 1.0
 
-func _ejecutar_golpe_gracia_final():
+func _ejecutar_golpe_gracia_final() -> void:
 	vida = 0.0
 	_sacudir_camara(0.7)
 
 	Engine.time_scale = 0.15
-	await get_tree().create_timer(0.15, true, false, true).timeout
-	Engine.time_scale = 1.0
-	if not is_instance_valid(self) or not is_inside_tree():
-		return
-
-	morir()
+	var timer = get_tree().create_timer(0.15, true, false, true)
+	timer.timeout.connect(func():
+		Engine.time_scale = 1.0
+		if not is_instance_valid(self) or not is_inside_tree():
+			return
+		morir()
+	)
 
 func morir():
 	if muerto:
 		return
 	muerto = true
+	_cancelar_decales_amenaza()
+	_limpiar_cuchillas_fase2(false)
+	if _fase_ctrl != null and is_instance_valid(_fase_ctrl):
+		_fase_ctrl.limpiar(hud, false)
 
 	if hud != null and hud.has_method("ocultar_barra_jefe"):
 		hud.ocultar_barra_jefe()
 
 	AudioManager.play("victoria", 1.0, 4.0)
 
-	var pj = get_tree().get_first_node_in_group("jugador")
+	var pj = get_tree().get_first_node_in_group("jugador") if is_inside_tree() else null
 	MetaprogresoManager.procesar_baja_completa(self, pj, "parca", true)
 
 	emit_signal("parca_derrotada")
@@ -648,18 +716,195 @@ func _actualizar_hud_jefe():
 	if hud == null:
 		return
 	var titulo = ""
+	var tag = "NORMAL"
 	if _en_agonia_final:
-		titulo = "⚡ ¡PULSA EL BOTÓN MÓVIL PARA PURIFICAR A LA PARCA! ⚡"
+		titulo = "💀 LA PARCA ROJA [⚡ ¡PULSA EL NÚCLEO PARA PURIFICAR!]"
+		tag = "VULNERABLE"
+	elif _fase_ctrl != null and _fase_ctrl.esta_canalizando():
+		titulo = "💀 LA PARCA ROJA [⚡ SEGADORA MORTAL — ¡PULSA EL NÚCLEO!]"
+		tag = "CANALIZANDO"
+	elif _fase_ctrl != null and _fase_ctrl.esta_conmocionado():
+		var segs_c = maxf(ceil(maxf(_reloj_vulnerabilidad, _fase_ctrl.tiempo_conmocion_restante())), 1.0)
+		titulo = "💀 LA PARCA ROJA [💥 CONMOCIONADA x2 · %ds - ¡ATACA!]" % int(segs_c)
+		tag = "VULNERABLE"
 	elif escudo_activo:
 		titulo = "💀 LA PARCA ROJA [🛡️ ESCUDO: %d/%d CLICS AL NÚCLEO]" % [clics_actuales_escudo, clics_para_romper_escudo]
+		tag = "ESCUDO"
 	else:
 		var segs = maxf(ceil(_reloj_vulnerabilidad), 1.0)
 		titulo = "💀 LA PARCA ROJA [⚡ VULNERABLE (%ds) - ¡ATACA!]" % int(segs)
+		tag = "VULNERABLE"
 
 	if hud.has_method("actualizar_barra_jefe"):
-		hud.actualizar_barra_jefe(vida, titulo)
+		hud.actualizar_barra_jefe(vida, titulo, tag)
 	elif hud.has_method("mostrar_barra_jefe"):
 		hud.mostrar_barra_jefe(titulo, vida_maxima, vida)
+
+func _on_fase_cambiada(nueva_fase: int) -> void:
+	if muerto or _en_agonia_final:
+		return
+	if nueva_fase == int(JefeFaseController.FaseJefe.FASE_2):
+		AudioManager.play("jefe_alerta", 0.85, 3.5)
+		_sacudir_camara(0.55)
+		_crear_texto_flotante("⚡ FASE II — ¡CUCHILLAS ESPECTRALES!", true)
+		if luz_roja != null:
+			luz_roja.light_energy = maxf(luz_roja.light_energy, 4.5)
+			luz_roja.omni_range = maxf(luz_roja.omni_range, 12.0)
+		if get_parent() != null and is_inside_tree():
+			BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position, 1.5, 13.0, Color(1.0, 0.14, 0.24, 1.0), 0.55)
+		_invocar_cuchillas_fase2(5)
+		_actualizar_hud_jefe()
+	elif nueva_fase == int(JefeFaseController.FaseJefe.ENRAGE):
+		_en_enrage = true
+		AudioManager.play("rugido_jefe", 0.85, 4.0)
+		_sacudir_camara(0.65)
+		_crear_texto_flotante("🔥 ¡ENRAGE — ECLIPSE CARMESÍ!", true)
+		if luz_roja != null:
+			luz_roja.light_energy = 6.5
+			luz_roja.omni_range = 15.0
+		if get_parent() != null and is_inside_tree():
+			BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position, 1.6, 15.0, Color(1.0, 0.08, 0.16, 1.0), 0.55)
+		_actualizar_hud_jefe()
+
+func _on_stagger_iniciado(clics_req: int, _duracion: float) -> void:
+	_esta_telegrafando = false
+	_esta_cargando = false
+	_cancelar_decales_amenaza()
+	_crear_texto_flotante("⚡ ¡SEGADORA MORTAL! %d CLICS AL NÚCLEO" % clics_req, true)
+	_actualizar_hud_jefe()
+
+func _on_stagger_progreso(clics_restantes: int, clics_totales: int, _tiempo: float) -> void:
+	var completados := clics_totales - clics_restantes
+	_crear_texto_flotante("⚡ CONMOCIÓN %d/%d" % [completados, clics_totales], true)
+
+func _on_stagger_completado(duracion_conm: float, _mult_dano: float, pct_ruptura: float) -> void:
+	if muerto or _en_agonia_final:
+		return
+	escudo_activo = false
+	clics_actuales_escudo = 0
+	if _escudo_mesh != null:
+		_escudo_mesh.visible = false
+	if _luz_escudo != null:
+		_luz_escudo.visible = false
+	_reloj_vulnerabilidad = maxf(_reloj_vulnerabilidad, duracion_conm)
+	_ultimo_seg_hud_parca = maxi(1, int(ceil(_reloj_vulnerabilidad)))
+	_reloj_ataque = maxf(_reloj_ataque, duracion_conm)
+	_sacudir_camara(0.60)
+
+	# Daño de ruptura instantáneo (~6% HP max), SIEMPRE preservando >= 1.0 HP para Agonía Final
+	var dano_ruptura := vida_maxima * pct_ruptura
+	vida = maxf(vida - dano_ruptura, 1.0)
+	_crear_texto_flotante("💥 ¡CONMOCIONADA! -%d HP (DAÑO x2)" % int(round(dano_ruptura)), true)
+	if is_inside_tree():
+		var pool = get_tree().get_first_node_in_group("damage_numbers")
+		if pool != null and pool.has_method("mostrar_dano"):
+			pool.mostrar_dano(global_position + Vector3(0.0, 3.6, 0.0), int(round(dano_ruptura)), true, "stagger_ruptura")
+	_actualizar_hud_jefe()
+	if vida <= 1.0:
+		_iniciar_agonia_final()
+
+func _on_conmocion_terminada() -> void:
+	if muerto or _en_agonia_final:
+		return
+	_actualizar_hud_jefe()
+
+func _on_stagger_fallado() -> void:
+	if muerto or _en_agonia_final:
+		return
+	_sacudir_camara(0.75)
+	_crear_texto_flotante("💀 ¡SEGADORA DE ALMAS DESATADA!", true)
+	_anim_ctrl.reproducir_accion("attack-melee-right", 2, 0.08, 1.3)
+	if is_instance_valid(jugador) and jugador is Node3D:
+		var dist := global_position.distance_to(jugador.global_position)
+		var radio_m := _fase_ctrl.radio_ataque_mortal if _fase_ctrl != null else 14.5
+		if dist <= radio_m:
+			if jugador.has_method("recibir_dano"):
+				jugador.recibir_dano(160.0)
+			elif jugador.has_node("Salud"):
+				jugador.get_node("Salud").recibir_golpe(160)
+	_disparar_ondas_guadana()
+	_actualizar_hud_jefe()
+
+func _invocar_cuchillas_fase2(cantidad: int = 5) -> void:
+	if muerto or get_parent() == null or not is_inside_tree():
+		return
+	_limpiar_cuchillas_fase2(false)
+	var padre := get_parent()
+	var radio_orbita := 19.5
+	for i in range(cantidad):
+		var area := Area3D.new()
+		area.name = "CuchillaEspectralF2_%d" % i
+		area.monitoring = true
+		area.monitorable = false
+		area.set_meta("radio_contacto", 1.85)
+		area.set_meta("radio_orbita", radio_orbita)
+
+		var col := CollisionShape3D.new()
+		var shp := SphereShape3D.new()
+		shp.radius = 1.65
+		col.shape = shp
+		area.add_child(col)
+
+		var hoja := MeshInstance3D.new()
+		var torus := TorusMesh.new()
+		torus.outer_radius = 1.75
+		torus.inner_radius = 1.15
+		torus.rings = 18
+		torus.ring_segments = 6
+		hoja.mesh = torus
+		hoja.scale = Vector3(1.15, 0.22, 1.15)
+		hoja.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var mat := StandardMaterial3D.new()
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.albedo_color = Color(1.0, 0.14, 0.24, 0.88)
+		mat.emission_enabled = true
+		mat.emission = Color(1.0, 0.12, 0.22)
+		mat.emission_energy_multiplier = 2.1
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		hoja.material_override = mat
+		area.add_child(hoja)
+
+		var ang := (TAU / float(maxi(cantidad, 1))) * float(i)
+		padre.add_child(area)
+		area.global_position = Vector3(cos(ang) * radio_orbita, 1.1, sin(ang) * radio_orbita)
+		_cuchillas_fase2.append(area)
+
+func _actualizar_cuchillas_fase2(delta: float) -> void:
+	if _cuchillas_fase2.is_empty():
+		return
+	_reloj_iframe_cuchillas = maxf(_reloj_iframe_cuchillas - delta, 0.0)
+	var vel_ang := 1.10 if _en_enrage else 0.78
+	_angulo_cuchillas_f2 = fmod(_angulo_cuchillas_f2 + delta * vel_ang, TAU)
+	var vivas: Array = []
+	var total := maxi(_cuchillas_fase2.size(), 1)
+	for i in range(_cuchillas_fase2.size()):
+		var c = _cuchillas_fase2[i]
+		if not is_instance_valid(c):
+			continue
+		var r := float(c.get_meta("radio_orbita", 19.5))
+		var ang := _angulo_cuchillas_f2 + (TAU / float(total)) * float(i)
+		c.global_position = Vector3(cos(ang) * r, 1.1, sin(ang) * r)
+		c.rotate_y(delta * 5.2)
+
+		if _reloj_iframe_cuchillas <= 0.0 and is_instance_valid(jugador) and jugador is Node3D:
+			var dp := Vector2(jugador.global_position.x - c.global_position.x, jugador.global_position.z - c.global_position.z).length()
+			if dp <= float(c.get_meta("radio_contacto", 1.85)):
+				_reloj_iframe_cuchillas = 0.75
+				if jugador.has_method("recibir_dano"):
+					jugador.recibir_dano(32.0)
+				elif jugador.has_node("Salud"):
+					jugador.get_node("Salud").recibir_golpe(32)
+		vivas.append(c)
+	_cuchillas_fase2 = vivas
+
+func _limpiar_cuchillas_fase2(diferir_remocion: bool = false) -> void:
+	for c in _cuchillas_fase2:
+		if is_instance_valid(c):
+			c.visible = false
+			if not diferir_remocion and c.get_parent() != null:
+				c.get_parent().remove_child(c)
+			c.queue_free()
+	_cuchillas_fase2.clear()
 
 func _sacudir_camara(intensidad: float = 0.3):
 	var cam = get_viewport().get_camera_3d()

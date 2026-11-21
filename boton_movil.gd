@@ -1068,22 +1068,24 @@ func _ejecutar_teletransporte_seguro():
 	_en_teletransporte = true
 	var tw = create_tween()
 	tw.tween_property(self, "scale", Vector3(0.08, 0.08, 0.08), 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	await tw.finished
-	if not is_instance_valid(self) or not is_inside_tree():
-		return
+	tw.finished.connect(func():
+		if not is_instance_valid(self) or not is_inside_tree():
+			_en_teletransporte = false
+			return
 
-	indice_ruta = (indice_ruta + randi_range(2, 4)) % ruta.size()
-	if indice_ruta == 0:
-		indice_ruta = 1
-	global_position = ArenaColiseo.clamping_y_ajustar_a_suelo(ruta[indice_ruta], 1.8, _altura_base)
+		indice_ruta = (indice_ruta + randi_range(2, 4)) % ruta.size()
+		if indice_ruta == 0:
+			indice_ruta = 1
+		global_position = ArenaColiseo.clamping_y_ajustar_a_suelo(ruta[indice_ruta], 1.8, _altura_base)
 
-	var tw_pop = create_tween()
-	tw_pop.tween_property(self, "scale", Vector3.ONE * escala_actual, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	_detonar_onda_choque(_btn_keystone_rompecadenas, _btn_keystone_rompecadenas, false)
-	if _btn_keystone_rompecadenas:
-		BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position, 0.75, 4.8, BunkerVisualKit.COL_VAULT_GOLD, 0.40)
-		_spawn_floating_text("⚡ ¡TELETRANSPORTE SUPERNOVA!")
-	_en_teletransporte = false
+		var tw_pop = create_tween()
+		tw_pop.tween_property(self, "scale", Vector3.ONE * escala_actual, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_detonar_onda_choque(_btn_keystone_rompecadenas, _btn_keystone_rompecadenas, false)
+		if _btn_keystone_rompecadenas:
+			BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position, 0.75, 4.8, BunkerVisualKit.COL_VAULT_GOLD, 0.40)
+			_spawn_floating_text("⚡ ¡TELETRANSPORTE SUPERNOVA!")
+		_en_teletransporte = false
+	)
 
 func _detonar_onda_choque(es_supernova: bool, es_perfecto: bool = false, es_sobrecarga_termica: bool = false):
 	var bonus_onda: Dictionary = {}

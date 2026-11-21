@@ -1,4 +1,4 @@
-[gd_scene load_steps=4 format=3 uid="uid://c6heraldoclic"]
+[gd_scene format=3 uid="uid://c6heraldoclic"]
 
 [ext_resource type="Script" path="res://heraldo_clic.gd" id="1_heraldo"]
 [ext_resource type="PackedScene" uid="uid://obx2aeavc0s4" path="res://assets/modelos/enemigo_heraldo_clic.glb" id="2_modelo"]

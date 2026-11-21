@@ -80,7 +80,7 @@ const CLASS_ACCENTS := {
 	"Recluta del Coliseo": Color(0.231, 0.902, 0.463),
 	"Guerrero": Color(0.95, 0.25, 0.22),
 	"Murmillo": Color(0.95, 0.25, 0.22),
-	"Cazador": Color(0.20, 0.85, 0.50),
+	"Cazador": Color(0.95, 0.44, 0.08),
 	"Arquero": Color(0.95, 0.44, 0.08),
 	"Sagittario": Color(0.18, 0.88, 0.76),
 	"Mago": Color(0.55, 0.35, 1.00),
@@ -234,6 +234,16 @@ var _sello_fill_rect: ColorRect = null
 var _lbl_sello_tarot: Label = null
 var _sb_banner_sello: StyleBoxFlat = null
 
+var _sb_panel_jefe: StyleBoxFlat = null
+var _pill_estado_jefe: PanelContainer = null
+var _sb_pill_estado_jefe: StyleBoxFlat = null
+var _lbl_estado_jefe: Label = null
+var _jefe_estado_actual: String = "NORMAL"
+var _tw_panel_jefe_pulso: Tween = null
+var _contenedor_stagger_jefe: PanelContainer = null
+var bar_stagger_jefe: ProgressBar = null
+var _lbl_stagger_jefe: Label = null
+
 
 func _obtener_fortuna_manager() -> Node:
 	return get_node_or_null("/root/FortunaManager")
@@ -267,10 +277,12 @@ func _ready() -> void:
 	if btn_opc3 != null:
 		btn_opc3.pressed.connect(func(): _seleccionar_carta_bendicion(2))
 
+	_crear_banner_y_chip_evolucion()
+	_crear_modales_dominio4()
 	_conectar_jugador()
 	_conectar_boton_movil()
 	call_deferred("_conectar_boton_movil")
-	_crear_modales_dominio4()
+	call_deferred("_conectar_evolucion_manager")
 	call_deferred("_bootstrap_domain4_managers")
 	call_deferred("_ajustar_layout_resolucion")
 	call_deferred("_sync_wings_geometry")
@@ -349,6 +361,8 @@ func _sync_wings_geometry() -> void:
 func _inicializar_estilos_dinamicos() -> void:
 	pass
 
+	_inicializar_estilo_panel_jefe()
+
 
 func _conectar_jugador() -> void:
 	jugador = get_tree().get_first_node_in_group("jugador")
@@ -367,6 +381,7 @@ func _conectar_jugador() -> void:
 	_on_stats_actualizadas(jugador.vida, jugador.vida_maxima, jugador.xp, jugador.xp_siguiente_nivel, jugador.nivel, jugador.oro, jugador.bajas)
 	if "clics_disponibles" in jugador:
 		_on_economia_actualizada(int(jugador.oro), int(jugador.clics_disponibles), int(jugador.clics_totales))
+	_conectar_evolucion_manager()
 
 
 func _calibrar_avatar() -> void:
@@ -385,6 +400,7 @@ func _preparar_modelo_retrato(modelo: Node3D, nombre_clase: String) -> void:
 	var weapon_key: String = String(WEAPON_KEYS.get(nombre_clase, "Novato"))
 	AnimadorEntidad.equipar_armas_en_esqueleto(modelo, weapon_key, false)
 	AnimadorEntidad.estilizar_entidad_visual(modelo, true)
+	AnimadorEntidad.aplicar_identidad_visual_clase(modelo, nombre_clase, false)
 	var ap := AnimadorEntidad.buscar_animation_player(modelo)
 	if ap != null:
 		var clip := "idle" if ap.has_animation("idle") else ""
@@ -400,7 +416,7 @@ func _preparar_modelo_retrato(modelo: Node3D, nombre_clase: String) -> void:
 	var accent: Color = CLASS_ACCENTS.get(nombre_clase, Color(0.88, 0.74, 0.38))
 	if luz_contorno != null:
 		luz_contorno.light_color = accent
-		luz_contorno.light_energy = 1.65 if nombre_clase != "Novato" else 1.45
+		luz_contorno.light_energy = 1.65 if not (nombre_clase in ["Novato", "Recluta del Coliseo"]) else 1.45
 	if subviewport_container != null and subviewport_container.material is ShaderMaterial:
 		var mat := subviewport_container.material as ShaderMaterial
 		mat.set_shader_parameter("class_aura", accent)
@@ -1563,13 +1579,325 @@ func _limpiar_prefijo_emoji_jefe(nombre: String) -> String:
 	return limpio
 
 
+func _inicializar_estilo_panel_jefe() -> void:
+	if panel_jefe == null:
+		return
+	var sb_j := panel_jefe.get_theme_stylebox("panel")
+	if sb_j is StyleBoxFlat:
+		_sb_panel_jefe = sb_j.duplicate() as StyleBoxFlat
+		panel_jefe.add_theme_stylebox_override("panel", _sb_panel_jefe)
+	if bar_jefe_shader != null and bar_jefe_shader.material is ShaderMaterial:
+		bar_jefe_shader.material = (bar_jefe_shader.material as ShaderMaterial).duplicate()
+
+	var vbox_jefe := panel_jefe.get_node_or_null("VBoxJefe")
+	if vbox_jefe != null and _pill_estado_jefe == null:
+		_pill_estado_jefe = PanelContainer.new()
+		_pill_estado_jefe.name = "PillEstadoJefe"
+		_pill_estado_jefe.visible = false
+		_pill_estado_jefe.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		_pill_estado_jefe.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+		_sb_pill_estado_jefe = StyleBoxFlat.new()
+		_sb_pill_estado_jefe.bg_color = Color(0.16, 0.10, 0.03, 0.94)
+		_sb_pill_estado_jefe.set_border_width_all(1)
+		_sb_pill_estado_jefe.border_color = Color(1.0, 0.84, 0.24, 0.96)
+		_sb_pill_estado_jefe.set_corner_radius_all(5)
+		_sb_pill_estado_jefe.content_margin_left = 10.0
+		_sb_pill_estado_jefe.content_margin_right = 10.0
+		_sb_pill_estado_jefe.content_margin_top = 1.0
+		_sb_pill_estado_jefe.content_margin_bottom = 1.0
+		_pill_estado_jefe.add_theme_stylebox_override("panel", _sb_pill_estado_jefe)
+
+		_lbl_estado_jefe = Label.new()
+		_lbl_estado_jefe.name = "LabelEstadoJefe"
+		_lbl_estado_jefe.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_lbl_estado_jefe.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_lbl_estado_jefe.add_theme_font_size_override("font_size", 10)
+		_lbl_estado_jefe.add_theme_color_override("font_outline_color", Color(0.06, 0.03, 0.02, 1.0))
+		_lbl_estado_jefe.add_theme_constant_override("outline_size", 2)
+		_lbl_estado_jefe.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_pill_estado_jefe.add_child(_lbl_estado_jefe)
+
+		vbox_jefe.add_child(_pill_estado_jefe)
+
+	if vbox_jefe != null and _contenedor_stagger_jefe == null:
+		_contenedor_stagger_jefe = PanelContainer.new()
+		_contenedor_stagger_jefe.name = "ContenedorStaggerJefe"
+		_contenedor_stagger_jefe.visible = false
+		_contenedor_stagger_jefe.custom_minimum_size = Vector2(0.0, 20.0)
+		_contenedor_stagger_jefe.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_contenedor_stagger_jefe.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+		var sb_stag_box := StyleBoxFlat.new()
+		sb_stag_box.bg_color = Color(0.11, 0.06, 0.02, 0.96)
+		sb_stag_box.set_border_width_all(1)
+		sb_stag_box.border_color = Color(1.0, 0.78, 0.22, 0.96)
+		sb_stag_box.set_corner_radius_all(4)
+		sb_stag_box.shadow_color = Color(1.0, 0.65, 0.12, 0.45)
+		sb_stag_box.shadow_size = 6
+		_contenedor_stagger_jefe.add_theme_stylebox_override("panel", sb_stag_box)
+
+		bar_stagger_jefe = ProgressBar.new()
+		bar_stagger_jefe.name = "BarStaggerJefe"
+		bar_stagger_jefe.min_value = 0.0
+		bar_stagger_jefe.max_value = 100.0
+		bar_stagger_jefe.value = 0.0
+		bar_stagger_jefe.show_percentage = false
+		bar_stagger_jefe.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		bar_stagger_jefe.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		bar_stagger_jefe.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+		var sb_stag_bg := StyleBoxFlat.new()
+		sb_stag_bg.bg_color = Color(0.14, 0.08, 0.03, 0.95)
+		sb_stag_bg.set_corner_radius_all(3)
+		var sb_stag_fill := StyleBoxFlat.new()
+		sb_stag_fill.bg_color = Color(1.0, 0.74, 0.16, 0.96)
+		sb_stag_fill.border_width_top = 1
+		sb_stag_fill.border_color = Color(1.0, 0.95, 0.62, 0.98)
+		sb_stag_fill.set_corner_radius_all(3)
+		bar_stagger_jefe.add_theme_stylebox_override("background", sb_stag_bg)
+		bar_stagger_jefe.add_theme_stylebox_override("fill", sb_stag_fill)
+		_contenedor_stagger_jefe.add_child(bar_stagger_jefe)
+
+		_lbl_stagger_jefe = Label.new()
+		_lbl_stagger_jefe.name = "LabelStaggerJefe"
+		_lbl_stagger_jefe.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_lbl_stagger_jefe.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_lbl_stagger_jefe.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_lbl_stagger_jefe.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		_lbl_stagger_jefe.add_theme_font_size_override("font_size", 10)
+		_lbl_stagger_jefe.add_theme_color_override("font_color", Color(1.0, 0.96, 0.80, 1.0))
+		_lbl_stagger_jefe.add_theme_color_override("font_outline_color", Color(0.08, 0.03, 0.01, 1.0))
+		_lbl_stagger_jefe.add_theme_constant_override("outline_size", 2)
+		_lbl_stagger_jefe.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_contenedor_stagger_jefe.add_child(_lbl_stagger_jefe)
+
+		vbox_jefe.add_child(_contenedor_stagger_jefe)
+
+
+func _extraer_nombre_y_subtitulo_jefe(texto: String) -> Dictionary:
+	var limpio := _limpiar_prefijo_emoji_jefe(texto)
+	var idx_ini := limpio.find("[")
+	var idx_fin := limpio.rfind("]")
+	if idx_ini >= 0 and idx_fin > idx_ini:
+		var base := limpio.substr(0, idx_ini).strip_edges()
+		var sub := limpio.substr(idx_ini + 1, idx_fin - idx_ini - 1).strip_edges()
+		return {"nombre": base, "subtitulo": sub}
+	return {"nombre": limpio, "subtitulo": ""}
+
+
+func _detectar_estado_jefe(texto: String, estado_tag: String = "") -> String:
+	var tag := estado_tag.strip_edges().to_upper()
+	if not tag.is_empty():
+		match tag:
+			"VULNERABLE", "ATURDIDO":
+				return "VULNERABLE"
+			"ESCUDO", "CORAZA", "CRISTALES":
+				return "ESCUDO"
+			"CANALIZANDO", "INTERRUMPIR":
+				return "CANALIZANDO"
+			"ENRAGE", "FURIA":
+				return "ENRAGE"
+			"NORMAL":
+				return "NORMAL"
+
+	var upper := texto.to_upper()
+	if upper.contains("VULNERABLE") or upper.contains("ATURDID") or upper.contains("DESTRUIDA") or upper.contains("DESARMADO") or upper.contains("DISIPADA") or upper.contains("PURIFICAR"):
+		return "VULNERABLE"
+	if upper.contains("ESCUDO") or upper.contains("CORAZA") or upper.contains("CRISTALES") or upper.contains("INVULNERABLE"):
+		return "ESCUDO"
+	if upper.contains("INTERRUMPIR") or upper.contains("CANALIZ") or upper.contains("TORMENTA") or upper.contains("CARGANDO"):
+		return "CANALIZANDO"
+	if upper.contains("ENRAGE") or upper.contains("FURIA") or upper.contains("FRENESÍ") or upper.contains("FRENESI"):
+		return "ENRAGE"
+	return "NORMAL"
+
+
+func _aplicar_estado_visual_jefe(estado: String, subtitulo: String = "") -> void:
+	if panel_jefe == null:
+		return
+	var cambio_estado := (estado != _jefe_estado_actual)
+	_jefe_estado_actual = estado
+
+	var sub_final := subtitulo.strip_edges()
+	var mostrar_pill := (estado != "NORMAL") or not sub_final.is_empty()
+
+	if cambio_estado and _tw_panel_jefe_pulso != null and _tw_panel_jefe_pulso.is_valid():
+		_tw_panel_jefe_pulso.kill()
+		_tw_panel_jefe_pulso = null
+
+	var mj: ShaderMaterial = null
+	if bar_jefe_shader != null and bar_jefe_shader.material is ShaderMaterial:
+		mj = bar_jefe_shader.material as ShaderMaterial
+
+	match estado:
+		"VULNERABLE":
+			if sub_final.is_empty():
+				sub_final = "💥 ¡VULNERABLE — ATACA AHORA!"
+			if _sb_panel_jefe != null:
+				_sb_panel_jefe.bg_color = Color(0.14, 0.09, 0.02, 0.97)
+				_sb_panel_jefe.border_color = Color(1.0, 0.84, 0.24, 1.0)
+				_sb_panel_jefe.shadow_color = Color(1.0, 0.76, 0.16, 0.65)
+				_sb_panel_jefe.shadow_size = 16
+			if mj != null:
+				mj.set_shader_parameter("shield_ratio", 0.0)
+				mj.set_shader_parameter("color_hp_top", Color(1.0, 0.86, 0.28, 1.0))
+				mj.set_shader_parameter("color_hp_bot", Color(0.86, 0.42, 0.06, 1.0))
+				mj.set_shader_parameter("border_color", Color(1.0, 0.88, 0.36, 1.0))
+			if _sb_pill_estado_jefe != null:
+				_sb_pill_estado_jefe.bg_color = Color(0.24, 0.16, 0.03, 0.96)
+				_sb_pill_estado_jefe.border_color = Color(1.0, 0.86, 0.28, 1.0)
+			if _lbl_estado_jefe != null:
+				_lbl_estado_jefe.add_theme_color_override("font_color", Color(1.0, 0.94, 0.56, 1.0))
+			if cambio_estado and _sb_panel_jefe != null:
+				_tw_panel_jefe_pulso = create_tween()
+				_tw_panel_jefe_pulso.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+				_tw_panel_jefe_pulso.set_loops()
+				_tw_panel_jefe_pulso.tween_property(_sb_panel_jefe, "shadow_size", 24, 0.45).set_trans(Tween.TRANS_SINE)
+				_tw_panel_jefe_pulso.parallel().tween_property(_sb_panel_jefe, "border_color", Color(1.0, 0.96, 0.62, 1.0), 0.45)
+				_tw_panel_jefe_pulso.tween_property(_sb_panel_jefe, "shadow_size", 14, 0.45).set_trans(Tween.TRANS_SINE)
+				_tw_panel_jefe_pulso.parallel().tween_property(_sb_panel_jefe, "border_color", Color(1.0, 0.80, 0.20, 1.0), 0.45)
+
+		"ESCUDO":
+			if sub_final.is_empty():
+				sub_final = "🛡️ DEFENSA ACTIVA — PULSA EL NÚCLEO"
+			if _sb_panel_jefe != null:
+				_sb_panel_jefe.bg_color = Color(0.03, 0.07, 0.12, 0.97)
+				_sb_panel_jefe.border_color = Color(0.32, 0.86, 1.0, 0.98)
+				_sb_panel_jefe.shadow_color = Color(0.16, 0.68, 0.96, 0.56)
+				_sb_panel_jefe.shadow_size = 15
+			if mj != null:
+				mj.set_shader_parameter("shield_ratio", 0.28)
+				mj.set_shader_parameter("color_hp_top", Color(0.76, 0.34, 0.44, 1.0))
+				mj.set_shader_parameter("color_hp_bot", Color(0.42, 0.12, 0.20, 1.0))
+				mj.set_shader_parameter("border_color", Color(0.45, 0.88, 1.0, 0.98))
+			if _sb_pill_estado_jefe != null:
+				_sb_pill_estado_jefe.bg_color = Color(0.05, 0.14, 0.22, 0.96)
+				_sb_pill_estado_jefe.border_color = Color(0.36, 0.88, 1.0, 0.98)
+			if _lbl_estado_jefe != null:
+				_lbl_estado_jefe.add_theme_color_override("font_color", Color(0.76, 0.96, 1.0, 1.0))
+
+		"CANALIZANDO":
+			if sub_final.is_empty():
+				sub_final = "⚡ CANALIZANDO — ¡PULSA EL NÚCLEO PARA INTERRUMPIR!"
+			if _sb_panel_jefe != null:
+				_sb_panel_jefe.bg_color = Color(0.12, 0.04, 0.14, 0.97)
+				_sb_panel_jefe.border_color = Color(1.0, 0.54, 0.18, 1.0)
+				_sb_panel_jefe.shadow_color = Color(0.95, 0.36, 0.16, 0.62)
+				_sb_panel_jefe.shadow_size = 16
+			if mj != null:
+				mj.set_shader_parameter("shield_ratio", 0.0)
+				mj.set_shader_parameter("color_hp_top", Color(1.0, 0.46, 0.20, 1.0))
+				mj.set_shader_parameter("color_hp_bot", Color(0.62, 0.12, 0.08, 1.0))
+				mj.set_shader_parameter("border_color", Color(1.0, 0.64, 0.24, 1.0))
+			if _sb_pill_estado_jefe != null:
+				_sb_pill_estado_jefe.bg_color = Color(0.22, 0.08, 0.14, 0.96)
+				_sb_pill_estado_jefe.border_color = Color(1.0, 0.56, 0.20, 1.0)
+			if _lbl_estado_jefe != null:
+				_lbl_estado_jefe.add_theme_color_override("font_color", Color(1.0, 0.86, 0.58, 1.0))
+			if cambio_estado and _sb_panel_jefe != null:
+				_tw_panel_jefe_pulso = create_tween()
+				_tw_panel_jefe_pulso.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+				_tw_panel_jefe_pulso.set_loops()
+				_tw_panel_jefe_pulso.tween_property(_sb_panel_jefe, "shadow_size", 22, 0.38).set_trans(Tween.TRANS_SINE)
+				_tw_panel_jefe_pulso.tween_property(_sb_panel_jefe, "shadow_size", 13, 0.38).set_trans(Tween.TRANS_SINE)
+
+		"ENRAGE":
+			if sub_final.is_empty():
+				sub_final = "🔥 ¡ENRAGE ACTIVO!"
+			if _sb_panel_jefe != null:
+				_sb_panel_jefe.bg_color = Color(0.16, 0.02, 0.03, 0.98)
+				_sb_panel_jefe.border_color = Color(1.0, 0.18, 0.24, 1.0)
+				_sb_panel_jefe.shadow_color = Color(0.95, 0.08, 0.14, 0.72)
+				_sb_panel_jefe.shadow_size = 18
+			if mj != null:
+				mj.set_shader_parameter("shield_ratio", 0.0)
+				mj.set_shader_parameter("color_hp_top", Color(1.0, 0.20, 0.26, 1.0))
+				mj.set_shader_parameter("color_hp_bot", Color(0.55, 0.02, 0.06, 1.0))
+				mj.set_shader_parameter("border_color", Color(1.0, 0.30, 0.32, 1.0))
+			if _sb_pill_estado_jefe != null:
+				_sb_pill_estado_jefe.bg_color = Color(0.28, 0.03, 0.05, 0.96)
+				_sb_pill_estado_jefe.border_color = Color(1.0, 0.24, 0.30, 1.0)
+			if _lbl_estado_jefe != null:
+				_lbl_estado_jefe.add_theme_color_override("font_color", Color(1.0, 0.78, 0.78, 1.0))
+			if cambio_estado and _sb_panel_jefe != null:
+				_tw_panel_jefe_pulso = create_tween()
+				_tw_panel_jefe_pulso.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+				_tw_panel_jefe_pulso.set_loops()
+				_tw_panel_jefe_pulso.tween_property(_sb_panel_jefe, "shadow_size", 24, 0.32).set_trans(Tween.TRANS_SINE)
+				_tw_panel_jefe_pulso.tween_property(_sb_panel_jefe, "shadow_size", 14, 0.32).set_trans(Tween.TRANS_SINE)
+
+		_:
+			if _sb_panel_jefe != null:
+				_sb_panel_jefe.bg_color = Color(0.08, 0.03, 0.05, 0.96)
+				_sb_panel_jefe.border_color = Color(0.82, 0.24, 0.30, 0.95)
+				_sb_panel_jefe.shadow_color = Color(0.65, 0.05, 0.12, 0.55)
+				_sb_panel_jefe.shadow_size = 14
+			if mj != null:
+				mj.set_shader_parameter("shield_ratio", 0.0)
+				mj.set_shader_parameter("color_hp_top", Color(0.96, 0.26, 0.36, 1.0))
+				mj.set_shader_parameter("color_hp_bot", Color(0.55, 0.04, 0.12, 1.0))
+				mj.set_shader_parameter("border_color", Color(0.82, 0.65, 0.35, 0.95))
+
+	if _pill_estado_jefe != null and _lbl_estado_jefe != null:
+		_pill_estado_jefe.visible = mostrar_pill
+		if mostrar_pill:
+			_lbl_estado_jefe.text = sub_final
+	_recalcular_altura_panel_jefe()
+
+
+func _recalcular_altura_panel_jefe() -> void:
+	if panel_jefe == null:
+		return
+	var altura := 190.0
+	if _pill_estado_jefe != null and _pill_estado_jefe.visible:
+		altura += 22.0
+	if _contenedor_stagger_jefe != null and _contenedor_stagger_jefe.visible:
+		altura += 24.0
+	panel_jefe.offset_bottom = altura
+
+
+func mostrar_barra_stagger(clics_restantes: int, clics_totales: int, tiempo_restante: float) -> void:
+	if panel_jefe == null:
+		return
+	if _contenedor_stagger_jefe == null:
+		_inicializar_estilo_panel_jefe()
+	if _contenedor_stagger_jefe == null or bar_stagger_jefe == null or _lbl_stagger_jefe == null:
+		return
+	var totales := maxi(clics_totales, 1)
+	var restantes := clampi(clics_restantes, 0, totales)
+	var completados := totales - restantes
+	_contenedor_stagger_jefe.visible = true
+	bar_stagger_jefe.max_value = float(totales)
+	bar_stagger_jefe.value = float(completados)
+	_lbl_stagger_jefe.text = "⚡ CONMOCIÓN: %d / %d CLICS AL NÚCLEO · %.1fs" % [completados, totales, maxf(tiempo_restante, 0.0)]
+	_recalcular_altura_panel_jefe()
+
+
+func ocultar_barra_stagger() -> void:
+	if _contenedor_stagger_jefe != null:
+		_contenedor_stagger_jefe.visible = false
+	_recalcular_altura_panel_jefe()
+
+
 func mostrar_barra_jefe(nombre: String, max_hp: float, hp_actual: float) -> void:
 	if panel_jefe == null:
 		return
 	var estaba_oculto := not panel_jefe.visible
 	panel_jefe.visible = true
+	ocultar_barra_stagger()
+	if bar_jefe_shader != null and bar_jefe_shader.material is ShaderMaterial:
+		var mj := bar_jefe_shader.material as ShaderMaterial
+		mj.set_shader_parameter("segment_notches", 0)
+		mj.set_shader_parameter("phase_mark_1", 0.60)
+		mj.set_shader_parameter("phase_mark_2", 0.25)
+	var partes := _extraer_nombre_y_subtitulo_jefe(nombre)
+	var estado_ini := _detectar_estado_jefe(nombre, "")
 	if label_nombre_jefe != null:
-		label_nombre_jefe.text = _limpiar_prefijo_emoji_jefe(nombre).to_upper()
+		var nom_str := str(partes["nombre"])
+		label_nombre_jefe.text = (nom_str if not nom_str.is_empty() else _limpiar_prefijo_emoji_jefe(nombre)).to_upper()
+	_aplicar_estado_visual_jefe(estado_ini, str(partes["subtitulo"]))
+
 	var safe_max := maxf(max_hp, 1.0)
 	_jefe_hp_ratio = clampf(hp_actual / safe_max, 0.0, 1.0)
 	_jefe_trail_ratio = _jefe_hp_ratio
@@ -1588,7 +1916,7 @@ func mostrar_barra_jefe(nombre: String, max_hp: float, hp_actual: float) -> void
 		tw.parallel().tween_property(panel_jefe, "modulate:a", 1.0, 0.22)
 
 
-func actualizar_barra_jefe(hp_actual: float, texto_nombre: String = "") -> void:
+func actualizar_barra_jefe(hp_actual: float, texto_nombre: String = "", estado_tag: String = "") -> void:
 	if panel_jefe == null or bar_vida_jefe == null:
 		return
 	panel_jefe.visible = true
@@ -1603,11 +1931,20 @@ func actualizar_barra_jefe(hp_actual: float, texto_nombre: String = "") -> void:
 	bar_vida_jefe.value = hp_actual
 	if label_vida_jefe != null:
 		label_vida_jefe.text = "%s / %s HP" % [_formatear_numero(int(ceil(hp_actual))), _formatear_numero(int(round(safe_max)))]
-	if texto_nombre != "" and label_nombre_jefe != null:
-		label_nombre_jefe.text = _limpiar_prefijo_emoji_jefe(texto_nombre)
+	if texto_nombre != "" or estado_tag != "":
+		var partes := _extraer_nombre_y_subtitulo_jefe(texto_nombre)
+		var estado := _detectar_estado_jefe(texto_nombre, estado_tag)
+		if texto_nombre != "" and label_nombre_jefe != null:
+			var nom_str := str(partes["nombre"])
+			if not nom_str.is_empty():
+				label_nombre_jefe.text = nom_str.to_upper()
+			else:
+				label_nombre_jefe.text = _limpiar_prefijo_emoji_jefe(texto_nombre).to_upper()
+		_aplicar_estado_visual_jefe(estado, str(partes["subtitulo"]))
 
 
 func ocultar_barra_jefe() -> void:
+	ocultar_barra_stagger()
 	var jefes_vivos := _obtener_jefes_vivos()
 	if jefes_vivos.size() > 0:
 		var otro = jefes_vivos[0]
@@ -1617,6 +1954,7 @@ func ocultar_barra_jefe() -> void:
 		mostrar_barra_jefe(str(otro.name), max_hp, hp)
 		return
 	_habia_jefe_en_grupo = false
+	_aplicar_estado_visual_jefe("NORMAL", "")
 	if panel_jefe != null:
 		panel_jefe.visible = false
 		_jefe_hp_previa = -1.0
@@ -1689,6 +2027,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			_toggle_pantalla_completa()
 			get_viewport().set_input_as_handled()
 			return
+		if (modal_mejora == null or not modal_mejora.visible) and (modal_mercader == null or not modal_mercader.visible):
+			if event.keycode == KEY_V or (event.keycode == KEY_TAB and _banner_evolucion_activo):
+				if _solicitar_reabrir_evolucion():
+					get_viewport().set_input_as_handled()
+					return
 
 
 # ==============================================================================
@@ -1745,6 +2088,25 @@ func _toggle_pantalla_completa() -> void:
 # ==============================================================================
 # BOOTSTRAP DE MANAGERS Y MODALES DE EVENTO DE ARENA
 # ==============================================================================
+
+var evolucion_manager_ref: Node = null
+var banner_evolucion: PanelContainer = null
+var _sb_banner_evolucion: StyleBoxFlat = null
+var _sb_badge_tecla_evo: StyleBoxFlat = null
+var icono_banner_evo: TextureRect = null
+var lbl_banner_evo_titulo: Label = null
+var lbl_banner_evo_subtitulo: Label = null
+var lbl_banner_evo_tecla: Label = null
+var _tw_banner_evo_transicion: Tween = null
+var _tw_banner_evo_pulso: Tween = null
+var _banner_evolucion_activo: bool = false
+var _banner_evolucion_tier: int = 0
+
+var chip_evolucion_rail: PanelContainer = null
+var _sb_chip_evo_rail: StyleBoxFlat = null
+var lbl_chip_evo_rail: Label = null
+var _chip_evo_listo: bool = false
+var _tw_chip_evo_pulso: Tween = null
 
 var modal_mercader: ColorRect = null
 var contenedor_cartas_mercader: HBoxContainer = null
@@ -2032,3 +2394,402 @@ func _on_pulgar_resuelto(salvado: bool, _prob: float = 0.5) -> void:
 		overlay_pulgar.visible = false
 		overlay_pulgar.modulate.a = 1.0
 	)
+
+
+# ==============================================================================
+# BANNER PULSANTE DE EVOLUCIÓN Y CHIP DE PROGRESO EN STATUS RAIL
+# ==============================================================================
+
+const EVO_BANNER_PALETAS := {
+	1: {
+		"titulo": "✨ METAMORFOSIS TIER 1 DISPONIBLE",
+		"subtitulo": "Elige tu clase de la Arena · Clic o [V]",
+		"bg": Color(0.11, 0.08, 0.03, 0.96),
+		"borde": Color(1.0, 0.84, 0.30, 1.0),
+		"sombra": Color(1.0, 0.78, 0.22, 0.56),
+		"titulo_color": Color(1.0, 0.92, 0.52, 1.0),
+		"sub_color": Color(0.95, 0.90, 0.78, 0.95),
+		"badge_bg": Color(0.24, 0.17, 0.05, 0.95)
+	},
+	2: {
+		"titulo": "👑 ASCENSIÓN TIER 2 DISPONIBLE",
+		"subtitulo": "Especializa tu arquetipo · Clic o [V]",
+		"bg": Color(0.15, 0.04, 0.05, 0.96),
+		"borde": Color(0.98, 0.44, 0.20, 1.0),
+		"sombra": Color(0.95, 0.26, 0.18, 0.60),
+		"titulo_color": Color(1.0, 0.80, 0.44, 1.0),
+		"sub_color": Color(0.98, 0.86, 0.80, 0.95),
+		"badge_bg": Color(0.30, 0.09, 0.08, 0.95)
+	},
+	3: {
+		"titulo": "🌟 ASCENSIÓN DEFINITIVA TIER 3 DISPONIBLE",
+		"subtitulo": "Desata tu forma suprema · Clic o [V]",
+		"bg": Color(0.10, 0.04, 0.16, 0.97),
+		"borde": Color(0.76, 0.44, 1.0, 1.0),
+		"sombra": Color(0.68, 0.32, 1.0, 0.64),
+		"titulo_color": Color(0.94, 0.84, 1.0, 1.0),
+		"sub_color": Color(0.92, 0.88, 0.98, 0.95),
+		"badge_bg": Color(0.22, 0.09, 0.32, 0.95)
+	}
+}
+
+func _obtener_paleta_evolucion(tier: int) -> Dictionary:
+	return EVO_BANNER_PALETAS.get(clampi(tier, 1, 3), EVO_BANNER_PALETAS[1])
+
+func _crear_banner_y_chip_evolucion() -> void:
+	# 1. Chip compacto en StatusRail (antes de SpacerRail para evitar solapamiento)
+	var rail_box := get_node_or_null("Control/StatusRail/HBoxStatusRail")
+	if rail_box != null and chip_evolucion_rail == null:
+		chip_evolucion_rail = PanelContainer.new()
+		chip_evolucion_rail.name = "ChipEvolucionRail"
+		chip_evolucion_rail.visible = false
+		chip_evolucion_rail.mouse_filter = Control.MOUSE_FILTER_STOP
+		chip_evolucion_rail.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		chip_evolucion_rail.gui_input.connect(_on_chip_evo_gui_input)
+
+		_sb_chip_evo_rail = StyleBoxFlat.new()
+		_sb_chip_evo_rail.bg_color = Color(0.055, 0.068, 0.105, 0.92)
+		_sb_chip_evo_rail.border_color = Color(0.55, 0.44, 0.24, 0.90)
+		_sb_chip_evo_rail.set_border_width_all(1)
+		_sb_chip_evo_rail.set_corner_radius_all(6)
+		_sb_chip_evo_rail.content_margin_left = 8.0
+		_sb_chip_evo_rail.content_margin_right = 8.0
+		_sb_chip_evo_rail.content_margin_top = 3.0
+		_sb_chip_evo_rail.content_margin_bottom = 3.0
+		chip_evolucion_rail.add_theme_stylebox_override("panel", _sb_chip_evo_rail)
+
+		lbl_chip_evo_rail = Label.new()
+		lbl_chip_evo_rail.name = "LabelChipEvolucion"
+		lbl_chip_evo_rail.add_theme_font_size_override("font_size", 10)
+		lbl_chip_evo_rail.add_theme_color_override("font_color", Color(0.92, 0.88, 0.76, 1.0))
+		lbl_chip_evo_rail.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		chip_evolucion_rail.add_child(lbl_chip_evo_rail)
+
+		rail_box.add_child(chip_evolucion_rail)
+		var spacer := rail_box.get_node_or_null("SpacerRail")
+		if spacer != null:
+			rail_box.move_child(chip_evolucion_rail, spacer.get_index())
+
+	# 2. Banner pulsante inferior-centrado (nunca solapa BarraSuperior, StatusRail ni PanelJefe)
+	var ctrl_root := get_node_or_null("Control")
+	if ctrl_root == null or banner_evolucion != null:
+		return
+
+	banner_evolucion = PanelContainer.new()
+	banner_evolucion.name = "BannerEvolucionAlerta"
+	banner_evolucion.z_index = 18
+	banner_evolucion.visible = false
+	banner_evolucion.process_mode = Node.PROCESS_MODE_ALWAYS
+	banner_evolucion.anchor_left = 0.5
+	banner_evolucion.anchor_right = 0.5
+	banner_evolucion.anchor_top = 1.0
+	banner_evolucion.anchor_bottom = 1.0
+	banner_evolucion.offset_left = -225.0
+	banner_evolucion.offset_right = 225.0
+	banner_evolucion.offset_top = -80.0
+	banner_evolucion.offset_bottom = -20.0
+	banner_evolucion.pivot_offset = Vector2(225.0, 30.0)
+	banner_evolucion.mouse_filter = Control.MOUSE_FILTER_STOP
+	banner_evolucion.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	banner_evolucion.gui_input.connect(_on_banner_evolucion_gui_input)
+
+	_sb_banner_evolucion = StyleBoxFlat.new()
+	_sb_banner_evolucion.bg_color = Color(0.11, 0.08, 0.03, 0.96)
+	_sb_banner_evolucion.set_border_width_all(2)
+	_sb_banner_evolucion.border_color = Color(1.0, 0.84, 0.30, 1.0)
+	_sb_banner_evolucion.set_corner_radius_all(9)
+	_sb_banner_evolucion.content_margin_left = 14.0
+	_sb_banner_evolucion.content_margin_right = 14.0
+	_sb_banner_evolucion.content_margin_top = 8.0
+	_sb_banner_evolucion.content_margin_bottom = 8.0
+	_sb_banner_evolucion.shadow_color = Color(1.0, 0.78, 0.22, 0.56)
+	_sb_banner_evolucion.shadow_size = 14
+	banner_evolucion.add_theme_stylebox_override("panel", _sb_banner_evolucion)
+	ctrl_root.add_child(banner_evolucion)
+
+	var hbox := HBoxContainer.new()
+	hbox.name = "HBoxBannerEvo"
+	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	hbox.add_theme_constant_override("separation", 10)
+	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	banner_evolucion.add_child(hbox)
+
+	icono_banner_evo = TextureRect.new()
+	icono_banner_evo.name = "IconoEvo"
+	icono_banner_evo.texture = TEX_ICO_CLASS
+	icono_banner_evo.custom_minimum_size = Vector2(22.0, 22.0)
+	icono_banner_evo.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	icono_banner_evo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icono_banner_evo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icono_banner_evo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_child(icono_banner_evo)
+
+	var vbox_txt := VBoxContainer.new()
+	vbox_txt.name = "VBoxTextos"
+	vbox_txt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox_txt.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox_txt.add_theme_constant_override("separation", 1)
+	vbox_txt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_child(vbox_txt)
+
+	lbl_banner_evo_titulo = Label.new()
+	lbl_banner_evo_titulo.name = "LabelTituloEvo"
+	lbl_banner_evo_titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_banner_evo_titulo.add_theme_font_size_override("font_size", 12)
+	lbl_banner_evo_titulo.add_theme_color_override("font_outline_color", Color(0.06, 0.03, 0.02, 1.0))
+	lbl_banner_evo_titulo.add_theme_constant_override("outline_size", 2)
+	lbl_banner_evo_titulo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox_txt.add_child(lbl_banner_evo_titulo)
+
+	lbl_banner_evo_subtitulo = Label.new()
+	lbl_banner_evo_subtitulo.name = "LabelSubtituloEvo"
+	lbl_banner_evo_subtitulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_banner_evo_subtitulo.add_theme_font_size_override("font_size", 10)
+	lbl_banner_evo_subtitulo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox_txt.add_child(lbl_banner_evo_subtitulo)
+
+	var badge_tecla := PanelContainer.new()
+	badge_tecla.name = "BadgeTeclaEvo"
+	badge_tecla.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	badge_tecla.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_sb_badge_tecla_evo = StyleBoxFlat.new()
+	_sb_badge_tecla_evo.bg_color = Color(0.24, 0.17, 0.05, 0.95)
+	_sb_badge_tecla_evo.set_border_width_all(1)
+	_sb_badge_tecla_evo.border_color = Color(1.0, 0.84, 0.30, 1.0)
+	_sb_badge_tecla_evo.set_corner_radius_all(5)
+	_sb_badge_tecla_evo.content_margin_left = 7.0
+	_sb_badge_tecla_evo.content_margin_right = 7.0
+	_sb_badge_tecla_evo.content_margin_top = 3.0
+	_sb_badge_tecla_evo.content_margin_bottom = 3.0
+	badge_tecla.add_theme_stylebox_override("panel", _sb_badge_tecla_evo)
+	hbox.add_child(badge_tecla)
+
+	lbl_banner_evo_tecla = Label.new()
+	lbl_banner_evo_tecla.name = "LabelTeclaEvo"
+	lbl_banner_evo_tecla.text = "[V]"
+	lbl_banner_evo_tecla.add_theme_font_size_override("font_size", 11)
+	lbl_banner_evo_tecla.add_theme_color_override("font_color", Color(1.0, 0.94, 0.70, 1.0))
+	lbl_banner_evo_tecla.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badge_tecla.add_child(lbl_banner_evo_tecla)
+
+func _conectar_evolucion_manager() -> void:
+	var ev: Node = null
+	if jugador != null and is_instance_valid(jugador):
+		ev = jugador.get_node_or_null("EvolucionManager")
+		if ev == null:
+			for child in jugador.get_children():
+				if child is EvolucionManager:
+					ev = child
+					break
+	if ev == null and get_tree() != null:
+		ev = get_tree().get_first_node_in_group("evolucion_manager")
+	if ev == null or not is_instance_valid(ev):
+		return
+
+	evolucion_manager_ref = ev
+
+	if ev.has_signal("hito_evolucion_disponible"):
+		if not ev.hito_evolucion_disponible.is_connected(_on_hito_evolucion_disponible):
+			ev.hito_evolucion_disponible.connect(_on_hito_evolucion_disponible)
+	else:
+		if ev.has_signal("metamorfosis_disponible") and not ev.metamorfosis_disponible.is_connected(_on_metamorfosis_disponible_legacy):
+			ev.metamorfosis_disponible.connect(_on_metamorfosis_disponible_legacy)
+		if ev.has_signal("mejora_tier2_disponible") and not ev.mejora_tier2_disponible.is_connected(_on_mejora_tier2_disponible_legacy):
+			ev.mejora_tier2_disponible.connect(_on_mejora_tier2_disponible_legacy)
+		if ev.has_signal("ascension_tier3_disponible") and not ev.ascension_tier3_disponible.is_connected(_on_ascension_tier3_disponible_legacy):
+			ev.ascension_tier3_disponible.connect(_on_ascension_tier3_disponible_legacy)
+
+	if ev.has_signal("progreso_evolucion_actualizado") and not ev.progreso_evolucion_actualizado.is_connected(_on_progreso_evolucion_actualizado):
+		ev.progreso_evolucion_actualizado.connect(_on_progreso_evolucion_actualizado)
+	if ev.has_signal("clase_evolucionada") and not ev.clase_evolucionada.is_connected(_on_evolucion_resuelta_hud):
+		ev.clase_evolucionada.connect(_on_evolucion_resuelta_hud)
+	if ev.has_signal("subclase_ascendida") and not ev.subclase_ascendida.is_connected(_on_evolucion_resuelta_hud):
+		ev.subclase_ascendida.connect(_on_evolucion_resuelta_hud)
+	if ev.has_signal("evolucion_completada") and not ev.evolucion_completada.is_connected(_on_evolucion_resuelta_hud):
+		ev.evolucion_completada.connect(_on_evolucion_resuelta_hud)
+
+	if ev.has_method("obtener_estado_progreso_compacto"):
+		var info: Dictionary = ev.obtener_estado_progreso_compacto()
+		_on_progreso_evolucion_actualizado(
+			int(info.get("tier_objetivo", 0)),
+			str(info.get("texto", "")),
+			bool(info.get("listo", false))
+		)
+	if ev.has_method("tiene_evolucion_pendiente"):
+		var tier_pend: int = int(ev.tiene_evolucion_pendiente())
+		if tier_pend > 0 and not _banner_evolucion_activo:
+			var pal := _obtener_paleta_evolucion(tier_pend)
+			mostrar_banner_evolucion(tier_pend, str(pal["titulo"]), str(pal["subtitulo"]))
+
+func _on_metamorfosis_disponible_legacy() -> void:
+	var pal := _obtener_paleta_evolucion(1)
+	mostrar_banner_evolucion(1, str(pal["titulo"]), str(pal["subtitulo"]))
+
+func _on_mejora_tier2_disponible_legacy() -> void:
+	var pal := _obtener_paleta_evolucion(2)
+	mostrar_banner_evolucion(2, str(pal["titulo"]), str(pal["subtitulo"]))
+
+func _on_ascension_tier3_disponible_legacy() -> void:
+	var pal := _obtener_paleta_evolucion(3)
+	mostrar_banner_evolucion(3, str(pal["titulo"]), str(pal["subtitulo"]))
+
+func _on_hito_evolucion_disponible(tier: int, titulo: String, subtitulo: String) -> void:
+	mostrar_banner_evolucion(tier, titulo, subtitulo)
+
+func mostrar_banner_evolucion(tier: int, titulo: String = "", subtitulo: String = "") -> void:
+	if banner_evolucion == null:
+		return
+	var tier_clamped := clampi(tier, 1, 3)
+	var pal := _obtener_paleta_evolucion(tier_clamped)
+	_banner_evolucion_tier = tier_clamped
+	_banner_evolucion_activo = true
+
+	var col_borde: Color = pal["borde"]
+	var col_sombra: Color = pal["sombra"]
+	if _sb_banner_evolucion != null:
+		_sb_banner_evolucion.bg_color = pal["bg"]
+		_sb_banner_evolucion.border_color = col_borde
+		_sb_banner_evolucion.shadow_color = col_sombra
+		_sb_banner_evolucion.shadow_size = 14
+	if _sb_badge_tecla_evo != null:
+		_sb_badge_tecla_evo.bg_color = pal["badge_bg"]
+		_sb_badge_tecla_evo.border_color = col_borde
+	if icono_banner_evo != null:
+		icono_banner_evo.modulate = col_borde.lerp(Color.WHITE, 0.25)
+	if lbl_banner_evo_titulo != null:
+		lbl_banner_evo_titulo.text = titulo if not titulo.strip_edges().is_empty() else str(pal["titulo"])
+		lbl_banner_evo_titulo.add_theme_color_override("font_color", pal["titulo_color"])
+	if lbl_banner_evo_subtitulo != null:
+		lbl_banner_evo_subtitulo.text = subtitulo if not subtitulo.strip_edges().is_empty() else str(pal["subtitulo"])
+		lbl_banner_evo_subtitulo.add_theme_color_override("font_color", pal["sub_color"])
+	if lbl_banner_evo_tecla != null:
+		lbl_banner_evo_tecla.add_theme_color_override("font_color", pal["titulo_color"])
+
+	if _tw_banner_evo_transicion != null and _tw_banner_evo_transicion.is_valid():
+		_tw_banner_evo_transicion.kill()
+	if _tw_banner_evo_pulso != null and _tw_banner_evo_pulso.is_valid():
+		_tw_banner_evo_pulso.kill()
+
+	banner_evolucion.visible = true
+	banner_evolucion.pivot_offset = banner_evolucion.size * 0.5 if banner_evolucion.size.x > 10.0 else Vector2(225.0, 30.0)
+	banner_evolucion.scale = Vector2(0.88, 0.88)
+	banner_evolucion.modulate = Color(1.0, 1.0, 1.0, 0.0)
+
+	_tw_banner_evo_transicion = create_tween()
+	_tw_banner_evo_transicion.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	_tw_banner_evo_transicion.set_parallel(true)
+	_tw_banner_evo_transicion.tween_property(banner_evolucion, "modulate:a", 1.0, 0.24)
+	_tw_banner_evo_transicion.tween_property(banner_evolucion, "scale", Vector2.ONE, 0.30).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_tw_banner_evo_transicion.finished.connect(_iniciar_pulso_banner_evolucion)
+
+func _iniciar_pulso_banner_evolucion() -> void:
+	if not _banner_evolucion_activo or banner_evolucion == null or not banner_evolucion.visible:
+		return
+	if _tw_banner_evo_pulso != null and _tw_banner_evo_pulso.is_valid():
+		_tw_banner_evo_pulso.kill()
+	_tw_banner_evo_pulso = create_tween()
+	_tw_banner_evo_pulso.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	_tw_banner_evo_pulso.set_loops()
+	_tw_banner_evo_pulso.tween_property(banner_evolucion, "scale", Vector2(1.035, 1.035), 0.78).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	if _sb_banner_evolucion != null:
+		_tw_banner_evo_pulso.parallel().tween_property(_sb_banner_evolucion, "shadow_size", 22, 0.78).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_tw_banner_evo_pulso.tween_property(banner_evolucion, "scale", Vector2.ONE, 0.78).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	if _sb_banner_evolucion != null:
+		_tw_banner_evo_pulso.parallel().tween_property(_sb_banner_evolucion, "shadow_size", 12, 0.78).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+func ocultar_banner_evolucion() -> void:
+	_banner_evolucion_activo = false
+	_banner_evolucion_tier = 0
+	if _tw_banner_evo_pulso != null and _tw_banner_evo_pulso.is_valid():
+		_tw_banner_evo_pulso.kill()
+		_tw_banner_evo_pulso = null
+	if _tw_banner_evo_transicion != null and _tw_banner_evo_transicion.is_valid():
+		_tw_banner_evo_transicion.kill()
+		_tw_banner_evo_transicion = null
+	if banner_evolucion == null or not banner_evolucion.visible:
+		return
+	_tw_banner_evo_transicion = create_tween()
+	_tw_banner_evo_transicion.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	_tw_banner_evo_transicion.set_parallel(true)
+	_tw_banner_evo_transicion.tween_property(banner_evolucion, "modulate:a", 0.0, 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_tw_banner_evo_transicion.tween_property(banner_evolucion, "scale", Vector2(0.94, 0.94), 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_tw_banner_evo_transicion.finished.connect(func():
+		if not _banner_evolucion_activo and banner_evolucion != null:
+			banner_evolucion.visible = false
+			banner_evolucion.scale = Vector2.ONE
+			banner_evolucion.modulate = Color.WHITE
+	)
+
+func _on_evolucion_resuelta_hud(_nombre: String = "", _stats: Dictionary = {}) -> void:
+	ocultar_banner_evolucion()
+	if not _nombre.is_empty() and MALLAS_AVATAR.has(_nombre):
+		_actualizar_avatar_clase(_nombre)
+
+func _on_progreso_evolucion_actualizado(tier_objetivo: int, texto_progreso: String, listo: bool) -> void:
+	if chip_evolucion_rail == null or lbl_chip_evo_rail == null:
+		return
+	if tier_objetivo <= 0 or texto_progreso.strip_edges().is_empty():
+		_chip_evo_listo = false
+		if _tw_chip_evo_pulso != null and _tw_chip_evo_pulso.is_valid():
+			_tw_chip_evo_pulso.kill()
+			_tw_chip_evo_pulso = null
+		chip_evolucion_rail.modulate = Color.WHITE
+		chip_evolucion_rail.visible = false
+		return
+
+	chip_evolucion_rail.visible = true
+	lbl_chip_evo_rail.text = texto_progreso
+	var pal := _obtener_paleta_evolucion(tier_objetivo)
+	var col_borde: Color = pal["borde"]
+
+	if listo:
+		if _sb_chip_evo_rail != null:
+			_sb_chip_evo_rail.bg_color = pal["bg"]
+			_sb_chip_evo_rail.border_color = col_borde
+			_sb_chip_evo_rail.shadow_color = pal["sombra"]
+			_sb_chip_evo_rail.shadow_size = 8
+		lbl_chip_evo_rail.add_theme_color_override("font_color", pal["titulo_color"])
+		if not _chip_evo_listo:
+			_chip_evo_listo = true
+			if _tw_chip_evo_pulso != null and _tw_chip_evo_pulso.is_valid():
+				_tw_chip_evo_pulso.kill()
+			_tw_chip_evo_pulso = create_tween()
+			_tw_chip_evo_pulso.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+			_tw_chip_evo_pulso.set_loops()
+			_tw_chip_evo_pulso.tween_property(chip_evolucion_rail, "modulate", Color(1.18, 1.15, 1.06, 1.0), 0.65).set_trans(Tween.TRANS_SINE)
+			_tw_chip_evo_pulso.tween_property(chip_evolucion_rail, "modulate", Color.WHITE, 0.65).set_trans(Tween.TRANS_SINE)
+	else:
+		_chip_evo_listo = false
+		if _tw_chip_evo_pulso != null and _tw_chip_evo_pulso.is_valid():
+			_tw_chip_evo_pulso.kill()
+			_tw_chip_evo_pulso = null
+		chip_evolucion_rail.modulate = Color.WHITE
+		if _sb_chip_evo_rail != null:
+			_sb_chip_evo_rail.bg_color = Color(0.055, 0.068, 0.105, 0.92)
+			_sb_chip_evo_rail.border_color = col_borde.darkened(0.42)
+			_sb_chip_evo_rail.shadow_color = Color(0.0, 0.0, 0.0, 0.55)
+			_sb_chip_evo_rail.shadow_size = 4
+		lbl_chip_evo_rail.add_theme_color_override("font_color", Color(0.90, 0.87, 0.78, 0.96))
+
+func _on_banner_evolucion_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if _solicitar_reabrir_evolucion():
+			var vp := get_viewport()
+			if vp != null:
+				vp.set_input_as_handled()
+
+func _on_chip_evo_gui_input(event: InputEvent) -> void:
+	if not _chip_evo_listo:
+		return
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if _solicitar_reabrir_evolucion():
+			var vp := get_viewport()
+			if vp != null:
+				vp.set_input_as_handled()
+
+func _solicitar_reabrir_evolucion() -> bool:
+	if evolucion_manager_ref == null or not is_instance_valid(evolucion_manager_ref):
+		_conectar_evolucion_manager()
+	if evolucion_manager_ref != null and is_instance_valid(evolucion_manager_ref) and evolucion_manager_ref.has_method("reabrir_evolucion_pendiente"):
+		return bool(evolucion_manager_ref.reabrir_evolucion_pendiente())
+	return false

@@ -4370,3 +4370,488 @@ static func _eliminar_pistas_nodo(ap: AnimationPlayer, subcadena: String) -> voi
 						anim_dup.remove_track(t)
 				lib.remove_animation(anim_n)
 				lib.add_animation(anim_n, anim_dup)
+
+
+# ==============================================================================
+# IDENTIDAD VISUAL DE SUBCLASES (TIER 2 / TIER 3): ARMADURA + EMBLEMA + AURA
+# Compatible con gl_compatibility, reversible al instante y sin OmniLight3D extra
+# ==============================================================================
+
+const NODO_IDENTIDAD_VISUAL: String = "IdentidadVisualClase"
+static var _script_anim_emblema: GDScript = null
+
+static func _obtener_script_anim_emblema() -> GDScript:
+	if _script_anim_emblema == null:
+		_script_anim_emblema = GDScript.new()
+		_script_anim_emblema.source_code = """extends Node3D
+var vel_giro_y: float = 0.0
+var vel_giro_z: float = 0.0
+var amp_bob: float = 0.012
+var vel_bob: float = 2.6
+var _t: float = 0.0
+var _y_base: float = 0.0
+var _pivote: Node3D = null
+
+func _ready() -> void:
+	_pivote = get_node_or_null("PivoteOrbital") as Node3D
+	if _pivote != null:
+		_y_base = _pivote.position.y
+
+func _process(delta: float) -> void:
+	_t += delta
+	if _pivote != null:
+		if absf(vel_giro_y) > 0.001:
+			_pivote.rotate_y(delta * vel_giro_y)
+		if absf(vel_giro_z) > 0.001:
+			_pivote.rotate_z(delta * vel_giro_z)
+		if amp_bob > 0.0001:
+			_pivote.position.y = _y_base + sin(_t * vel_bob) * amp_bob
+"""
+		_script_anim_emblema.reload()
+	return _script_anim_emblema
+
+static func limpiar_identidad_visual_clase(modelo: Node3D) -> void:
+	if modelo == null or not is_instance_valid(modelo):
+		return
+
+	# 1. Eliminar emblemas/auras previos de cualquier ancestro/torso
+	var existentes := modelo.find_children(NODO_IDENTIDAD_VISUAL, "Node3D", true, false)
+	for nodo_ext in existentes:
+		if is_instance_valid(nodo_ext):
+			if nodo_ext.get_parent() != null:
+				nodo_ext.get_parent().remove_child(nodo_ext)
+			nodo_ext.queue_free()
+
+	# 2. Restaurar escala base exacta (evita acumulación de escala en hovers repetidos)
+	if modelo.has_meta(&"escala_base_identidad"):
+		var esc_base: Vector3 = modelo.get_meta(&"escala_base_identidad")
+		modelo.scale = esc_base
+
+	# 3. Restaurar materiales base guardados en todas las mallas del .glb
+	_restaurar_materiales_base_recursivo(modelo)
+	modelo.remove_meta(&"identidad_clase_actual")
+
+static func aplicar_identidad_visual_clase(modelo: Node3D, nombre_clase: String, incluir_particulas: bool = true) -> void:
+	if modelo == null or not is_instance_valid(modelo):
+		return
+
+	# Guardar snapshot base antes de cualquier modificación
+	if not modelo.has_meta(&"escala_base_identidad"):
+		modelo.set_meta(&"escala_base_identidad", modelo.scale)
+	_guardar_materiales_base_recursivo(modelo)
+
+	# Limpiar estado previo para garantizar transición/reversión limpia
+	limpiar_identidad_visual_clase(modelo)
+	modelo.set_meta(&"identidad_clase_actual", nombre_clase)
+
+	var perfil: Dictionary = PerfilVisualClase.obtener_perfil(nombre_clase)
+	var tier: int = int(perfil.get("tier", 0))
+	if tier < 2:
+		return
+
+	# 1. Escala sutil de presencia ascendida (preserva signos de escala base como (-5.5, 5.5, -5.5))
+	var escala_extra: float = float(perfil.get("escala_extra", 1.0))
+	if absf(escala_extra - 1.0) > 0.001:
+		var esc_base: Vector3 = modelo.get_meta(&"escala_base_identidad")
+		modelo.scale = esc_base * escala_extra
+
+	# 2. Cadena de materiales: StandardMaterial3D clonado (preserva albedo_texture) -> Shader Armadura -> Outline teñido
+	var mat_shader := PerfilVisualClase.crear_material_shader_armadura(perfil)
+	var mat_outline := PerfilVisualClase.crear_material_outline_subclase(perfil)
+	mat_shader.next_pass = mat_outline
+	_aplicar_material_armadura_recursivo(modelo, perfil, mat_shader)
+
+	# 3. Distintivo dorsal/orbital + aura de partículas liviana (sin OmniLight3D)
+	var ancla: Node3D = modelo.find_child("torso", true, false) as Node3D
+	if ancla == null:
+		ancla = modelo
+
+	var raiz_id := Node3D.new()
+	raiz_id.name = NODO_IDENTIDAD_VISUAL
+	raiz_id.set_script(_obtener_script_anim_emblema())
+	ancla.add_child(raiz_id)
+
+	var pivote := Node3D.new()
+	pivote.name = "PivoteOrbital"
+	pivote.position = Vector3(0.0, 0.16, -0.092)
+	raiz_id.add_child(pivote)
+
+	_construir_emblema_subclase(raiz_id, pivote, perfil)
+
+	if incluir_particulas:
+		var particulas := _crear_aura_particulas_subclase(perfil)
+		if particulas != null:
+			raiz_id.add_child(particulas)
+
+static func _guardar_materiales_base_recursivo(nodo: Node) -> void:
+	if nodo.name == NODO_IDENTIDAD_VISUAL:
+		return
+	if nodo is MeshInstance3D:
+		var mi := nodo as MeshInstance3D
+		if mi.mesh != null and not mi.has_meta(&"mats_base_identidad"):
+			var mats_activos: Array = []
+			var mats_overrides: Array = []
+			for s in range(mi.mesh.get_surface_count()):
+				mats_activos.append(mi.get_active_material(s))
+				mats_overrides.append(mi.get_surface_override_material(s))
+			mi.set_meta(&"mats_base_identidad", mats_activos)
+			mi.set_meta(&"overrides_base_identidad", mats_overrides)
+	for hijo in nodo.get_children():
+		_guardar_materiales_base_recursivo(hijo)
+
+static func _restaurar_materiales_base_recursivo(nodo: Node) -> void:
+	if nodo.name == NODO_IDENTIDAD_VISUAL:
+		return
+	if nodo is MeshInstance3D:
+		var mi := nodo as MeshInstance3D
+		if mi.mesh != null and mi.has_meta(&"overrides_base_identidad"):
+			var overrides: Array = mi.get_meta(&"overrides_base_identidad")
+			for s in range(mini(mi.mesh.get_surface_count(), overrides.size())):
+				mi.set_surface_override_material(s, overrides[s])
+	for hijo in nodo.get_children():
+		_restaurar_materiales_base_recursivo(hijo)
+
+static func _aplicar_material_armadura_recursivo(nodo: Node, perfil: Dictionary, mat_shader: ShaderMaterial) -> void:
+	if nodo.name == NODO_IDENTIDAD_VISUAL:
+		return
+	if nodo is MeshInstance3D:
+		var mi := nodo as MeshInstance3D
+		if mi.mesh != null and mi.has_meta(&"mats_base_identidad"):
+			var mats_base: Array = mi.get_meta(&"mats_base_identidad")
+			var col_prim: Color = perfil.get("color_primario", Color(1.0, 0.85, 0.3, 1.0))
+			var col_emi: Color = perfil.get("color_emision", col_prim)
+			var tinte: float = float(perfil.get("tinte_albedo", 0.25))
+			var met_boost: float = float(perfil.get("metallic_boost", 0.20))
+			var rough_bias: float = float(perfil.get("roughness_bias", -0.12))
+			var emi_int: float = float(perfil.get("intensidad_emision", 0.90))
+
+			for s in range(mini(mi.mesh.get_surface_count(), mats_base.size())):
+				var mat_orig = mats_base[s]
+				if mat_orig is BaseMaterial3D:
+					var mat_dup: StandardMaterial3D = (mat_orig as BaseMaterial3D).duplicate() as StandardMaterial3D
+					if mat_dup == null:
+						mat_dup = StandardMaterial3D.new()
+						mat_dup.albedo_color = (mat_orig as BaseMaterial3D).albedo_color
+						if mat_orig is StandardMaterial3D:
+							mat_dup.albedo_texture = (mat_orig as StandardMaterial3D).albedo_texture
+					# Modulación controlada sin destruir albedo_texture horneada
+					mat_dup.albedo_color = mat_dup.albedo_color.lerp(col_prim, tinte)
+					mat_dup.metallic = clampf(mat_dup.metallic + met_boost, 0.0, 0.95)
+					mat_dup.roughness = clampf(mat_dup.roughness + rough_bias, 0.14, 0.90)
+					mat_dup.rim_enabled = true
+					mat_dup.rim = 0.65
+					mat_dup.rim_tint = 0.55
+					mat_dup.emission_enabled = true
+					mat_dup.emission = col_emi
+					mat_dup.emission_energy_multiplier = emi_int * 0.28
+					mat_dup.next_pass = mat_shader
+					mi.set_surface_override_material(s, mat_dup)
+	for hijo in nodo.get_children():
+		_aplicar_material_armadura_recursivo(hijo, perfil, mat_shader)
+
+static func _crear_mesh_emblema(mesh_res: Mesh, mat: Material, pos: Vector3 = Vector3.ZERO, rot_deg: Vector3 = Vector3.ZERO, esc: Vector3 = Vector3.ONE) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh_res
+	mi.material_override = mat
+	mi.position = pos
+	mi.rotation_degrees = rot_deg
+	mi.scale = esc
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mi
+
+static func _construir_emblema_subclase(raiz_id: Node3D, pivote: Node3D, perfil: Dictionary) -> void:
+	var tipo: String = str(perfil.get("emblema", "ninguno"))
+	var tier: int = int(perfil.get("tier", 2))
+	var col_prim: Color = perfil.get("color_primario", Color(1.0, 0.85, 0.3, 1.0))
+	var col_rim: Color = perfil.get("color_rim", Color.WHITE)
+	var col_emi: Color = perfil.get("color_emision", col_prim)
+	var energia: float = 2.6 if tier >= 3 else 2.0
+
+	var mat_emi := BunkerVisualKit.make_emissive_mat(col_emi, energia, col_prim, 0.25, 0.22)
+	var mat_holo := BunkerVisualKit.create_hologram_material(col_prim, col_rim, energia + 0.3, 28.0, 2.2)
+	var mat_metal := BunkerVisualKit.get_titanium_mat()
+
+	match tipo:
+		"halo_solar":
+			raiz_id.set("vel_giro_z", 0.55 if tier >= 3 else 0.35)
+			raiz_id.set("amp_bob", 0.010)
+			var aro := TorusMesh.new()
+			aro.inner_radius = 0.068
+			aro.outer_radius = 0.080
+			aro.rings = 24
+			aro.ring_segments = 8
+			pivote.add_child(_crear_mesh_emblema(aro, mat_emi, Vector3.ZERO, Vector3(90.0, 0.0, 0.0)))
+
+			var num_rayos: int = 5 if tier >= 3 else 3
+			var ang_span: float = 110.0 if tier >= 3 else 80.0
+			for i in range(num_rayos):
+				var t: float = float(i) / float(maxi(1, num_rayos - 1)) - 0.5
+				var ang_z: float = t * ang_span
+				var rad_z: float = deg_to_rad(ang_z)
+				var rayo := PrismMesh.new()
+				rayo.size = Vector3(0.016, 0.064 if tier >= 3 else 0.052, 0.008)
+				var pos_r := Vector3(sin(rad_z) * 0.095, cos(rad_z) * 0.095, 0.0)
+				pivote.add_child(_crear_mesh_emblema(rayo, mat_emi, pos_r, Vector3(0.0, 0.0, -ang_z)))
+
+			if tier >= 3:
+				var aro_ext := TorusMesh.new()
+				aro_ext.inner_radius = 0.098
+				aro_ext.outer_radius = 0.104
+				aro_ext.rings = 24
+				aro_ext.ring_segments = 8
+				pivote.add_child(_crear_mesh_emblema(aro_ext, mat_holo, Vector3.ZERO, Vector3(90.0, 0.0, 0.0)))
+
+		"corona_furia":
+			raiz_id.set("vel_giro_z", 0.0)
+			raiz_id.set("amp_bob", 0.008)
+			raiz_id.set("vel_bob", 3.6)
+			for lado in [-1.0, 1.0]:
+				var hoja := PrismMesh.new()
+				hoja.size = Vector3(0.022, 0.115 if tier >= 3 else 0.092, 0.012)
+				pivote.add_child(_crear_mesh_emblema(
+					hoja,
+					mat_emi,
+					Vector3(lado * 0.068, 0.018, -0.005),
+					Vector3(-18.0, 0.0, -lado * 30.0)
+				))
+				var base_acero := BoxMesh.new()
+				base_acero.size = Vector3(0.024, 0.032, 0.016)
+				pivote.add_child(_crear_mesh_emblema(
+					base_acero,
+					mat_metal,
+					Vector3(lado * 0.044, -0.024, 0.006),
+					Vector3(0.0, 0.0, -lado * 28.0)
+				))
+				if tier >= 3:
+					var hoja2 := PrismMesh.new()
+					hoja2.size = Vector3(0.016, 0.082, 0.010)
+					pivote.add_child(_crear_mesh_emblema(
+						hoja2,
+						mat_emi,
+						Vector3(lado * 0.102, -0.006, -0.010),
+						Vector3(-22.0, 0.0, -lado * 52.0)
+					))
+
+		"visor_astral":
+			raiz_id.set("vel_giro_z", -0.85 if tier >= 3 else -0.55)
+			raiz_id.set("amp_bob", 0.008)
+			var anillo := TorusMesh.new()
+			anillo.inner_radius = 0.064
+			anillo.outer_radius = 0.074
+			anillo.rings = 24
+			anillo.ring_segments = 8
+			pivote.add_child(_crear_mesh_emblema(anillo, mat_holo, Vector3.ZERO, Vector3(78.0, 0.0, 0.0)))
+
+			for lado in [-1.0, 1.0]:
+				var aleta := BoxMesh.new()
+				aleta.size = Vector3(0.008, 0.088 if tier >= 3 else 0.072, 0.022)
+				pivote.add_child(_crear_mesh_emblema(
+					aleta,
+					mat_metal,
+					Vector3(lado * 0.078, 0.015, -0.008),
+					Vector3(-15.0, 0.0, -lado * 24.0)
+				))
+				var filo := BoxMesh.new()
+				filo.size = Vector3(0.005, 0.076 if tier >= 3 else 0.060, 0.006)
+				pivote.add_child(_crear_mesh_emblema(
+					filo,
+					mat_emi,
+					Vector3(lado * 0.083, 0.018, -0.018),
+					Vector3(-15.0, 0.0, -lado * 24.0)
+				))
+
+			if tier >= 3:
+				var anillo_ext := TorusMesh.new()
+				anillo_ext.inner_radius = 0.090
+				anillo_ext.outer_radius = 0.095
+				anillo_ext.rings = 24
+				anillo_ext.ring_segments = 8
+				pivote.add_child(_crear_mesh_emblema(anillo_ext, mat_emi, Vector3.ZERO, Vector3(78.0, 0.0, 0.0)))
+
+		"dagas_sombra":
+			raiz_id.set("amp_bob", 0.014)
+			raiz_id.set("vel_bob", 3.0)
+			var mat_daga := BunkerVisualKit.make_emissive_mat(col_emi, energia, col_prim, 0.20, 0.20, 0.80)
+			var angulos: Array = [-48.0, -20.0, 20.0, 48.0] if tier >= 3 else [-32.0, 32.0]
+			for ang_deg in angulos:
+				var rad: float = deg_to_rad(float(ang_deg))
+				var daga := PrismMesh.new()
+				daga.size = Vector3(0.015, 0.098 if tier >= 3 else 0.084, 0.007)
+				var pos_d := Vector3(sin(rad) * 0.085, cos(rad) * 0.045, -0.010)
+				pivote.add_child(_crear_mesh_emblema(daga, mat_daga, pos_d, Vector3(-14.0, 0.0, -float(ang_deg))))
+
+		"orbita_vacio":
+			raiz_id.set("vel_giro_y", 1.15 if tier >= 3 else 0.80)
+			raiz_id.set("amp_bob", 0.012)
+			var nucleo := SphereMesh.new()
+			nucleo.radius = 0.028 if tier >= 3 else 0.022
+			nucleo.height = nucleo.radius * 2.0
+			nucleo.radial_segments = 12
+			nucleo.rings = 8
+			var mat_nucleo := BunkerVisualKit.make_emissive_mat(col_emi, energia * 0.9, Color(0.04, 0.01, 0.09, 1.0), 0.1, 0.15)
+			pivote.add_child(_crear_mesh_emblema(nucleo, mat_nucleo, Vector3(0.0, 0.02, -0.01)))
+
+			var orb1 := TorusMesh.new()
+			orb1.inner_radius = 0.068
+			orb1.outer_radius = 0.075
+			orb1.rings = 24
+			orb1.ring_segments = 8
+			pivote.add_child(_crear_mesh_emblema(orb1, mat_holo, Vector3(0.0, 0.02, -0.01), Vector3(68.0, 0.0, 24.0)))
+
+			if tier >= 3:
+				var orb2 := TorusMesh.new()
+				orb2.inner_radius = 0.084
+				orb2.outer_radius = 0.090
+				orb2.rings = 24
+				orb2.ring_segments = 8
+				pivote.add_child(_crear_mesh_emblema(orb2, mat_emi, Vector3(0.0, 0.02, -0.01), Vector3(-62.0, 0.0, -28.0)))
+
+		"corona_ignea":
+			raiz_id.set("amp_bob", 0.010)
+			raiz_id.set("vel_bob", 3.4)
+			var collar := TorusMesh.new()
+			collar.inner_radius = 0.064
+			collar.outer_radius = 0.074
+			collar.rings = 20
+			collar.ring_segments = 8
+			pivote.add_child(_crear_mesh_emblema(collar, mat_emi, Vector3(0.0, -0.01, 0.0), Vector3(72.0, 0.0, 0.0)))
+
+			var num_flamas: int = 5 if tier >= 3 else 3
+			for i in range(num_flamas):
+				var t: float = float(i) / float(maxi(1, num_flamas - 1)) - 0.5
+				var ang: float = t * (95.0 if tier >= 3 else 70.0)
+				var rad: float = deg_to_rad(ang)
+				var flama := PrismMesh.new()
+				var alto: float = (0.088 if i == num_flamas / 2 else 0.066) * (1.15 if tier >= 3 else 1.0)
+				flama.size = Vector3(0.020, alto, 0.010)
+				pivote.add_child(_crear_mesh_emblema(
+					flama,
+					mat_emi,
+					Vector3(sin(rad) * 0.078, cos(rad) * 0.068, -0.008),
+					Vector3(-12.0, 0.0, -ang)
+				))
+
+		"prisma_nucleo":
+			raiz_id.set("vel_giro_y", 1.35 if tier >= 3 else 0.95)
+			raiz_id.set("amp_bob", 0.014)
+			var prisma := SphereMesh.new()
+			prisma.radius = 0.036 if tier >= 3 else 0.029
+			prisma.height = prisma.radius * 2.4
+			prisma.radial_segments = 4
+			prisma.rings = 2
+			pivote.add_child(_crear_mesh_emblema(prisma, mat_holo, Vector3(0.0, 0.02, -0.01)))
+
+			var giro1 := TorusMesh.new()
+			giro1.inner_radius = 0.064
+			giro1.outer_radius = 0.071
+			giro1.rings = 24
+			giro1.ring_segments = 8
+			pivote.add_child(_crear_mesh_emblema(giro1, mat_emi, Vector3(0.0, 0.02, -0.01), Vector3(58.0, 0.0, 32.0)))
+
+			if tier >= 3:
+				var giro2 := TorusMesh.new()
+				giro2.inner_radius = 0.082
+				giro2.outer_radius = 0.088
+				giro2.rings = 24
+				giro2.ring_segments = 8
+				pivote.add_child(_crear_mesh_emblema(giro2, mat_holo, Vector3(0.0, 0.02, -0.01), Vector3(-58.0, 0.0, -32.0)))
+
+static func _crear_aura_particulas_subclase(perfil: Dictionary) -> CPUParticles3D:
+	var estilo: String = str(perfil.get("estilo_particulas", "ninguno"))
+	var cantidad: int = clampi(int(perfil.get("particulas_cantidad", 0)), 0, 18)
+	if estilo == "ninguno" or cantidad <= 0:
+		return null
+
+	var col_prim: Color = perfil.get("color_primario", Color(1.0, 0.85, 0.3, 1.0))
+	var col_rim: Color = perfil.get("color_rim", Color.WHITE)
+
+	var p := CPUParticles3D.new()
+	p.name = "AuraParticulasSubclase"
+	p.amount = cantidad
+	p.local_coords = true
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	p.position = Vector3(0.0, 0.08, -0.02)
+
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.032, 0.032) if estilo == "niebla_sombria" else Vector2(0.020, 0.020)
+	var mat_p := StandardMaterial3D.new()
+	mat_p.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat_p.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	mat_p.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat_p.blend_mode = BaseMaterial3D.BLEND_MODE_MIX if estilo == "niebla_sombria" else BaseMaterial3D.BLEND_MODE_ADD
+	mat_p.vertex_color_use_as_albedo = true
+	mat_p.albedo_color = Color.WHITE
+	quad.material = mat_p
+	p.mesh = quad
+
+	var grad := Gradient.new()
+	grad.set_color(0, Color(col_rim.r, col_rim.g, col_rim.b, 0.0))
+	grad.add_point(0.25, Color(col_rim.r, col_rim.g, col_rim.b, 0.85))
+	grad.add_point(0.75, Color(col_prim.r, col_prim.g, col_prim.b, 0.55))
+	grad.set_color(grad.get_point_count() - 1, Color(col_prim.r, col_prim.g, col_prim.b, 0.0))
+	p.color_ramp = grad
+
+	match estilo:
+		"chispas_ascendentes":
+			p.lifetime = 1.15
+			p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+			p.emission_sphere_radius = 0.14
+			p.direction = Vector3(0.0, 1.0, 0.0)
+			p.spread = 28.0
+			p.gravity = Vector3(0.0, 0.14, 0.0)
+			p.initial_velocity_min = 0.05
+			p.initial_velocity_max = 0.12
+		"brasas":
+			p.lifetime = 0.95
+			p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+			p.emission_sphere_radius = 0.15
+			p.direction = Vector3(0.0, 1.0, 0.0)
+			p.spread = 42.0
+			p.gravity = Vector3(0.0, 0.24, 0.0)
+			p.initial_velocity_min = 0.07
+			p.initial_velocity_max = 0.16
+			p.tangential_accel_min = 0.10
+			p.tangential_accel_max = 0.22
+		"anillos_orbitales":
+			p.lifetime = 1.25
+			p.emission_shape = CPUParticles3D.EMISSION_SHAPE_RING
+			p.emission_ring_radius = 0.16
+			p.emission_ring_inner_radius = 0.12
+			p.emission_ring_height = 0.08
+			p.direction = Vector3(0.0, 1.0, 0.0)
+			p.spread = 20.0
+			p.gravity = Vector3(0.0, 0.03, 0.0)
+			p.initial_velocity_min = 0.02
+			p.initial_velocity_max = 0.06
+			p.tangential_accel_min = 0.30
+			p.tangential_accel_max = 0.50
+		"niebla_sombria":
+			p.lifetime = 1.30
+			p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+			p.emission_sphere_radius = 0.15
+			p.direction = Vector3(0.0, 1.0, -0.3)
+			p.spread = 50.0
+			p.gravity = Vector3(0.0, 0.08, 0.0)
+			p.initial_velocity_min = 0.03
+			p.initial_velocity_max = 0.08
+			p.damping_min = 0.08
+			p.damping_max = 0.18
+		"prisma_flotante":
+			p.lifetime = 1.20
+			p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+			p.emission_sphere_radius = 0.16
+			p.direction = Vector3(0.0, 1.0, 0.0)
+			p.spread = 60.0
+			p.gravity = Vector3(0.0, 0.05, 0.0)
+			p.initial_velocity_min = 0.03
+			p.initial_velocity_max = 0.09
+			p.tangential_accel_min = 0.18
+			p.tangential_accel_max = 0.32
+		_:
+			p.lifetime = 1.1
+			p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+			p.emission_sphere_radius = 0.14
+			p.gravity = Vector3(0.0, 0.12, 0.0)
+
+	p.emitting = true
+	return p

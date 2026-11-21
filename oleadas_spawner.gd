@@ -5,6 +5,9 @@ extends Node3D
 ## En Modo Abismo Infinito: escala la tasa de spawn, vida y daño cada minuto past 15:00
 ## e invoca 2 Jefes simultáneos cada 120s.
 
+signal jefe_combate_iniciado(nombre_jefe: String)
+signal jefe_combate_finalizado()
+
 const AudioManager = preload("res://audio_manager.gd")
 const ArenaColiseo = preload("res://arena_coliseo.gd")
 
@@ -44,11 +47,15 @@ var _maestra_spawned: bool = false
 var _coloso_spawned: bool = false
 var _parca_spawned: bool = false
 var clicks_totales: int = 0
+var jefes_derrotados_totales: int = 0
 var partida_iniciada: bool = false
 
 # Sistema de Protagonismo y Esbirros de Jefes
 const TIEMPO_MINIMO_ENTRE_JEFES: float = 120.0
+const RESPIRO_POST_JEFE: float = 3.0
 var _jefe_activo: Node3D = null
+var _duelo_jefe_en_curso: bool = false
+var _generacion_despeje: int = 0
 var _reloj_esbirros_jefe: float = 12.0
 var _tiempo_ultimo_jefe: float = -999.0
 
@@ -87,6 +94,9 @@ func _on_click_boton_presionado(total_clicks: int):
 		_generar_oleada(1)
 		return
 
+	if hay_jefe_activo():
+		return
+
 	_reloj_oleada = maxf(_reloj_oleada - 0.55, 2.0)
 
 	if clicks_totales == 35 or (clicks_totales > 35 and clicks_totales % 45 == 0):
@@ -94,9 +104,6 @@ func _on_click_boton_presionado(total_clicks: int):
 
 	if clicks_totales >= 50 and clicks_totales % 50 == 0:
 		invocar_heraldo_clic()
-
-	if _hay_jefe_activo():
-		return
 
 	if clicks_totales % 12 == 0:
 		_disparar_incursion_asalto(clicks_totales)
@@ -146,10 +153,14 @@ func _process(delta):
 
 	_tiempo_transcurrido += delta
 
-	# Si hay un combate de jefe activo, gestionar la reaparición gradual de esbirros y pausar oleadas estándar
-	if _hay_jefe_activo():
+	var jefe_vivo: bool = hay_jefe_activo()
+
+	# Si hay un combate de jefe activo, pausar oleadas estándar y gestionar esbirros temáticos
+	if jefe_vivo:
 		_procesar_esbirros_jefe(delta)
 	else:
+		if _duelo_jefe_en_curso:
+			_finalizar_duelo_jefe()
 		_reloj_oleada -= delta
 		if _reloj_oleada <= 0.0:
 			_reloj_oleada = intervalo_oleada
@@ -227,11 +238,17 @@ func _spawn_dupla_jefes_abismo() -> void:
 	var j1 = pool_jefes[0]
 	var j2 = pool_jefes[1]
 	var extra_hp = float(nivel_abismo) * 85.0
-	_spawn_enemigo(j1, extra_hp, 0.0, true)
-	_spawn_enemigo(j2, extra_hp, 0.45, true)
+
+	# Despejar la arena UNA sola vez para la dupla del Abismo
+	var pj = get_tree().get_first_node_in_group("jugador")
+	var origen_despeje: Vector3 = pj.global_position if (pj != null and pj is Node3D) else Vector3.ZERO
+	_despejar_arena_para_jefe(origen_despeje)
+	_iniciar_duelo_jefe_si_corresponde("Dupla de Jefes del Abismo")
+
+	_spawn_enemigo(j1, extra_hp, 0.0, true, false)
+	_spawn_enemigo(j2, extra_hp, 0.45, true, false)
 
 	var pool = get_tree().get_first_node_in_group("damage_numbers")
-	var pj = get_tree().get_first_node_in_group("jugador")
 	if pool != null and pj != null:
 		pool.mostrar_texto(pj.global_position + Vector3(0, 3.0, 0), "💀💀 ¡DUPLA DE JEFES DEL ABISMO! 💀💀", Color(1.0, 0.15, 0.2), 1.6)
 
@@ -363,22 +380,33 @@ func _obtener_pos_spawn_cerca_jugador(r_min: float, r_max: float) -> Vector3:
 			return cand
 	return ArenaColiseo.punto_aleatorio(16.0, ArenaColiseo.APOTEMA_EXTERIOR - 2.4, null, 0.0)
 
-func _spawn_enemigo(escena: PackedScene, vida_extra: float, retraso: float = 0.0, es_jefe: bool = false):
+func _spawn_enemigo(escena: PackedScene, vida_extra: float, retraso: float = 0.0, es_jefe: bool = false, permitir_despeje: bool = true) -> void:
 	if escena == null:
+		return
+
+	if retraso > 0.0:
+		var gen_inicio: int = _generacion_despeje
+		var timer = get_tree().create_timer(retraso)
+		timer.timeout.connect(func():
+			if not is_inside_tree():
+				return
+			# Cancelar rezagados de oleada si se despejó la arena para un jefe durante el retraso
+			if not es_jefe and (gen_inicio != _generacion_despeje or hay_jefe_activo()):
+				return
+			var enemigos_activos = get_tree().get_nodes_in_group("enemigos").size()
+			if enemigos_activos >= max_enemigos_concurrentes and not es_jefe:
+				return
+			_ejecutar_spawn_instancia(escena, vida_extra, es_jefe, permitir_despeje)
+		)
 		return
 
 	var enemigos_activos = get_tree().get_nodes_in_group("enemigos").size()
 	if enemigos_activos >= max_enemigos_concurrentes and not es_jefe:
 		return
 
-	if retraso > 0.0:
-		await get_tree().create_timer(retraso).timeout
-		if not is_inside_tree():
-			return
-		enemigos_activos = get_tree().get_nodes_in_group("enemigos").size()
-		if enemigos_activos >= max_enemigos_concurrentes and not es_jefe:
-			return
+	_ejecutar_spawn_instancia(escena, vida_extra, es_jefe, permitir_despeje)
 
+func _ejecutar_spawn_instancia(escena: PackedScene, vida_extra: float, es_jefe: bool, permitir_despeje: bool) -> void:
 	var pos: Vector3
 	if es_jefe:
 		pos = _obtener_pos_spawn_cerca_jugador(14.0, 22.0)
@@ -389,18 +417,23 @@ func _spawn_enemigo(escena: PackedScene, vida_extra: float, retraso: float = 0.0
 	var vida_total = vida_extra + (0.0 if es_jefe else extra_por_clicks)
 
 	if es_jefe:
-		_despejar_arena_para_jefe()
+		if permitir_despeje and not _duelo_jefe_en_curso:
+			_despejar_arena_para_jefe(pos)
+		_iniciar_duelo_jefe_si_corresponde(_obtener_nombre_jefe_desde_escena(escena))
 
 	if portal_spawn_escena != null:
 		var portal = portal_spawn_escena.instantiate()
-		get_parent().add_child(portal)
-		portal.global_position = pos
+		portal.preparar_spawn(escena, vida_total, es_jefe)
+		portal.position = pos
 		if es_jefe:
 			portal.enemigo_spawneado.connect(func(enemigo_creado):
 				_registrar_jefe_activo(enemigo_creado)
 			)
-		portal.preparar_spawn(escena, vida_total, es_jefe)
+		get_parent().add_child(portal)
+		portal.global_position = pos
 	else:
+		if es_jefe and get_parent() != null and is_inside_tree():
+			BunkerVisualKit.emitir_onda_bullet_clear(get_parent(), pos, 34.0)
 		var enemigo = escena.instantiate()
 		get_parent().add_child(enemigo)
 		enemigo.global_position = pos
@@ -451,51 +484,151 @@ func _aplicar_escalado_dificultad(enemigo: Node, vida_extra_base: float = 0.0) -
 # GESTIÓN DE PROTAGONISMO, DESPEJE Y ESBIRROS DINÁMICOS DE JEFES
 # ==============================================================================
 
-func _hay_jefe_activo() -> bool:
-	if _jefe_activo != null and is_instance_valid(_jefe_activo) and not ("muerto" in _jefe_activo and _jefe_activo.muerto):
-		return true
-	for j in get_tree().get_nodes_in_group("jefes"):
-		if is_instance_valid(j) and not ("muerto" in j and j.muerto) and ("vida" in j and float(j.vida) > 0.0):
-			_jefe_activo = j
-			return true
-	for b in get_tree().get_nodes_in_group("bosses"):
-		if is_instance_valid(b) and not ("muerto" in b and b.muerto) and ("vida" in b and float(b.vida) > 0.0):
-			_jefe_activo = b
-			return true
-	return false
+func _es_jefe_vivo(nodo: Node) -> bool:
+	if nodo == null or not is_instance_valid(nodo) or nodo.is_queued_for_deletion():
+		return false
+	if "muerto" in nodo and bool(nodo.muerto):
+		return false
+	if "vida" in nodo and float(nodo.vida) <= 0.0:
+		return false
+	return true
 
-func _despejar_arena_para_jefe() -> void:
-	# 1. Cancelar portales de spawn normales pendientes
-	for p in get_tree().get_nodes_in_group("portal_spawn"):
-		if is_instance_valid(p) and ("es_jefe" in p and not p.es_jefe):
-			p.queue_free()
+func _hay_portal_jefe_en_curso() -> bool:
+	if not is_inside_tree():
+		return false
+	var tree := get_tree()
+	if tree != null:
+		for p in tree.get_nodes_in_group("portal_spawn"):
+			if is_instance_valid(p) and not p.is_queued_for_deletion():
+				if p.has_method("esta_pendiente_jefe") and p.esta_pendiente_jefe():
+					return true
+				if "es_jefe" in p and bool(p.es_jefe) and (not ("_spawneado" in p) or not bool(p._spawneado)):
+					return true
 	if get_parent() != null:
 		for child in get_parent().get_children():
-			if child is PortalSpawn and not child.es_jefe:
-				child.queue_free()
+			if child is PortalSpawn and is_instance_valid(child) and not child.is_queued_for_deletion():
+				if child.esta_pendiente_jefe():
+					return true
+	return false
 
-	# 2. Desvanecer y retirar inmediatamente todos los enemigos comunes
-	var enemigos = get_tree().get_nodes_in_group("enemigos")
+func hay_jefe_activo() -> bool:
+	if not is_inside_tree():
+		return false
+	if _es_jefe_vivo(_jefe_activo):
+		return true
+	var tree := get_tree()
+	if tree != null:
+		for j in tree.get_nodes_in_group("jefes"):
+			if _es_jefe_vivo(j):
+				_jefe_activo = j as Node3D
+				return true
+		for b in tree.get_nodes_in_group("bosses"):
+			if _es_jefe_vivo(b):
+				_jefe_activo = b as Node3D
+				return true
+	_jefe_activo = null
+	return _hay_portal_jefe_en_curso()
+
+func _hay_jefe_activo() -> bool:
+	return hay_jefe_activo()
+
+func _obtener_nombre_jefe_desde_escena(escena: PackedScene) -> String:
+	if escena == null:
+		return "Jefe de la Arena"
+	var p := escena.resource_path.to_lower()
+	if "centurion" in p:
+		return "Centurión Corrupto"
+	if "mini_jefe" in p:
+		return "Gladiador Campeón"
+	if "maestra" in p:
+		return "Maestra Sanguinaria"
+	if "coloso" in p:
+		return "Coloso de Bronce"
+	if "parca" in p:
+		return "La Parca Roja"
+	return escena.resource_path.get_file().get_basename().capitalize()
+
+func _iniciar_duelo_jefe_si_corresponde(nombre_jefe: String) -> void:
+	if _duelo_jefe_en_curso:
+		return
+	_duelo_jefe_en_curso = true
+	emit_signal("jefe_combate_iniciado", nombre_jefe)
+
+func _despejar_arena_para_jefe(origen_onda: Vector3 = Vector3.ZERO) -> void:
+	_generacion_despeje += 1
+	var tree := get_tree()
+	if tree == null:
+		return
+
+	# 1. Cancelar portales de spawn de enemigos comunes pendientes (preservando portales de jefe)
+	for p in tree.get_nodes_in_group("portal_spawn"):
+		if is_instance_valid(p) and not p.is_queued_for_deletion() and ("es_jefe" in p and not bool(p.es_jefe)):
+			if p.has_method("cancelar_portal"):
+				p.cancelar_portal()
+			else:
+				p.set_process(false)
+				p.queue_free()
+	if get_parent() != null:
+		for child in get_parent().get_children():
+			if child is PortalSpawn and is_instance_valid(child) and not child.is_queued_for_deletion() and not child.es_jefe:
+				child.cancelar_portal()
+
+	# 2. Desvanecer y retirar inmediatamente todos los enemigos comunes (excluyendo jefes)
+	var enemigos = tree.get_nodes_in_group("enemigos")
 	for e in enemigos:
-		if is_instance_valid(e) and not e.is_in_group("jefes") and not e.is_in_group("bosses"):
-			_desvanecer_enemigo(e)
+		if not is_instance_valid(e) or e.is_queued_for_deletion():
+			continue
+		if e.is_in_group("jefes") or e.is_in_group("bosses"):
+			continue
+		if e.has_meta("es_jefe") and bool(e.get_meta("es_jefe")):
+			continue
+		if e == _jefe_activo:
+			continue
+		_desvanecer_enemigo(e)
 
-	# 3. Alerta audiovisual e impacto cinematográfico
+	# 3 y 4. Onda Expansiva Dorada ("Bullet Clear"): barre proyectiles enemigos y atrae todo el botín
+	var pos_onda := origen_onda
+	if pos_onda == Vector3.ZERO:
+		var pj_onda = tree.get_first_node_in_group("jugador")
+		if pj_onda != null and pj_onda is Node3D:
+			pos_onda = (pj_onda as Node3D).global_position
+	var res_onda := {}
+	if get_parent() != null and is_inside_tree():
+		res_onda = BunkerVisualKit.emitir_onda_bullet_clear(get_parent(), pos_onda, 34.0)
+
+	# Respaldo de seguridad si el cooldown anti-duplicado omitió la onda: neutralizar proyectiles rezagados
+	if not bool(res_onda.get("ejecutada", false)):
+		for proy in tree.get_nodes_in_group("proyectiles_enemigos"):
+			if not is_instance_valid(proy) or proy.is_queued_for_deletion():
+				continue
+			if proy.has_method("disipar_inmediatamente"):
+				proy.disipar_inmediatamente()
+			else:
+				proy.queue_free()
+
+	# 5. Alerta audiovisual e impacto cinematográfico
 	AudioManager.play("jefe_alerta", 1.2, 3.5)
 	AudioManager.play("rugido_jefe", 1.25, 2.5)
 	_sacudir_camara(0.45)
 
-	var pool = get_tree().get_first_node_in_group("damage_numbers")
-	var pj = get_tree().get_first_node_in_group("jugador")
+	var pool = tree.get_first_node_in_group("damage_numbers")
+	var pj = tree.get_first_node_in_group("jugador")
 	if pool != null and pj != null:
 		pool.mostrar_texto(pj.global_position + Vector3(0, 3.2, 0), "👑 ¡DESAFÍO DE JEFE! ¡LA ARENA SE DESPEJA! 👑", Color(1.0, 0.85, 0.2), 2.2)
 
 func _desvanecer_enemigo(e: Node) -> void:
-	if not is_instance_valid(e):
+	if not is_instance_valid(e) or e.is_queued_for_deletion():
 		return
+	if e.is_in_group("enemigos"):
+		e.remove_from_group("enemigos")
 	if e is CollisionObject3D:
 		e.collision_layer = 0
 		e.collision_mask = 0
+	for area in e.find_children("*", "Area3D", true, false):
+		var a := area as Area3D
+		if a != null:
+			a.monitoring = false
+			a.monitorable = false
 	e.set_physics_process(false)
 	e.set_process(false)
 	if "muerto" in e:
@@ -520,8 +653,13 @@ func _sacudir_camara(intensidad: float = 0.35) -> void:
 			c.sacudir(intensidad)
 
 func _procesar_esbirros_jefe(delta: float) -> void:
-	if _jefe_activo == null or not is_instance_valid(_jefe_activo) or ("muerto" in _jefe_activo and _jefe_activo.muerto):
-		_on_jefe_derrotado()
+	if not _es_jefe_vivo(_jefe_activo):
+		# Si hay un portal de jefe en telegrafiado, esperar a que emerja
+		if _hay_portal_jefe_en_curso():
+			return
+		# Si queda otro jefe vivo (dupla del Abismo), hay_jefe_activo() actualiza _jefe_activo
+		if not hay_jefe_activo():
+			_finalizar_duelo_jefe()
 		return
 
 	var hp: float = float(_jefe_activo.vida) if "vida" in _jefe_activo else 100.0
@@ -555,7 +693,7 @@ func _obtener_techo_esbirros_jefe(jefe: Node) -> int:
 	var j_nombre = jefe.name.to_lower()
 	if "centurion" in j_nombre:
 		return 4
-	elif "mini_jefe" in j_nombre or "gladiador" in j_nombre:
+	elif "mini_jefe" in j_nombre or "minijefe" in j_nombre or "gladiador" in j_nombre:
 		return 6
 	elif "maestra" in j_nombre:
 		return 8
@@ -577,7 +715,7 @@ func _spawn_esbirro_tematico(jefe: Node) -> void:
 	var esc: PackedScene = espectro_escena
 	if "centurion" in j_nombre:
 		esc = [espectro_escena, guardia_escena].pick_random()
-	elif "mini_jefe" in j_nombre or "gladiador" in j_nombre:
+	elif "mini_jefe" in j_nombre or "minijefe" in j_nombre or "gladiador" in j_nombre:
 		esc = [guardia_escena, berserker_escena].pick_random()
 	elif "maestra" in j_nombre:
 		esc = [arquero_escena, espectro_escena, kamikaze_escena].pick_random()
@@ -598,21 +736,38 @@ func _registrar_jefe_activo(jefe: Node) -> void:
 		jefe.add_to_group("jefes")
 	if not jefe.is_in_group("bosses"):
 		jefe.add_to_group("bosses")
+	jefe.set_meta("es_jefe", true)
 
-	var on_derrota = func():
-		_on_jefe_derrotado()
+	var nombre_jefe := str(jefe.get("nombre_jefe")) if "nombre_jefe" in jefe else str(jefe.name)
+	_iniciar_duelo_jefe_si_corresponde(nombre_jefe)
+
 	if jefe.has_signal("jefe_derrotado"):
-		if not jefe.jefe_derrotado.is_connected(on_derrota):
-			jefe.jefe_derrotado.connect(on_derrota)
+		if not jefe.jefe_derrotado.is_connected(_on_jefe_derrotado):
+			jefe.jefe_derrotado.connect(_on_jefe_derrotado)
 	if jefe.has_signal("parca_derrotada"):
-		if not jefe.parca_derrotada.is_connected(on_derrota):
-			jefe.parca_derrotada.connect(on_derrota)
-	if not jefe.tree_exited.is_connected(on_derrota):
-		jefe.tree_exited.connect(on_derrota)
+		if not jefe.parca_derrotada.is_connected(_on_jefe_derrotado):
+			jefe.parca_derrotada.connect(_on_jefe_derrotado)
+	if not jefe.tree_exited.is_connected(_on_jefe_derrotado):
+		jefe.tree_exited.connect(_on_jefe_derrotado)
 
 func _on_jefe_derrotado() -> void:
-	if _jefe_activo != null:
+	if not is_inside_tree():
 		_jefe_activo = null
-		_tiempo_ultimo_jefe = _tiempo_transcurrido
-		_reloj_oleada = 8.0 # Pausa de celebración antes de reanudar oleadas normales
-		print("🏆 [OleadasSpawner] Combate de Jefe finalizado con éxito. Tiempo: %.1fs" % _tiempo_ultimo_jefe)
+		_duelo_jefe_en_curso = false
+		return
+	if _jefe_activo != null and not _es_jefe_vivo(_jefe_activo):
+		_jefe_activo = null
+	# Solo finalizar el duelo si ya no queda ningún otro jefe vivo ni portal de jefe pendiente
+	if not hay_jefe_activo():
+		_finalizar_duelo_jefe()
+
+func _finalizar_duelo_jefe() -> void:
+	if not _duelo_jefe_en_curso and _jefe_activo == null:
+		return
+	_jefe_activo = null
+	_duelo_jefe_en_curso = false
+	_tiempo_ultimo_jefe = _tiempo_transcurrido
+	_reloj_oleada = RESPIRO_POST_JEFE # Respiro de ~3.0s antes de reanudar oleadas
+	jefes_derrotados_totales += 1
+	emit_signal("jefe_combate_finalizado")
+	print("🏆 [OleadasSpawner] Combate de Jefe finalizado con éxito. Respiro de %.1fs antes de reanudar oleadas." % RESPIRO_POST_JEFE)

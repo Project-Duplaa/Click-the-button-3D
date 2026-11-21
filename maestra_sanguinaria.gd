@@ -26,7 +26,7 @@ var _reloj_disparo: float = 1.0
 var _reloj_lluvia: float = 6.0
 var _esta_canalizando: bool = false
 var _pos_lluvia_objetivo: Vector3 = Vector3.ZERO
-var _telegraph_lluvia: MeshInstance3D = null
+var _decal_lluvia: ThreatDecal3D = null
 
 var _clics_tormenta: int = 0
 var _clics_necesarios_tormenta: int = 3
@@ -82,10 +82,13 @@ func _conectar_boton_movil():
 			_boton_movil.click_presionado.connect(_on_boton_click)
 
 func _crear_telegraph_lluvia():
-	_telegraph_lluvia = BunkerVisualKit.create_hazard_ground_ring(4.2, Color(1.0, 0.12, 0.45), Color(1.0, 0.35, 0.65), 0.78, 0.96, 0.55, 0.16)
-	_telegraph_lluvia.top_level = true
-	_telegraph_lluvia.visible = false
-	add_child(_telegraph_lluvia)
+	_decal_lluvia = BunkerVisualKit.create_threat_decal(self, "DecalLluviaMaestra")
+	_decal_lluvia.top_level = true
+	_decal_lluvia.configurar_circulo(4.2, Color(0.90, 0.08, 0.44, 1.0), Color(1.0, 0.26, 0.62, 1.0), Color(1.0, 0.78, 0.90, 1.0))
+
+func _exit_tree() -> void:
+	if _decal_lluvia != null and is_instance_valid(_decal_lluvia):
+		_decal_lluvia.cancelar()
 
 func _invocar_cristales_escudo():
 	_cristales_invocados = true
@@ -254,41 +257,44 @@ func _iniciar_lluvia_flechas():
 	_crear_texto_flotante("⚡ ¡PULSA EL NÚCLEO (0/%d) PARA DISIPAR!" % _clics_necesarios_tormenta, true)
 
 	if hud != null and hud.has_method("actualizar_barra_jefe"):
-		hud.actualizar_barra_jefe(vida, "🏹 MAESTRA [⚡ ¡DISIPA LA TORMENTA: 0/%d CLICS!]" % _clics_necesarios_tormenta)
+		hud.actualizar_barra_jefe(vida, "🏹 MAESTRA [⚡ ¡DISIPA LA TORMENTA: 0/%d CLICS!]" % _clics_necesarios_tormenta, "CANALIZANDO")
 
-	if _telegraph_lluvia != null:
-		_telegraph_lluvia.global_position = _pos_lluvia_objetivo
-		_telegraph_lluvia.visible = true
-		_telegraph_lluvia.scale = Vector3(0.2, 1.0, 0.2)
-		var tw = create_tween()
-		tw.tween_property(_telegraph_lluvia, "scale", Vector3(1.0, 1.0, 1.0), 1.6).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	if _decal_lluvia != null and is_instance_valid(_decal_lluvia):
+		_decal_lluvia.global_position = _pos_lluvia_objetivo
+		_decal_lluvia.configurar_circulo(4.2, Color(0.90, 0.08, 0.44, 1.0), Color(1.0, 0.26, 0.62, 1.0), Color(1.0, 0.78, 0.90, 1.0))
+		_decal_lluvia.iniciar_cuenta_regresiva(1.6, false)
 
 	get_tree().create_timer(1.6).timeout.connect(_ejecutar_lluvia_flechas)
 
 func _ejecutar_lluvia_flechas():
-	if _telegraph_lluvia != null:
-		_telegraph_lluvia.visible = false
 	if muerto or not _esta_canalizando:
 		_esta_canalizando = false
+		if _decal_lluvia != null and is_instance_valid(_decal_lluvia):
+			_decal_lluvia.cancelar()
 		return
 
+	var en_area := false
+	if is_instance_valid(jugador) and jugador is Node3D:
+		if _decal_lluvia != null and is_instance_valid(_decal_lluvia):
+			en_area = _decal_lluvia.punto_en_area(jugador.global_position)
+		else:
+			en_area = Vector2(jugador.global_position.x, jugador.global_position.z).distance_to(Vector2(_pos_lluvia_objetivo.x, _pos_lluvia_objetivo.z)) <= 4.2
+
 	_esta_canalizando = false
-	if _telegraph_lluvia != null:
-		_telegraph_lluvia.visible = false
+	if _decal_lluvia != null and is_instance_valid(_decal_lluvia):
+		_decal_lluvia.cancelar()
 	_anim_ctrl.reproducir_accion("cast", 2, 0.08, 1.1)
 
 	AudioManager.play("impacto_flecha", 1.2, 2.5)
 	VfxCombate.spawn_lluvia_flechas(get_parent(), _pos_lluvia_objetivo, 4.2, Color(1.0, 0.15, 0.45), Color(1.0, 0.85, 0.92), 16)
 	_sacudir_camara(0.35)
 
-	if is_instance_valid(jugador) and jugador is Node3D:
-		var dist = Vector2(jugador.global_position.x, jugador.global_position.z).distance_to(Vector2(_pos_lluvia_objetivo.x, _pos_lluvia_objetivo.z))
-		if dist <= 4.2:
-			if jugador.has_method("recibir_dano"):
-				jugador.recibir_dano(dano_lluvia)
-			elif jugador.has_node("Salud"):
-				jugador.get_node("Salud").recibir_golpe(int(dano_lluvia))
-			_sacudir_camara(0.4)
+	if en_area and is_instance_valid(jugador) and jugador is Node3D:
+		if jugador.has_method("recibir_dano"):
+			jugador.recibir_dano(dano_lluvia)
+		elif jugador.has_node("Salud"):
+			jugador.get_node("Salud").recibir_golpe(int(dano_lluvia))
+		_sacudir_camara(0.4)
 
 	_actualizar_hud()
 
@@ -331,8 +337,8 @@ func _on_boton_click(_total_clicks: int):
 func _disipar_tormenta():
 	_esta_canalizando = false
 	_aturdida = true
-	if _telegraph_lluvia != null:
-		_telegraph_lluvia.visible = false
+	if _decal_lluvia != null and is_instance_valid(_decal_lluvia):
+		_decal_lluvia.cancelar()
 
 	AudioManager.play("puzzle_completo", 1.15)
 	_sacudir_camara(0.35)
@@ -395,8 +401,9 @@ func morir():
 	if hud != null and hud.has_method("ocultar_barra_jefe"):
 		hud.ocultar_barra_jefe()
 
-	if _telegraph_lluvia != null and is_instance_valid(_telegraph_lluvia):
-		_telegraph_lluvia.queue_free()
+	if _decal_lluvia != null and is_instance_valid(_decal_lluvia):
+		_decal_lluvia.cancelar()
+		_decal_lluvia.queue_free()
 
 	AudioManager.play("enemigo_muerte", 0.7, 3.0)
 	_sacudir_camara(0.4)

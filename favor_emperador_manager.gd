@@ -209,11 +209,15 @@ func intentar_juicio_emperador_al_morir(pj: Node) -> bool:
 	# Slowdown cinematográfico en tiempo real
 	Engine.time_scale = 0.22
 	var timer = get_tree().create_timer(1.8, true, false, true)
-	await timer.timeout
-	Engine.time_scale = 1.0
-	if not is_inside_tree():
-		return false
+	timer.timeout.connect(func():
+		Engine.time_scale = 1.0
+		if not is_inside_tree() or pj == null or not is_instance_valid(pj):
+			return
+		_resolver_juicio(pj)
+	)
+	return true
 
+func _resolver_juicio(pj: Node) -> void:
 	var prob: float = 1.0 if favor >= 75.0 else clampf(favor / 100.0, 0.10, 0.99)
 	var salvado: bool = (randf() < prob)
 
@@ -245,7 +249,7 @@ func intentar_juicio_emperador_al_morir(pj: Node) -> bool:
 			if partida != null and partida.has_method("perder"):
 				partida.perder("El Emperador bajó su pulgar. Caíste para siempre en la arena.")
 
-	return true
+	return
 
 # ==============================================================================
 # REGALOS DE LA MULTITUD (LLUVIA PARABÓLICA DE SUMINISTROS)

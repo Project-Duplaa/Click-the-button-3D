@@ -31,6 +31,8 @@ const COL_VAULT_GOLD := Color(1.000, 0.816, 0.000, 1.0)      # #FFD000
 const COL_CRYO_BLUE := Color(0.302, 0.933, 0.918, 1.0)       # #4DEEEA
 
 static var _cache_pbr: Dictionary = {}
+static var _ultimo_bullet_clear_ms: int = -100000
+const COOLDOWN_BULLET_CLEAR_MS: int = 1500
 
 # ==============================================================================
 # FÁBRICAS CACHEADAS DE MATERIALES PBR INDUSTRIALES
@@ -144,6 +146,13 @@ static func create_beam_material(
 # ANILLOS DE SUELO TÁCTICOS Y ONDAS DE CHOQUE
 # ==============================================================================
 
+static func create_threat_decal(parent: Node = null, nombre: String = "ThreatDecal3D") -> ThreatDecal3D:
+	var decal := ThreatDecal3D.new()
+	decal.name = nombre
+	if parent != null and is_instance_valid(parent):
+		parent.add_child(decal)
+	return decal
+
 static func create_hazard_ground_ring(
 	radio: float,
 	color_base: Color = COL_HAZARD_YELLOW,
@@ -215,7 +224,7 @@ static func spawn_shockwave_ring(
 	ring.material_override = mat
 	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
-	parent.add_child(ring)
+	parent.add_child(ring, true)
 	var floor_y := pos.y + 0.035 if absf(pos.y) < 0.02 else pos.y
 	if parent.is_inside_tree() and parent.get_tree() != null:
 		var arena := parent.get_tree().get_first_node_in_group("arena_coliseo")
@@ -242,6 +251,109 @@ static func spawn_shockwave_ring(
 			ring.queue_free()
 	)
 	return ring
+
+static func reset_cooldown_bullet_clear() -> void:
+	_ultimo_bullet_clear_ms = -100000
+
+static func emitir_onda_bullet_clear(
+	arena: Node,
+	origen: Vector3,
+	radio_max: float = 34.0,
+	ignorar_cooldown: bool = false
+) -> Dictionary:
+	var res := {"ejecutada": false, "proyectiles": 0, "drops": 0}
+	if arena == null or not is_instance_valid(arena) or not arena.is_inside_tree():
+		return res
+	var tree := arena.get_tree()
+	if tree == null:
+		return res
+
+	var ahora_ms: int = Time.get_ticks_msec()
+	if not ignorar_cooldown and (ahora_ms - _ultimo_bullet_clear_ms) < COOLDOWN_BULLET_CLEAR_MS:
+		return res
+	_ultimo_bullet_clear_ms = ahora_ms
+	res["ejecutada"] = true
+
+	var radio_final := maxf(radio_max, 8.0)
+	var duracion_onda := 0.75
+
+	# 1. VFX: Doble anillo concéntrico dorado imperial
+	spawn_shockwave_ring(arena, origen, 1.4, radio_final, COL_VAULT_GOLD, duracion_onda)
+	spawn_shockwave_ring(arena, origen + Vector3(0.0, 0.04, 0.0), 0.7, radio_final * 0.92, Color(1.0, 0.96, 0.72, 1.0), duracion_onda * 0.82)
+
+	# 2. Sacudida sutil de cámara y acorde dorado resonante
+	var vp := arena.get_viewport()
+	var cam := vp.get_camera_3d() if vp != null else null
+	if cam != null and cam.has_method("sacudir"):
+		cam.sacudir(0.22)
+	else:
+		var cam_grp := tree.get_first_node_in_group("camara")
+		if cam_grp != null and cam_grp.has_method("sacudir"):
+			cam_grp.sacudir(0.22)
+	AudioManager.play("altar_activado", 0.95, 2.5)
+
+	# 3. Capturar proyectiles enemigos existentes en t = 0 (no afecta a los disparados después)
+	var proy_snapshot: Array = tree.get_nodes_in_group("proyectiles_enemigos").duplicate()
+	var vel_onda := maxf(radio_final / duracion_onda, 1.0)
+	var proyectiles_purgados: int = 0
+	for proy in proy_snapshot:
+		if not is_instance_valid(proy) or proy.is_queued_for_deletion():
+			continue
+		var delay := 0.0
+		if proy is Node3D:
+			var p3 := (proy as Node3D).global_position
+			var dist := Vector2(p3.x - origen.x, p3.z - origen.z).length()
+			delay = clampf(dist / vel_onda, 0.0, 0.45)
+		if proy.has_method("disipar_por_onda_dorada"):
+			proy.disipar_por_onda_dorada(delay)
+		elif proy.has_method("disipar_inmediatamente"):
+			proy.disipar_inmediatamente()
+		else:
+			proy.queue_free()
+		proyectiles_purgados += 1
+	res["proyectiles"] = proyectiles_purgados
+
+	# 4. Imán automático de botín (drops + orbes_drop deduplicados)
+	var jugador := tree.get_first_node_in_group("jugador") as Node3D
+	if jugador == null:
+		jugador = tree.get_first_node_in_group("player") as Node3D
+	var drops_atraidos: int = 0
+	if jugador != null and is_instance_valid(jugador):
+		var vistos: Dictionary = {}
+		for grp in ["drops", "orbes_drop"]:
+			for d in tree.get_nodes_in_group(grp):
+				if not is_instance_valid(d) or d.is_queued_for_deletion():
+					continue
+				var iid: int = d.get_instance_id()
+				if vistos.has(iid):
+					continue
+				vistos[iid] = true
+				if "recogido" in d and bool(d.recogido):
+					continue
+				if d.has_method("forzar_atraccion"):
+					d.forzar_atraccion(jugador)
+				elif "atraido" in d:
+					d.atraido = true
+				if d.has_method("animar_destello_iman"):
+					d.animar_destello_iman()
+				drops_atraidos += 1
+	res["drops"] = drops_atraidos
+
+	# 5. Texto flotante informativo si hubo limpieza o recolección
+	if proyectiles_purgados > 0 or drops_atraidos > 0:
+		var pool := tree.get_first_node_in_group("damage_numbers")
+		if pool != null and pool.has_method("mostrar_texto"):
+			var msg := ""
+			if proyectiles_purgados > 0 and drops_atraidos > 0:
+				msg = "✨ ONDA IMPERIAL: %d PROYECTILES · %d BOTÍN" % [proyectiles_purgados, drops_atraidos]
+			elif proyectiles_purgados > 0:
+				msg = "✨ ONDA IMPERIAL: %d PROYECTILES PURGADOS" % proyectiles_purgados
+			else:
+				msg = "✨ ONDA IMPERIAL: %d BOTÍN ATRAÍDO" % drops_atraidos
+			var pos_txt := (jugador.global_position if jugador != null and is_instance_valid(jugador) else origen) + Vector3(0.0, 2.5, 0.0)
+			pool.mostrar_texto(pos_txt, msg, COL_VAULT_GOLD, 1.45)
+
+	return res
 
 # ==============================================================================
 # OVERRIDES DE JERARQUÍAS .GLB POR INSTANCIA

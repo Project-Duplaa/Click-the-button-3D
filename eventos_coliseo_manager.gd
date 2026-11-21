@@ -48,7 +48,17 @@ var _nemesis_spawned: bool = false
 
 # Elementos ambientales de mutadores
 var _cristales_escarcha: Array[Node3D] = []
+var _anillos_geyser_activos: Array[Node3D] = []
 var _reloj_geyser_fragua: float = 0.0
+
+# Coordinación con duelos de jefes (congelamiento + eventos diferidos)
+const GRACIA_POST_JEFE_EVENTOS: float = 3.0
+var _spawner_jefes_ref: Node = null
+var _estaba_en_duelo_jefe: bool = false
+var _reloj_gracia_post_jefe: float = 0.0
+var _mutador_pendiente: String = ""
+var _mercader_pendiente: bool = false
+var _nemesis_pendiente: bool = false
 
 # Referencias de iluminación y entorno
 var _world_env: WorldEnvironment = null
@@ -78,6 +88,81 @@ func _capturar_referencias_escena() -> void:
 		_luz_base_color = _luz_dir.light_color
 		_luz_base_energy = _luz_dir.light_energy
 
+	_conectar_spawner_jefes()
+
+func _conectar_spawner_jefes() -> void:
+	if not is_inside_tree() or get_tree() == null:
+		return
+	var spawner := get_tree().get_first_node_in_group("oleadas_spawner")
+	if spawner == null:
+		spawner = get_tree().get_first_node_in_group("spawner")
+	if spawner == null or not is_instance_valid(spawner):
+		return
+	_spawner_jefes_ref = spawner
+	if spawner.has_signal("jefe_combate_iniciado") and not spawner.jefe_combate_iniciado.is_connected(_on_jefe_combate_iniciado):
+		spawner.jefe_combate_iniciado.connect(_on_jefe_combate_iniciado)
+	if spawner.has_signal("jefe_combate_finalizado") and not spawner.jefe_combate_finalizado.is_connected(_on_jefe_combate_finalizado):
+		spawner.jefe_combate_finalizado.connect(_on_jefe_combate_finalizado)
+
+func _on_jefe_combate_iniciado(_nombre_jefe: String = "") -> void:
+	_estaba_en_duelo_jefe = true
+	_reloj_gracia_post_jefe = 0.0
+	_cancelar_geysers_en_curso()
+
+func _on_jefe_combate_finalizado() -> void:
+	if _estaba_en_duelo_jefe:
+		_estaba_en_duelo_jefe = false
+		_reloj_gracia_post_jefe = GRACIA_POST_JEFE_EVENTOS
+
+func _hay_jefe_activo() -> bool:
+	if not is_inside_tree() or get_tree() == null:
+		return false
+	if _spawner_jefes_ref == null or not is_instance_valid(_spawner_jefes_ref):
+		_conectar_spawner_jefes()
+	if _spawner_jefes_ref != null and is_instance_valid(_spawner_jefes_ref) and _spawner_jefes_ref.has_method("hay_jefe_activo"):
+		if bool(_spawner_jefes_ref.hay_jefe_activo()):
+			return true
+	var tree := get_tree()
+	for grupo in ["jefes", "bosses"]:
+		for n in tree.get_nodes_in_group(grupo):
+			if is_instance_valid(n) and not n.is_queued_for_deletion():
+				var esta_muerto := ("muerto" in n and bool(n.muerto))
+				var tiene_vida := (not ("vida" in n) or float(n.vida) > 0.0)
+				if not esta_muerto and tiene_vida:
+					return true
+	for p in tree.get_nodes_in_group("portal_spawn"):
+		if is_instance_valid(p) and not p.is_queued_for_deletion():
+			if p.has_method("esta_pendiente_jefe") and bool(p.esta_pendiente_jefe()):
+				return true
+			if "es_jefe" in p and bool(p.es_jefe) and (not ("_spawneado" in p) or not bool(p._spawneado)):
+				return true
+	if get_parent() != null:
+		for ch in get_parent().get_children():
+			if ch is PortalSpawn and is_instance_valid(ch) and not ch.is_queued_for_deletion():
+				if ch.es_jefe and not ch._spawneado:
+					return true
+	return false
+
+func _cancelar_geysers_en_curso() -> void:
+	for anillo in _anillos_geyser_activos:
+		if is_instance_valid(anillo) and not anillo.is_queued_for_deletion():
+			anillo.queue_free()
+	_anillos_geyser_activos.clear()
+
+func _despachar_eventos_diferidos() -> void:
+	if _hay_jefe_activo():
+		return
+	if _mutador_pendiente != "":
+		var m := _mutador_pendiente
+		_mutador_pendiente = ""
+		establecer_mutador(m)
+	if _mercader_pendiente and not _mercader_spawned:
+		_mercader_pendiente = false
+		invocar_mercader_vacio()
+	if _nemesis_pendiente and not _nemesis_spawned:
+		_nemesis_pendiente = false
+		_comprobar_y_spawnear_nemesis()
+
 func _verificar_tormento_inicial() -> void:
 	var nivel_tormento: int = 0
 	var logros = get_tree().get_first_node_in_group("logros_manager")
@@ -95,11 +180,22 @@ func _process(delta: float) -> void:
 	if not _partida_iniciada:
 		if spawner != null and "partida_iniciada" in spawner and spawner.partida_iniciada:
 			_partida_iniciada = true
+			_conectar_spawner_jefes()
 			if not _tormento_inicial_aplicado:
 				_tormento_inicial_aplicado = true
 				_verificar_tormento_inicial()
 		else:
 			return
+
+	var jefe_activo: bool = _hay_jefe_activo()
+	if jefe_activo:
+		if not _estaba_en_duelo_jefe:
+			_estaba_en_duelo_jefe = true
+			_reloj_gracia_post_jefe = 0.0
+			_cancelar_geysers_en_curso()
+	elif _estaba_en_duelo_jefe:
+		_estaba_en_duelo_jefe = false
+		_reloj_gracia_post_jefe = GRACIA_POST_JEFE_EVENTOS
 
 	_tiempo_transcurrido += delta
 
@@ -109,32 +205,67 @@ func _process(delta: float) -> void:
 		if _tiempo_transcurrido >= 90.0 or ol_actual >= 4:
 			_crear_monolito_campeon_caido()
 
-	# 1. Progresión cronológica de Mutadores
+	# 1. Progresión cronológica de Mutadores (diferidos durante duelos de jefe o gracia post-jefe)
+	var bloquear_disruptivos: bool = jefe_activo or _reloj_gracia_post_jefe > 0.0
 	if _tiempo_transcurrido >= 180.0 and not _mutador_180_activado:
 		_mutador_180_activado = true
-		establecer_mutador("escarcha")
+		if bloquear_disruptivos:
+			_mutador_pendiente = "escarcha"
+		else:
+			establecer_mutador("escarcha")
 	elif _tiempo_transcurrido >= 420.0 and not _mutador_420_activado:
 		_mutador_420_activado = true
-		establecer_mutador("fragua")
+		if bloquear_disruptivos:
+			_mutador_pendiente = "fragua"
+		else:
+			establecer_mutador("fragua")
 	elif _tiempo_transcurrido >= 660.0 and not _mutador_660_activado:
 		_mutador_660_activado = true
-		establecer_mutador("eclipse")
+		if bloquear_disruptivos:
+			_mutador_pendiente = "eclipse"
+		else:
+			establecer_mutador("eclipse")
 
-	# 2. Mecánicas de Mutadores en tiempo real
-	if mutador_actual == "fragua":
-		_reloj_geyser_fragua += delta
-		if _reloj_geyser_fragua >= 5.5:
-			_reloj_geyser_fragua = 0.0
-			_erupcionar_geyser_solar()
-
-	# 3. Invocar al Mercader del Vacío a los ~210s o si jugador.oro >= 200 tras 60s
+	# 2. Invocar al Mercader del Vacío a los ~210s o si jugador.oro >= 200 tras 60s (diferido en jefes)
 	if not _mercader_spawned:
 		var pj = get_tree().get_first_node_in_group("jugador")
 		if pj == null:
 			pj = get_tree().get_first_node_in_group("player")
 		var tiene_oro = (pj != null and "oro" in pj and pj.oro >= 200 and _tiempo_transcurrido >= 60.0)
 		if _tiempo_transcurrido >= 210.0 or tiene_oro:
-			invocar_mercader_vacio()
+			if bloquear_disruptivos:
+				_mercader_pendiente = true
+			else:
+				invocar_mercader_vacio()
+
+	# 3. Spawneo del Némesis Vengativo a los 150s si hay registro activo (diferido en jefes)
+	if not _nemesis_spawned and _tiempo_transcurrido >= 150.0:
+		if bloquear_disruptivos:
+			_nemesis_pendiente = true
+		else:
+			_comprobar_y_spawnear_nemesis()
+
+	# Durante duelo de jefe: pausar géiseres solares y congelar temporizador del Mercader existente
+	if jefe_activo:
+		if _nodo_mercader != null and is_instance_valid(_nodo_mercader):
+			var lbl_p = _nodo_mercader.get_node_or_null("Label3D") as Label3D
+			if lbl_p != null:
+				lbl_p.text = "🏛️ MERCADER DEL VACÍO [E]\n[⏸ %ds · Espera tras el Jefe]" % int(ceil(_tiempo_restante_mercader))
+		return
+
+	# Ventana de gracia (~3.0s) tras derrotar al jefe antes de disparar eventos diferidos
+	if _reloj_gracia_post_jefe > 0.0:
+		_reloj_gracia_post_jefe = maxf(_reloj_gracia_post_jefe - delta, 0.0)
+		if _reloj_gracia_post_jefe <= 0.0:
+			_despachar_eventos_diferidos()
+		return
+
+	# 4. Mecánicas de Mutadores en tiempo real (solo fuera de combate de jefe)
+	if mutador_actual == "fragua":
+		_reloj_geyser_fragua += delta
+		if _reloj_geyser_fragua >= 5.5:
+			_reloj_geyser_fragua = 0.0
+			_erupcionar_geyser_solar()
 
 	# Procesar duración del Mercader activo
 	if _nodo_mercader != null and is_instance_valid(_nodo_mercader):
@@ -144,10 +275,6 @@ func _process(delta: float) -> void:
 			lbl.text = "🏛️ MERCADER DEL VACÍO [E]\n[%ds para partir]" % int(ceil(_tiempo_restante_mercader))
 		if _tiempo_restante_mercader <= 0.0:
 			_despawn_mercader_vacio()
-
-	# 4. Spawneo del Némesis Vengativo a los 150s si hay registro activo
-	if not _nemesis_spawned and _tiempo_transcurrido >= 150.0:
-		_comprobar_y_spawnear_nemesis()
 
 # ==============================================================================
 # MUTADORES DE CLIMA DEL COLISEO
@@ -159,7 +286,7 @@ func forzar_mutador_diario(semilla: int) -> void:
 	_mutador_180_activado = true
 	establecer_mutador(elegido)
 
-func cambiar_clima_aleatorio() -> void:
+func cambiar_clima_aleatorio(forzar_debug: bool = true) -> void:
 	var mutadores := ["escarcha", "fragua", "eclipse"]
 	var candidatos: Array[String] = []
 	for m in mutadores:
@@ -168,10 +295,14 @@ func cambiar_clima_aleatorio() -> void:
 	if candidatos.is_empty():
 		candidatos = ["escarcha", "fragua", "eclipse"]
 	var elegido: String = candidatos[randi() % candidatos.size()]
-	establecer_mutador(elegido)
+	establecer_mutador(elegido, forzar_debug)
 
-func establecer_mutador(id_mutador: String) -> void:
-	mutador_actual = id_mutador.to_lower()
+func establecer_mutador(id_mutador: String, forzar_debug: bool = false) -> void:
+	var id_norm := id_mutador.to_lower()
+	if not forzar_debug and id_norm != "" and _hay_jefe_activo():
+		_mutador_pendiente = id_norm
+		return
+	mutador_actual = id_norm
 	emit_signal("mutador_cambiado", mutador_actual)
 
 	# Limpiar cristales de escarcha previos
@@ -287,6 +418,8 @@ func _detonar_cristal_escarcha(pos: Vector3) -> void:
 				)
 
 func _erupcionar_geyser_solar() -> void:
+	if _hay_jefe_activo():
+		return
 	var arena = get_parent()
 	if arena == null:
 		return
@@ -305,39 +438,54 @@ func _erupcionar_geyser_solar() -> void:
 	var anillo_aviso = BunkerVisualKit.create_hazard_ground_ring(2.2, Color(1.0, 0.45, 0.1), Color(1.0, 0.15, 0.1), 0.75, 0.95, 0.4)
 	arena.add_child(anillo_aviso)
 	anillo_aviso.global_position = pos
+	_anillos_geyser_activos.append(anillo_aviso)
 
-	await get_tree().create_timer(1.3).timeout
-	if not is_instance_valid(anillo_aviso):
-		return
-	anillo_aviso.queue_free()
+	var timer = get_tree().create_timer(1.3)
+	timer.timeout.connect(func():
+		_anillos_geyser_activos.erase(anillo_aviso)
+		if is_instance_valid(anillo_aviso):
+			anillo_aviso.queue_free()
 
-	# 2. Erupción activa de fuego
-	AudioManager.play("alerta_oleada", 1.6, 2.0)
-	VfxCombate.spawn_columna_fuego(arena, pos, 2.8, Color(1.0, 0.52, 0.12), Color(1.0, 0.94, 0.65), 0.55)
+		# Abortar erupción/daño de forma segura si un jefe entró durante el telegrafiado
+		if not is_inside_tree() or _hay_jefe_activo():
+			return
 
-	# Comprobar si el Botón Móvil cruza el géiser -> Entra inmediatamente en Frenesí
-	var boton = get_tree().get_first_node_in_group("boton_movil")
-	if boton != null and is_instance_valid(boton) and pos.distance_to(boton.global_position) <= 2.5:
-		if boton.has_method("_iniciar_frenesi_sobrecarga"):
-			boton._iniciar_frenesi_sobrecarga()
-			_anunciar_mutador("⚡ ¡NÚCLEO CATALIZADO POR EL GÉISER!", "Sobrecarga de Frenesí activada instantáneamente", Color(1.0, 0.85, 0.2))
+		# 2. Erupción activa de fuego
+		AudioManager.play("alerta_oleada", 1.6, 2.0)
+		VfxCombate.spawn_columna_fuego(arena, pos, 2.8, Color(1.0, 0.52, 0.12), Color(1.0, 0.94, 0.65), 0.55)
+		BunkerVisualKit.spawn_shockwave_ring(arena, pos, 0.5, 3.2, Color(1.0, 0.55, 0.15), 0.45)
 
-	# Dañar a enemigos y jugador
-	for e in get_tree().get_nodes_in_group("enemigos"):
-		if e is Node3D and is_instance_valid(e) and pos.distance_to(e.global_position) <= 2.5:
-			if e.has_method("recibir_dano"):
-				e.recibir_dano(42.0, true)
-	if pj != null and is_instance_valid(pj) and pos.distance_to(pj.global_position) <= 2.4:
-		if pj.has_method("recibir_dano"):
-			pj.recibir_dano(12.0)
+		# Comprobar si el Botón Móvil cruza el géiser -> Entra inmediatamente en Frenesí
+		var boton = get_tree().get_first_node_in_group("boton_movil")
+		if boton != null and is_instance_valid(boton) and pos.distance_to(boton.global_position) <= 2.5:
+			if boton.has_method("_iniciar_frenesi_sobrecarga"):
+				boton._iniciar_frenesi_sobrecarga()
+				_anunciar_mutador("⚡ ¡NÚCLEO CATALIZADO POR EL GÉISER!", "Sobrecarga de Frenesí activada instantáneamente", Color(1.0, 0.85, 0.2))
+
+		# Dañar a enemigos y jugador
+		for e in get_tree().get_nodes_in_group("enemigos"):
+			if e is Node3D and is_instance_valid(e) and pos.distance_to(e.global_position) <= 2.5:
+				if e.has_method("recibir_dano"):
+					e.recibir_dano(42.0, true)
+		var pj_actual = get_tree().get_first_node_in_group("jugador")
+		if pj_actual == null:
+			pj_actual = get_tree().get_first_node_in_group("player")
+		if pj_actual != null and is_instance_valid(pj_actual) and pos.distance_to(pj_actual.global_position) <= 2.4:
+			if pj_actual.has_method("recibir_dano"):
+				pj_actual.recibir_dano(12.0)
+	)
 
 # ==============================================================================
 # MERCADER DEL VACÍO (CORRUPT BLESSINGS)
 # ==============================================================================
 
 func invocar_mercader_vacio(forzar_debug: bool = false) -> void:
+	if not forzar_debug and _hay_jefe_activo():
+		_mercader_pendiente = true
+		return
 	if _mercader_spawned and not forzar_debug:
 		return
+	_mercader_pendiente = false
 	if _nodo_mercader != null and is_instance_valid(_nodo_mercader):
 		_nodo_mercader.queue_free()
 		_nodo_mercader = null
@@ -612,6 +760,7 @@ func _on_monolito_recibir_dano(dano: float, _es_crit: bool = false) -> void:
 
 func _spawn_jefe_espejo_sombrio(pos: Vector3) -> void:
 	AudioManager.play("jefe_alerta", 1.1, 4.0)
+	BunkerVisualKit.emitir_onda_bullet_clear(get_parent(), pos, 34.0)
 	BunkerVisualKit.spawn_shockwave_ring(get_parent(), pos, 1.0, 8.5, Color(0.75, 0.20, 0.95), 0.5)
 
 	var escena_espejo = load("res://espejo_sombrio.tscn") as PackedScene
@@ -642,9 +791,13 @@ func _spawn_jefe_espejo_sombrio(pos: Vector3) -> void:
 # SISTEMA NÉMESIS
 # ==============================================================================
 
-func _comprobar_y_spawnear_nemesis() -> void:
+func _comprobar_y_spawnear_nemesis(forzar_debug: bool = false) -> void:
+	if not forzar_debug and _hay_jefe_activo():
+		_nemesis_pendiente = true
+		return
 	if _nemesis_spawned:
 		return
+	_nemesis_pendiente = false
 
 	MetaprogresoManager.asegurar_inicializado()
 	var nemesis_activo: Dictionary = MetaprogresoManager.nemesis_activo if MetaprogresoManager.nemesis_activo is Dictionary else {}

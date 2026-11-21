@@ -59,6 +59,8 @@ const PUNTOS_SPAWN_VERIFICADOS: Array[Vector3] = [
 	Vector3(-11.9, 0.80, -44.4),
 ]
 
+@export var pausar_en_jefes: bool = true
+
 var _presagio_actual: Dictionary = {}
 var _banner_mostrado: bool = false
 var _ultima_oleada: int = 1
@@ -103,6 +105,26 @@ func _desplegar_inicio_combate() -> void:
 	for i in range(mini(cant_anforas, libres.size())):
 		_instanciar_interactuable(AnforaScript, libres[i])
 
+func _hay_jefe_activo() -> bool:
+	if _spawner_ref != null and is_instance_valid(_spawner_ref) and _spawner_ref.has_method("hay_jefe_activo"):
+		if bool(_spawner_ref.hay_jefe_activo()):
+			return true
+	var tree := get_tree()
+	if tree == null:
+		return false
+	for grupo in ["jefes", "bosses"]:
+		for n in tree.get_nodes_in_group(grupo):
+			if is_instance_valid(n) and not n.is_queued_for_deletion():
+				var esta_muerto := ("muerto" in n and bool(n.muerto))
+				var tiene_vida := (not ("vida" in n) or float(n.vida) > 0.0)
+				if not esta_muerto and tiene_vida:
+					return true
+	for p in tree.get_nodes_in_group("portal_spawn"):
+		if is_instance_valid(p) and not p.is_queued_for_deletion() and ("es_jefe" in p and bool(p.es_jefe)):
+			if not ("_spawneado" in p) or not bool(p._spawneado):
+				return true
+	return false
+
 func _process(delta: float) -> void:
 	if not is_inside_tree() or get_tree() == null:
 		return
@@ -117,6 +139,9 @@ func _process(delta: float) -> void:
 
 	if not _arena_inicial_desplegada:
 		_desplegar_inicio_combate()
+
+	if pausar_en_jefes and _hay_jefe_activo():
+		return
 
 	# Reposición de ánforas y despliegue escalonado de santuarios al subir de oleada
 	if "oleada_actual" in _spawner_ref:

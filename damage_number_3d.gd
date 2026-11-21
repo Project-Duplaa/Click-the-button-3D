@@ -2,9 +2,35 @@ extends Node3D
 
 @onready var label: Label3D = $Label3D
 
-func iniciar(cantidad: float, es_critico: bool = false, es_jugador: bool = false, texto_custom: String = ""):
-	if not is_inside_tree():
-		await ready
+var _datos_pendientes: bool = false
+var _cant_p: float = 0.0
+var _crit_p: bool = false
+var _jug_p: bool = false
+var _texto_p: String = ""
+
+func _ready() -> void:
+	if label == null:
+		label = get_node_or_null("Label3D") as Label3D
+	if _datos_pendientes:
+		_aplicar_datos(_cant_p, _crit_p, _jug_p, _texto_p)
+
+func iniciar(cantidad: float, es_critico: bool = false, es_jugador: bool = false, texto_custom: String = "") -> void:
+	if label == null:
+		label = get_node_or_null("Label3D") as Label3D
+	
+	if label == null:
+		_datos_pendientes = true
+		_cant_p = cantidad
+		_crit_p = es_critico
+		_jug_p = es_jugador
+		_texto_p = texto_custom
+		return
+	
+	_aplicar_datos(cantidad, es_critico, es_jugador, texto_custom)
+
+func _aplicar_datos(cantidad: float, es_critico: bool = false, es_jugador: bool = false, texto_custom: String = "") -> void:
+	if label == null:
+		return
 	
 	if texto_custom != "":
 		label.text = texto_custom
