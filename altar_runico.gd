@@ -23,6 +23,11 @@ var _reloj_pulso: float = 0.0
 var _jugador_cerca: bool = false
 var _mouse_hover: bool = false
 var _prox_blend: float = 0.0
+var _modo_esencial: bool = false
+
+func actualizar_modo_esencial(activo_esencial: bool) -> void:
+	_modo_esencial = activo_esencial
+	_actualizar_etiqueta()
 
 @onready var pedestal: Node3D = $Pedestal
 @onready var modelo_altar: Node3D = $Pedestal/ModeloHazardAltar
@@ -44,6 +49,7 @@ var _mat_ring_outer: StandardMaterial3D = null
 
 func _ready():
 	add_to_group("altares_runicos")
+	add_to_group("indicadores_tacticos")
 	global_position = ArenaColiseo.clamping_y_ajustar_a_suelo(global_position, 1.6, 0.0)
 	input_ray_pickable = true
 	body_entered.connect(_on_body_entered)
@@ -228,17 +234,22 @@ func _actualizar_estado_visual_dinamico() -> void:
 func _actualizar_etiqueta() -> void:
 	if etiqueta_altar == null:
 		return
+	if _modo_esencial:
+		etiqueta_altar.text = "TERMINAL %02d" % id_altar
+		etiqueta_altar.modulate = Kit.COL_CYAN_ELECTRIC if activo else Color(0.70, 0.76, 0.84, 0.85)
+		return
+
 	if activo:
-		etiqueta_altar.text = "TERMINAL %02d\n[EN LÍNEA]" % id_altar
+		etiqueta_altar.text = "🏛️ TERMINAL %02d/03\n[✅ EN LÍNEA]" % id_altar
 		etiqueta_altar.modulate = Kit.COL_CYAN_ELECTRIC
 	elif _jugador_cerca:
-		etiqueta_altar.text = "TERMINAL %02d\n[CLIC / CONTACTO]" % id_altar
+		etiqueta_altar.text = "🏛️ TERMINAL RÚNICA %02d/03\n[PISA O HAZ CLIC]\n(Puzle: Activa las 3 para Cofre Secreto)" % id_altar
 		etiqueta_altar.modulate = Kit.COL_HAZARD_YELLOW
 	elif _mouse_hover:
-		etiqueta_altar.text = "TERMINAL %02d\n[ACÉRCATE <= 4.5m]" % id_altar
+		etiqueta_altar.text = "🏛️ TERMINAL RÚNICA %02d/03\n[ACÉRCATE <= 4.5m]\n(Puzle: Activa las 3)" % id_altar
 		etiqueta_altar.modulate = Kit.COL_PLASMA_ORANGE
 	else:
-		etiqueta_altar.text = "TERMINAL %02d\n[STANDBY]" % id_altar
+		etiqueta_altar.text = "🏛️ TERMINAL RÚNICA %02d/03\n[PUZLE ANCESTRAL]" % id_altar
 		etiqueta_altar.modulate = Color(0.70, 0.76, 0.84, 0.85)
 
 func _on_mouse_entered() -> void:
@@ -313,6 +324,15 @@ func activar_altar(_motivo: String = ""):
 	activo = true
 	_actualizar_etiqueta()
 
+	var hud = get_tree().get_first_node_in_group("hud")
+	if hud != null and hud.has_method("mostrar_letrero_temporal"):
+		hud.mostrar_letrero_temporal(
+			"terminal_ancestral",
+			"TERMINAL ANCESTRAL ACTIVADA",
+			"Activa los 3 pedestales rúnicos (Oleadas 3, 5 y 7) para invocar el Cofre Dorado central.",
+			Color(0.28, 0.85, 1.0)
+		)
+
 	AudioManager.play("altar_activado", 0.9 + id_altar * 0.15)
 
 	# 1. Flash transitorio de luz (<= 5.5 por 0.08s) -> estabilizado cian (<= 2.8)
@@ -372,6 +392,6 @@ func activar_altar(_motivo: String = ""):
 
 	var pool_dano = get_tree().get_first_node_in_group("damage_numbers")
 	if pool_dano != null and pool_dano.has_method("mostrar_texto"):
-		pool_dano.mostrar_texto(global_position + Vector3(0, 2.2, 0), "⚡ ALTAR ACTIVADO (+%d)" % (id_altar * 100), Color(0.3, 0.9, 1.0), 1.25)
+		pool_dano.mostrar_texto(global_position + Vector3(0, 2.2, 0), "⚡ TERMINAL %d/3 ACTIVADA" % id_altar, Color(0.3, 0.9, 1.0), 1.25)
 
 	emit_signal("activado", id_altar)

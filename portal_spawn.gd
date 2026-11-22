@@ -147,6 +147,14 @@ func _ejecutar_spawn_enemigo():
 			if "vida_maxima" in enemigo:
 				enemigo.vida_maxima += vida_extra
 				enemigo.vida = enemigo.vida_maxima
+
+		if enemigo.is_in_group("jefes") or es_jefe:
+			var hud_node = get_tree().get_first_node_in_group("hud")
+			if hud_node != null and hud_node.has_method("mostrar_barra_jefe"):
+				var nom_jefe: String = str(enemigo.get("nombre_jefe")) if "nombre_jefe" in enemigo else str(enemigo.name)
+				var hp_max: float = float(enemigo.vida_maxima) if "vida_maxima" in enemigo else 1000.0
+				var hp_cur: float = float(enemigo.vida) if "vida" in enemigo else hp_max
+				hud_node.mostrar_barra_jefe(nom_jefe, hp_max, hp_cur)
 			
 		# Animación de emergencia suave sobre la malla visual (protege física Jolt del root CharacterBody3D)
 		var mod_visual := enemigo.get_node_or_null("Modelo") as Node3D

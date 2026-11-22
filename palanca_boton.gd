@@ -40,9 +40,19 @@ var _mat_empunadura: StandardMaterial3D = null
 
 var _reloj_pulso: float = 0.0
 var _tweens_activos: Array[Tween] = []
+var _modo_esencial: bool = false
+
+func actualizar_modo_esencial(activo: bool) -> void:
+	_modo_esencial = activo
+	if etiqueta_terminal != null:
+		if _modo_esencial and not activada:
+			etiqueta_terminal.text = "PALANCA %02d" % id_palanca
+		elif activada:
+			etiqueta_terminal.text = "PALANCA %02d\n[✅ LIBERADA]" % id_palanca
 
 func _ready():
 	add_to_group("palancas_boton")
+	add_to_group("indicadores_tacticos")
 	input_ray_pickable = true
 	input_event.connect(_on_input_event)
 	body_entered.connect(_on_body_entered)
@@ -128,11 +138,14 @@ func _physics_process(delta: float):
 	var rango_act := _obtener_rango_activacion()
 	var en_rango := dist_jug <= rango_act
 	if etiqueta_terminal != null:
-		if en_rango:
-			etiqueta_terminal.text = "DISYUNTOR %02d\n[PULSAR AHORA]" % id_palanca
+		if _modo_esencial:
+			etiqueta_terminal.text = "PALANCA %02d" % id_palanca
+			etiqueta_terminal.modulate = Kit.COL_HAZARD_YELLOW if en_rango else Kit.COL_CRIMSON_ALERT
+		elif en_rango:
+			etiqueta_terminal.text = "PALANCA %02d\n[PISA O HAZ CLIC]\n(Libera el Núcleo)" % id_palanca
 			etiqueta_terminal.modulate = Kit.COL_HAZARD_YELLOW
 		else:
-			etiqueta_terminal.text = "DISYUNTOR %02d\n[ACÉRCATE · %.0fm]" % [id_palanca, dist_jug]
+			etiqueta_terminal.text = "PALANCA %02d\n[ACÉRCATE · %.0fm]" % [id_palanca, dist_jug]
 			etiqueta_terminal.modulate = Kit.COL_CRIMSON_ALERT
 
 func _obtener_bono_alcance_jugador() -> float:
@@ -225,8 +238,17 @@ func armar():
 		manija.rotation_degrees.x = -40.0
 
 	if etiqueta_terminal != null:
-		etiqueta_terminal.text = "DISYUNTOR %02d\n[ACTIVAR]" % id_palanca
+		etiqueta_terminal.text = "PALANCA %02d (DESBLOQUEO)\n[ACÉRCATE · Libera el Núcleo]" % id_palanca
 		etiqueta_terminal.modulate = Kit.COL_CRIMSON_ALERT
+
+	var hud = get_tree().get_first_node_in_group("hud")
+	if hud != null and hud.has_method("mostrar_letrero_temporal"):
+		hud.mostrar_letrero_temporal(
+			"palanca_desbloqueo",
+			"PALANCA DE DESBLOQUEO",
+			"El Núcleo Rúnico está encadenado. Acércate para accionar o pisar las palancas.",
+			Color(1.0, 0.35, 0.2)
+		)
 
 func desactivar_silencioso():
 	_matar_tweens()
@@ -351,10 +373,10 @@ func accionar() -> bool:
 						e.velocity += dir_emp * 12.0
 
 	if etiqueta_terminal != null:
-		etiqueta_terminal.text = "DISYUNTOR %02d\n[EN LÍNEA]" % id_palanca
+		etiqueta_terminal.text = "PALANCA %02d\n[✅ LIBERADA]" % id_palanca
 		etiqueta_terminal.modulate = Kit.COL_NEON_GREEN
 
-	_spawn_floating_text("¡TERMINAL %d ACTIVADO! ⚡" % id_palanca, Kit.COL_NEON_GREEN)
+	_spawn_floating_text("¡PALANCA %d DESACTIVADA! ⚡" % id_palanca, Kit.COL_NEON_GREEN)
 	emit_signal("palanca_activada", id_palanca)
 	return true
 

@@ -26,9 +26,15 @@ var etiqueta: Label3D = null
 var _consumido: bool = false
 var _ultimo_click_ms: int = -1000
 var _hover: bool = false
+var _modo_esencial: bool = false
+
+func actualizar_modo_esencial(activo: bool) -> void:
+	_modo_esencial = activo
+	_actualizar_etiqueta()
 
 func _ready() -> void:
 	add_to_group("santuarios")
+	add_to_group("indicadores_tacticos")
 	input_ray_pickable = true
 	monitoring = true
 	monitorable = true
@@ -120,11 +126,14 @@ func _al_hacer_clic_pasivo(_pj: Node3D) -> void:
 func _actualizar_etiqueta(linea_extra: String = "") -> void:
 	if etiqueta == null:
 		return
+	if _modo_esencial:
+		etiqueta.text = nombre_santuario
+		return
 	var partes: PackedStringArray = [nombre_santuario]
 	if costo_denarios > 0:
-		partes.append("🪙 %d Denarios" % costo_denarios)
+		partes.append("🪙 %d Denarios · [CLIC / E]" % costo_denarios)
 	elif linea_extra == "":
-		partes.append("Gratis · Clic")
+		partes.append("Gratis · [CLIC / E]")
 	if linea_extra != "":
 		partes.append(linea_extra)
 	etiqueta.text = "\n".join(partes)
@@ -163,6 +172,12 @@ func _on_input_event(_camera: Node, event: InputEvent, _event_position: Vector3,
 func _unhandled_input(event: InputEvent) -> void:
 	if _consumido or not visible or not input_ray_pickable:
 		return
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
+		var pj := _obtener_jugador()
+		if pj != null and _distancia_a_jugador(pj) <= radio_interaccion:
+			get_viewport().set_input_as_handled()
+			_intentar_interactuar()
+			return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		if not _puede_procesar_interaccion():
 			return

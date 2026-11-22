@@ -11,6 +11,12 @@ var boton_objetivo: Node3D = null
 var adherido_al_boton: bool = false
 var clics_para_reventar: int = 3
 var _angulo_adherido: float = 0.0
+var _label_pips: Label3D = null
+var _modo_esencial: bool = false
+
+func actualizar_modo_esencial(activo: bool) -> void:
+	_modo_esencial = activo
+	_actualizar_pips_visuales()
 
 func _ready() -> void:
 	rapidez = 4.6
@@ -19,9 +25,41 @@ func _ready() -> void:
 	xp_otorgada = 16
 	oro_otorgado = 6
 	add_to_group("parasitos_cursor")
+	add_to_group("indicadores_tacticos")
+	_crear_label_pips()
 	_construir_geometria_procedural()
 	super._ready()
 	boton_objetivo = get_tree().get_first_node_in_group("boton_movil")
+
+func _crear_label_pips() -> void:
+	_label_pips = Label3D.new()
+	_label_pips.name = "LabelPipsParasito"
+	_label_pips.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_label_pips.no_depth_test = true
+	_label_pips.font_size = 28
+	_label_pips.modulate = Color(1.0, 0.35, 0.55)
+	_label_pips.position = Vector3(0.0, 1.25, 0.0)
+	_label_pips.visible = false
+	add_child(_label_pips)
+
+func _actualizar_pips_visuales() -> void:
+	if _label_pips == null:
+		return
+	if not adherido_al_boton or _muerto:
+		_label_pips.visible = false
+		return
+	_label_pips.visible = true
+	var pips_str := ""
+	for i in range(3):
+		if i < clics_para_reventar:
+			pips_str += "● "
+		else:
+			pips_str += "○ "
+	pips_str = pips_str.strip_edges()
+	if _modo_esencial:
+		_label_pips.text = pips_str
+	else:
+		_label_pips.text = "🦠 [CLIC AL PARÁSITO: %s]" % pips_str
 
 func _construir_geometria_procedural():
 	if get_node_or_null("CollisionShape3D") == null:
@@ -80,6 +118,9 @@ func _calcular_velocidad_ia(delta: float) -> Vector3:
 
 	var dist = global_position.distance_to(boton_objetivo.global_position)
 	if dist <= 1.45 or adherido_al_boton:
+		if not adherido_al_boton:
+			adherido_al_boton = true
+			_actualizar_pips_visuales()
 		adherido_al_boton = true
 		_angulo_adherido += delta * 4.5
 		global_position = boton_objetivo.global_position + Vector3(cos(_angulo_adherido) * 0.85, 0.35, sin(_angulo_adherido) * 0.85)
@@ -94,6 +135,7 @@ func recibir_clic_directo():
 	if muerto:
 		return
 	clics_para_reventar -= 1
+	_actualizar_pips_visuales()
 	AudioManager.play("click", 1.35)
 	_anim_ctrl.disparar_golpe()
 	recibir_dano(vida_maxima * 0.36, true)
@@ -109,6 +151,8 @@ func morir() -> void:
 	if _muerto:
 		return
 	adherido_al_boton = false
+	if _label_pips != null:
+		_label_pips.visible = false
 	super.morir()
 	if jugador != null and is_instance_valid(jugador):
 		if jugador.has_method("registrar_click_jugador"):

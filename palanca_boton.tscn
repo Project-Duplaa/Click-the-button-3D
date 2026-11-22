@@ -120,7 +120,7 @@ shader_parameter/fresnel_power = 1.4
 material = SubResource("MatHazLuz")
 top_radius = 0.22
 bottom_radius = 0.52
-height = 14.0
+height = 36.0
 radial_segments = 24
 rings = 4
 cap_top = false
@@ -188,14 +188,14 @@ light_energy = 3.0
 omni_range = 6.0
 
 [node name="HazLuz" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 7, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 18, 0)
 cast_shadow = 0
 mesh = SubResource("MeshHazLuz")
 
 [node name="EtiquetaTerminal" type="Label3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.25, 0)
 billboard = 1
-text = "DISYUNTOR 01
-[ACTIVAR]"
+text = "PALANCA 01
+[ACCIONAR]"
 font_size = 30
 outline_size = 10

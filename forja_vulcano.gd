@@ -199,6 +199,10 @@ func _animar_golpe_prensa() -> void:
 	)
 
 func _activar(pj: Node3D) -> bool:
+	var hud = get_tree().get_first_node_in_group("hud")
+	if hud != null and hud.has_method("mostrar_letrero_temporal"):
+		hud.mostrar_letrero_temporal("forja_vulcano", "⚒️ FORJA DE VULCANO", "Gasta Denarios para duplicar una de tus reliquias y multiplicar su poder.", Color(1.0, 0.65, 0.2))
+
 	var reliquias: Dictionary = pj.reliquias if ("reliquias" in pj and pj.reliquias is Dictionary) else {}
 	if reliquias.is_empty():
 		_spawn_texto_3d("⚒️ Necesitas una reliquia", Color(1.0, 0.58, 0.22))

@@ -101,7 +101,7 @@ func tirar_presagio() -> Dictionary:
 	if r < 0.15:
 		presagio_id = "augurio_jupiter"
 		presagio_nombre = "Augurio de Júpiter"
-		presagio_desc = "+25% Suerte inicial · +1 Santuario en la arena"
+		presagio_desc = "+25% Suerte · +1 Santuario"
 		delta_suerte = 0.25
 		santuarios_extra = 1
 		icono = "⚡"
@@ -109,14 +109,14 @@ func tirar_presagio() -> Dictionary:
 	elif r < 0.70:
 		presagio_id = "cielo_despejado"
 		presagio_nombre = "Cielo Despejado"
-		presagio_desc = "Los auspicios son serenos: sin alteraciones del destino."
+		presagio_desc = "Suerte estándar · Sin efectos"
 		delta_suerte = 0.0
 		icono = "☀️"
 		color_banner = Color(0.72, 0.88, 1.0)
 	elif r < 0.90:
 		presagio_id = "vuelo_cuervos"
 		presagio_nombre = "Vuelo de Cuervos"
-		presagio_desc = "-10% Suerte inicial · Ánforas sueltan +20% de Oro"
+		presagio_desc = "-10% Suerte · +20% Oro en Ánforas"
 		delta_suerte = -0.10
 		bonus_oro_anforas_pct = 0.20
 		icono = "🪶"
@@ -124,7 +124,7 @@ func tirar_presagio() -> Dictionary:
 	else:
 		presagio_id = "eclipse_pluton"
 		presagio_nombre = "Eclipse de Plutón"
-		presagio_desc = "-15% Suerte inicial · Cartas Legendarias valen x3.5"
+		presagio_desc = "-15% Suerte · Cartas Legendarias x3.5"
 		delta_suerte = -0.15
 		multiplicador_legendario = 3.5
 		icono = "🌑"

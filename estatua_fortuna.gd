@@ -208,6 +208,10 @@ func _process(delta: float) -> void:
 	var dist := _distancia_a_jugador(pj)
 	var ring_mat: ShaderMaterial = (_anillo_externo.material_override as ShaderMaterial) if _anillo_externo != null else null
 	if dist <= RADIO_CARGA:
+		if _progreso <= delta:
+			var hud = get_tree().get_first_node_in_group("hud")
+			if hud != null and hud.has_method("mostrar_letrero_temporal"):
+				hud.mostrar_letrero_temporal("estatua_fortuna", "🗽 ESTATUA DE FORTUNA", "Permanece dentro del círculo durante 4 segundos para consagrar una bendición de atributo permanente.", Color(1.0, 0.88, 0.35))
 		_progreso = minf(_progreso + delta, TIEMPO_CARGA)
 		var frac := clampf(_progreso / TIEMPO_CARGA, 0.02, 1.0)
 		if ring_mat != null:
@@ -235,6 +239,9 @@ func _process(delta: float) -> void:
 			_actualizar_etiqueta("Permanece 4s en el círculo")
 
 func _al_hacer_clic_pasivo(_pj: Node3D) -> void:
+	var hud = get_tree().get_first_node_in_group("hud")
+	if hud != null and hud.has_method("mostrar_letrero_temporal"):
+		hud.mostrar_letrero_temporal("estatua_fortuna", "🗽 ESTATUA DE FORTUNA", "Permanece dentro del círculo durante 4 segundos para consagrar una bendición de atributo permanente.", Color(1.0, 0.88, 0.35))
 	_spawn_texto_3d("Quédate 4s en el círculo", Color(1.0, 0.88, 0.32))
 	AudioManager.play("click", 0.95)
 

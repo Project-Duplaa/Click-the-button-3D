@@ -30,9 +30,15 @@ func _ready() -> void:
 	oro_otorgado = 18
 
 	add_to_group("enemigos_solo_boton")
+	add_to_group("indicadores_tacticos")
 	_construir_visual_anulador()
 	super._ready()
 	_boton = get_tree().get_first_node_in_group("boton_movil") as Node3D
+
+func actualizar_modo_esencial(activo: bool) -> void:
+	var lbl = get_node_or_null("EscudoAnuladorVisual/EtiquetaSoloBoton")
+	if lbl != null:
+		lbl.visible = not activo
 
 func _construir_visual_anulador() -> void:
 	if get_node_or_null("CollisionShape3D") == null:
@@ -111,20 +117,7 @@ func _construir_visual_anulador() -> void:
 		_anillo_int.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		holder.add_child(_anillo_int)
 
-		# 3. Etiqueta billboard inequívoca
-		var lbl := Label3D.new()
-		lbl.name = "EtiquetaSoloBoton"
-		lbl.text = "⚡ SOLO BOTÓN"
-		lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		lbl.no_depth_test = true
-		lbl.font_size = 38
-		lbl.pixel_size = 0.0046
-		lbl.modulate = Color(0.85, 0.55, 1.0, 0.98)
-		lbl.outline_size = 9
-		lbl.outline_modulate = Color(0.05, 0.02, 0.14, 0.95)
-		lbl.position = Vector3(0.0, 3.05, 0.0)
-		holder.add_child(lbl)
-
+		# 3. Escudo de fase refractario puro (sin contaminación de textos flotantes)
 	if get_node_or_null("HazSifonTermico") == null:
 		_haz_sifon = MeshInstance3D.new()
 		_haz_sifon.name = "HazSifonTermico"

@@ -140,9 +140,9 @@ func modificar_favor(cantidad: float) -> void:
 
 func _obtener_texto_nivel_favor() -> String:
 	if favor >= 80.0:
-		return "¡LOCURA DEL COLISEO!"
+		return "¡Locura!"
 	elif favor >= 75.0:
-		return "Entusiasmo Imperial"
+		return "Entusiasmo"
 	elif favor >= 50.0:
 		return "Aprobación"
 	elif favor >= 25.0:

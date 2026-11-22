@@ -14,9 +14,16 @@ var _label_info: Label3D = null
 var _luz_portal: OmniLight3D = null
 var _mesh_portal: MeshInstance3D = null
 var _obelisco_abismo: Node3D = null
+var _modo_esencial: bool = false
+var _modal_decision: CanvasLayer = null
+
+func actualizar_modo_esencial(activo: bool) -> void:
+	_modo_esencial = activo
+	_actualizar_estado_visual()
 
 func _ready():
 	add_to_group("portal_ascension")
+	add_to_group("indicadores_tacticos")
 	body_entered.connect(_al_entrar)
 	_configurar_componentes_visuales()
 	_actualizar_estado_visual()
@@ -122,6 +129,10 @@ func desbloquear_portal():
 	portal_abierto = true
 	_actualizar_estado_visual()
 
+	var hud = get_tree().get_first_node_in_group("hud")
+	if hud != null and hud.has_method("mostrar_letrero_temporal"):
+		hud.mostrar_letrero_temporal("portal_abierto", "🌀 ¡PORTAL DE ASCENSIÓN ABIERTO!", "Entra al portal para reclamar tu Victoria o desafiar el Modo Abismo Infinito.", Color(0.25, 1.0, 0.6))
+
 	var dopamina = get_tree().get_first_node_in_group("audio_dopamina")
 	if dopamina != null and dopamina.has_method("play_level_up"):
 		dopamina.play_level_up()
@@ -131,8 +142,11 @@ func desbloquear_portal():
 
 func _actualizar_estado_visual():
 	if _label_info != null:
-		if portal_abierto:
-			_label_info.text = "¡PORTAL DE ASCENSIÓN ABIERTO!\n[Pisa para ascender a la Gloria]"
+		if _modo_esencial:
+			_label_info.text = "PORTAL DE ASCENSIÓN" if portal_abierto else "PORTAL SELLADO"
+			_label_info.modulate = Color(0.25, 1.0, 0.55) if portal_abierto else Color(0.75, 0.35, 1.0)
+		elif portal_abierto:
+			_label_info.text = "¡PORTAL DE ASCENSIÓN ABIERTO!\n[Pisa para elegir Victoria o Abismo]"
 			_label_info.modulate = Color(0.25, 1.0, 0.55)
 		else:
 			_label_info.text = "PORTAL DE ASCENSIÓN\n[Derrota a La Parca Roja en Oleada 15]"
@@ -191,7 +205,7 @@ func _activar_obelisco_abismo():
 	lbl.font_size = 38
 	lbl.position = Vector3(0, 3.8, 0)
 	lbl.modulate = Color(1.0, 0.25, 0.3)
-	lbl.text = "🔥 [E] MODO ABISMO INFINITO\n(Recompensas x4 · Dificultad Extrema)"
+	lbl.text = "🔥 MODO ABISMO INFINITO [E / CLIC]\n💀 Recompensas x4 · Dificultad Extrema\n[PISA O HAZ CLIC PARA ENTRAR]"
 	_obelisco_abismo.add_child(lbl)
 
 	_obelisco_abismo.input_ray_pickable = true
@@ -230,11 +244,113 @@ func _al_entrar(cuerpo: Node3D):
 		return
 
 	if not portal_abierto:
+		var hud = get_tree().get_first_node_in_group("hud")
+		if hud != null and hud.has_method("mostrar_letrero_temporal"):
+			hud.mostrar_letrero_temporal("portal_sellado", "🔒 PORTAL DE ASCENSIÓN SELLADO", "Derrota al Jefe Final (La Parca Roja en Oleada 15) para desbloquear la salida.", Color(0.85, 0.45, 1.0))
 		var pool_dano = get_tree().get_first_node_in_group("damage_numbers")
 		if pool_dano != null and pool_dano.has_method("mostrar_texto"):
 			pool_dano.mostrar_texto(global_position + Vector3(0, 2.0, 0), "🔒 ¡Portal Sellado! Elimina la amenaza colosal.", Color(1.0, 0.3, 0.3), 1.2)
 		return
 
-	var partida = get_tree().get_first_node_in_group("partida")
-	if partida != null and partida.has_method("ganar"):
-		partida.ganar()
+	_mostrar_modal_decision_victoria()
+
+func _mostrar_modal_decision_victoria() -> void:
+	if _modal_decision != null and is_instance_valid(_modal_decision):
+		return
+
+	_modal_decision = CanvasLayer.new()
+	_modal_decision.layer = 25
+	_modal_decision.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(_modal_decision)
+
+	var dimmer := ColorRect.new()
+	dimmer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dimmer.color = Color(0.02, 0.02, 0.04, 0.82)
+	_modal_decision.add_child(dimmer)
+
+	var panel := PanelContainer.new()
+	panel.anchor_left = 0.5
+	panel.anchor_right = 0.5
+	panel.anchor_top = 0.5
+	panel.anchor_bottom = 0.5
+	panel.offset_left = -260.0
+	panel.offset_right = 260.0
+	panel.offset_top = -140.0
+	panel.offset_bottom = 140.0
+
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.08, 0.07, 0.12, 0.96)
+	sb.border_width_left = 2
+	sb.border_width_top = 2
+	sb.border_width_right = 2
+	sb.border_width_bottom = 2
+	sb.border_color = Color(0.25, 0.95, 0.65, 0.9)
+	sb.corner_radius_top_left = 8
+	sb.corner_radius_top_right = 8
+	sb.corner_radius_bottom_right = 8
+	sb.corner_radius_bottom_left = 8
+	sb.content_margin_left = 18.0
+	sb.content_margin_right = 18.0
+	sb.content_margin_top = 16.0
+	sb.content_margin_bottom = 16.0
+	panel.add_theme_stylebox_override("panel", sb)
+	dimmer.add_child(panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	panel.add_child(vbox)
+
+	var lbl_tit := Label.new()
+	lbl_tit.text = "🏆 ¡EL COLISEO HA SIDO DOMINADO!"
+	lbl_tit.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_tit.add_theme_font_size_override("font_size", 14)
+	lbl_tit.add_theme_color_override("font_color", Color(0.3, 1.0, 0.6))
+	vbox.add_child(lbl_tit)
+
+	var lbl_sub := Label.new()
+	lbl_sub.text = "¿Deseas ascender victorioso o desafiar el Abismo Infinito con recompensas x4?"
+	lbl_sub.autowrap_mode = TextServer.AUTOWRAP_WORD
+	lbl_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_sub.add_theme_font_size_override("font_size", 10)
+	lbl_sub.add_theme_color_override("font_color", Color(0.85, 0.88, 0.95))
+	vbox.add_child(lbl_sub)
+
+	var hbox_btns := HBoxContainer.new()
+	hbox_btns.alignment = BoxContainer.ALIGNMENT_CENTER
+	hbox_btns.add_theme_constant_override("separation", 12)
+	vbox.add_child(hbox_btns)
+
+	var btn_ganar := Button.new()
+	btn_ganar.text = "👑 RECLAMAR VICTORIA"
+	btn_ganar.custom_minimum_size = Vector2(170, 34)
+	btn_ganar.focus_mode = Control.FOCUS_NONE
+	btn_ganar.pressed.connect(func():
+		if is_instance_valid(_modal_decision):
+			_modal_decision.queue_free()
+		var partida = get_tree().get_first_node_in_group("partida")
+		if partida != null and partida.has_method("ganar"):
+			partida.ganar()
+	)
+	hbox_btns.add_child(btn_ganar)
+
+	var btn_abismo := Button.new()
+	btn_abismo.text = "🔥 MODO ABISMO (x4)"
+	btn_abismo.custom_minimum_size = Vector2(170, 34)
+	btn_abismo.focus_mode = Control.FOCUS_NONE
+	btn_abismo.pressed.connect(func():
+		if is_instance_valid(_modal_decision):
+			_modal_decision.queue_free()
+		_detonar_entrada_abismo()
+	)
+	hbox_btns.add_child(btn_abismo)
+
+	var btn_cancelar := Button.new()
+	btn_cancelar.text = "✖ Continuar en la Arena"
+	btn_cancelar.custom_minimum_size = Vector2(130, 26)
+	btn_cancelar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	btn_cancelar.focus_mode = Control.FOCUS_NONE
+	btn_cancelar.pressed.connect(func():
+		if is_instance_valid(_modal_decision):
+			_modal_decision.queue_free()
+	)
+	vbox.add_child(btn_cancelar)

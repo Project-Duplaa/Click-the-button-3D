@@ -380,7 +380,7 @@ func _mostrar_banner_presagio(presagio: Dictionary) -> void:
 	var lbl_tit := Label.new()
 	lbl_tit.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	lbl_tit.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl_tit.text = "PRESAGIO DEL COLISEO: %s" % String(presagio.get("nombre", "Cielo Despejado")).to_upper()
+	lbl_tit.text = "%s PRESAGIO: %s" % [String(presagio.get("icono", "☀️")), String(presagio.get("nombre", "Cielo Despejado")).to_upper()]
 	lbl_tit.add_theme_font_size_override("font_size", 19)
 	lbl_tit.add_theme_color_override("font_color", color_borde)
 	vbox.add_child(lbl_tit)

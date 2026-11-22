@@ -440,6 +440,17 @@ func _erupcionar_geyser_solar() -> void:
 	anillo_aviso.global_position = pos
 	_anillos_geyser_activos.append(anillo_aviso)
 
+	var boton_cerca = get_tree().get_first_node_in_group("boton_movil")
+	if boton_cerca != null and is_instance_valid(boton_cerca) and pos.distance_to(boton_cerca.global_position) <= 12.0:
+		var lbl_aviso = Label3D.new()
+		lbl_aviso.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		lbl_aviso.no_depth_test = true
+		lbl_aviso.font_size = 22
+		lbl_aviso.modulate = Color(1.0, 0.88, 0.30, 0.95)
+		lbl_aviso.position = Vector3(0.0, 1.4, 0.0)
+		lbl_aviso.text = "⚡ NÚCLEO: ¡SOBRECARGA!"
+		anillo_aviso.add_child(lbl_aviso)
+
 	var timer = get_tree().create_timer(1.3)
 	timer.timeout.connect(func():
 		_anillos_geyser_activos.erase(anillo_aviso)
@@ -727,7 +738,7 @@ func _crear_monolito_campeon_caido() -> void:
 	lbl.font_size = 38
 	lbl.position = Vector3(0, 4.6, 0)
 	lbl.modulate = Color(0.85, 0.45, 1.0)
-	lbl.text = "🗿 MONOLITO DEL CAMPEÓN CAÍDO\n[600 HP - ¡Destrúyelo para desafiar al Espejo!]"
+	lbl.text = "🗿 MONOLITO DEL CAMPEÓN CAÍDO\n⚠️ [PELIGRO: Romperlo invoca al Jefe Secreto]"
 	_nodo_monolito.add_child(lbl)
 
 	_nodo_monolito.set_meta("vida_max", 600.0)

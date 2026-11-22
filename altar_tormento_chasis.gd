@@ -78,13 +78,13 @@ func _construir_ui() -> void:
 	panel_raiz.name = "PanelAltarTormento"
 	panel_raiz.mouse_filter = Control.MOUSE_FILTER_STOP
 
-	# Centrado en tercio inferior: bottom - 95px a bottom - 25px (ancho 660px)
+	# Centrado en tercio inferior: bottom - 95px a bottom - 25px (ancho 780px)
 	panel_raiz.anchor_left = 0.5
 	panel_raiz.anchor_right = 0.5
 	panel_raiz.anchor_top = 1.0
 	panel_raiz.anchor_bottom = 1.0
-	panel_raiz.offset_left = -345.0
-	panel_raiz.offset_right = 345.0
+	panel_raiz.offset_left = -390.0
+	panel_raiz.offset_right = 390.0
 	panel_raiz.offset_top = -95.0
 	panel_raiz.offset_bottom = -25.0
 	panel_raiz.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -172,12 +172,27 @@ func _construir_ui() -> void:
 	btn_diaria.pressed.connect(_on_btn_diaria_pressed)
 	hbox_controles.add_child(btn_diaria)
 
+	hbox_controles.add_child(_crear_separador_vertical())
+
+	# --- 4. BOTÓN INICIAR EXPLÍCITO ---
+	var btn_comenzar := Button.new()
+	btn_comenzar.name = "BtnComenzarCombate"
+	btn_comenzar.text = "⚔️ INICIAR COMBATE"
+	btn_comenzar.custom_minimum_size = Vector2(150, 36)
+	btn_comenzar.focus_mode = Control.FOCUS_NONE
+	btn_comenzar.add_theme_font_size_override("font_size", 13)
+	btn_comenzar.add_theme_color_override("font_color", Color(1.0, 0.98, 0.70))
+	btn_comenzar.add_theme_stylebox_override("normal", _crear_style_boton(Color(0.16, 0.35, 0.20, 0.95), Color(0.35, 0.95, 0.55)))
+	btn_comenzar.add_theme_stylebox_override("hover", _crear_style_boton(Color(0.22, 0.48, 0.28, 1.0), Color(0.55, 1.0, 0.75)))
+	btn_comenzar.pressed.connect(_desvanecer_y_ocultar)
+	hbox_controles.add_child(btn_comenzar)
+
 	# Fila inferior: indicación sutil
 	lbl_pista_inicio = Label.new()
 	lbl_pista_inicio.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl_pista_inicio.add_theme_font_size_override("font_size", 9)
-	lbl_pista_inicio.add_theme_color_override("font_color", Color(0.72, 0.76, 0.84, 0.75))
-	lbl_pista_inicio.text = "Haz clic en el Núcleo Rúnico para bloquear la configuración y comenzar el combate"
+	lbl_pista_inicio.add_theme_font_size_override("font_size", 10)
+	lbl_pista_inicio.add_theme_color_override("font_color", Color(0.80, 0.84, 0.92, 0.85))
+	lbl_pista_inicio.text = "Configura tu Tormento y Chasis, luego pulsa INICIAR o haz clic en el Núcleo Rúnico."
 	vbox_interior.add_child(lbl_pista_inicio)
 
 func _crear_boton_mini(txt: String, tooltip: String) -> Button:

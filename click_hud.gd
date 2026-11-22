@@ -175,6 +175,7 @@ const MetaprogresoManager := preload("res://metaprogreso_manager.gd")
 @onready var label_oleada: Label = $Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorCentro/HBoxWaveHeader/LabelOleada
 
 @onready var label_oro: Label = $Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxOro/LabelOro
+@onready var label_denarios: Label = get_node_or_null("Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxDenarios/LabelDenarios")
 
 # --- Modales & Jefe ---
 @onready var panel_jefe: Panel = $Control/PanelJefe
@@ -198,6 +199,34 @@ var vel_boton: float = 2.8
 var est_actual: float = 14.0
 var est_max: float = 14.0
 var est_en_colapso: bool = false
+var modo_hud_esencial: bool = false
+var _banner_cadenas_hud: PanelContainer = null
+var _lbl_cadenas_hud: Label = null
+var _cadenas_restantes_cache: int = 0
+var _cadenas_totales_cache: int = 3
+var _btn_toggle_hud: Button = null
+
+# Flechas tácticas hacia palancas, núcleo inicial y jefes
+var _flechas_palancas: Array[Control] = []
+var _nodos_palancas_activas: Array = []
+var _flecha_nucleo_inicio: Control = null
+var _flechas_jefes: Array[Control] = []
+
+# Barra de calor 2D del Núcleo en HUD
+var _barra_calor_hud: PanelContainer = null
+var _progress_calor: ProgressBar = null
+var _lbl_calor_hud: Label = null
+
+# Panel persistente de Favor del Emperador
+var _panel_favor: PanelContainer = null
+var _bar_favor: ProgressBar = null
+var _lbl_favor: Label = null
+
+# Sistema de letreros temporales / tooltips de primera interacción
+var _tooltips_mostrados: Dictionary = {}
+var _banner_letrero_capa: CanvasLayer = null
+var _banner_letrero_panel: PanelContainer = null
+var _banner_letrero_tween: Tween = null
 
 # --- Estado Interno de UI & Animación ---
 var _clase_actual_avatar: String = ""
@@ -279,6 +308,10 @@ func _ready() -> void:
 
 	_crear_banner_y_chip_evolucion()
 	_crear_modales_dominio4()
+	_crear_banner_cadenas_hud()
+	_crear_barra_calor_hud()
+	_crear_panel_favor_hud()
+	_asegurar_indicador_denarios()
 	_conectar_jugador()
 	_conectar_boton_movil()
 	call_deferred("_conectar_boton_movil")
@@ -377,10 +410,14 @@ func _conectar_jugador() -> void:
 		jugador.economia_actualizada.connect(_on_economia_actualizada)
 	if jugador.has_signal("bendicion_adquirida") and not jugador.bendicion_adquirida.is_connected(_on_bendicion_adquirida):
 		jugador.bendicion_adquirida.connect(_on_bendicion_adquirida)
+	if jugador.has_signal("denarios_actualizados") and not jugador.denarios_actualizados.is_connected(_on_denarios_actualizados):
+		jugador.denarios_actualizados.connect(_on_denarios_actualizados)
 
 	_on_stats_actualizadas(jugador.vida, jugador.vida_maxima, jugador.xp, jugador.xp_siguiente_nivel, jugador.nivel, jugador.oro, jugador.bajas)
 	if "clics_disponibles" in jugador:
 		_on_economia_actualizada(int(jugador.oro), int(jugador.clics_disponibles), int(jugador.clics_totales))
+	if "denarios" in jugador:
+		_on_denarios_actualizados(int(jugador.denarios))
 	_conectar_evolucion_manager()
 
 
@@ -431,6 +468,17 @@ func _conectar_boton_movil() -> void:
 			b.click_presionado.connect(_on_click_boton_presionado)
 		if b.has_signal("estabilidad_actualizada") and not b.estabilidad_actualizada.is_connected(_on_estabilidad_boton_actualizada):
 			b.estabilidad_actualizada.connect(_on_estabilidad_boton_actualizada)
+		if b.has_signal("cadenas_actualizadas") and not b.cadenas_actualizadas.is_connected(_on_cadenas_boton_actualizadas):
+			b.cadenas_actualizadas.connect(_on_cadenas_boton_actualizadas)
+		if b.has_signal("calor_actualizado") and not b.calor_actualizado.is_connected(_on_calor_boton_actualizado):
+			b.calor_actualizado.connect(_on_calor_boton_actualizado)
+		if "calor_actual" in b and "calor_maximo" in b and "sobrecalentado" in b:
+			_on_calor_boton_actualizado(float(b.calor_actual), float(b.calor_maximo), bool(b.sobrecalentado))
+		if "cadenas_activas" in b and "cadenas_requeridas" in b:
+			_cadenas_restantes_cache = int(b.cadenas_activas)
+			_cadenas_totales_cache = int(b.cadenas_requeridas)
+			if _cadenas_restantes_cache > 0:
+				_on_cadenas_boton_actualizadas(_cadenas_restantes_cache, _cadenas_totales_cache)
 		if "rapidez_movimiento" in b:
 			vel_boton = b.rapidez_movimiento
 		if "tiempo_estabilidad_actual" in b:
@@ -451,10 +499,707 @@ func _on_click_boton_presionado(total: int) -> void:
 	if b != null and "rapidez_movimiento" in b:
 		vel_boton = b.rapidez_movimiento
 
+func toggle_modo_hud_esencial() -> bool:
+	return false
+
+func set_modo_hud_esencial(_activo: bool) -> void:
+	modo_hud_esencial = false
+	_aplicar_modo_hud_esencial()
+
+func _actualizar_posicion_banners_superiores() -> void:
+	var y_cursor: float = 94.0
+	if panel_jefe != null and is_instance_valid(panel_jefe) and panel_jefe.visible:
+		var fondo_jefe: float = panel_jefe.offset_bottom
+		if fondo_jefe <= panel_jefe.offset_top:
+			fondo_jefe = panel_jefe.offset_top + 46.0
+		y_cursor = maxf(y_cursor, fondo_jefe + 12.0)
+
+	if _banner_cadenas_hud != null and is_instance_valid(_banner_cadenas_hud):
+		_banner_cadenas_hud.offset_top = y_cursor
+		_banner_cadenas_hud.offset_bottom = y_cursor + 32.0
+		if _banner_cadenas_hud.visible:
+			y_cursor += 38.0
+
+	if _barra_calor_hud != null and is_instance_valid(_barra_calor_hud):
+		_barra_calor_hud.offset_top = y_cursor
+		_barra_calor_hud.offset_bottom = y_cursor + 26.0
+
+func _aplicar_modo_hud_esencial() -> void:
+	if _btn_toggle_hud != null:
+		_btn_toggle_hud.text = "🌿 HUD Limpio [H]" if modo_hud_esencial else "🧭 HUD [H]"
+		_btn_toggle_hud.modulate = Color(0.4, 1.0, 0.7) if modo_hud_esencial else Color(1.0, 0.88, 0.4)
+
+	_actualizar_posicion_banners_superiores()
+
+	if _banner_cadenas_hud != null:
+		_banner_cadenas_hud.visible = (_cadenas_restantes_cache > 0) and not modo_hud_esencial
+		if _lbl_cadenas_hud != null and _cadenas_restantes_cache > 0:
+			var activadas: int = max(0, _cadenas_totales_cache - _cadenas_restantes_cache)
+			_lbl_cadenas_hud.text = "🔒 NÚCLEO BLOQUEADO · %d/%d PALANCAS" % [activadas, _cadenas_totales_cache]
+
+	if _barra_calor_hud != null:
+		var pct_act: float = (_progress_calor.value / 100.0) if _progress_calor != null else 0.0
+		_barra_calor_hud.visible = (pct_act > 0.20) and not modo_hud_esencial
+
+	if _panel_favor != null:
+		_panel_favor.visible = not modo_hud_esencial
+
+	if modo_hud_esencial:
+		for f in _flechas_palancas:
+			if is_instance_valid(f):
+				f.visible = false
+		if _flecha_nucleo_inicio != null and is_instance_valid(_flecha_nucleo_inicio):
+			_flecha_nucleo_inicio.visible = false
+		for fj in _flechas_jefes:
+			if is_instance_valid(fj):
+				fj.visible = false
+
+	if is_inside_tree() and get_tree() != null:
+		get_tree().call_group("indicadores_tacticos", "actualizar_modo_esencial", modo_hud_esencial)
+
+	var pool = get_tree().get_first_node_in_group("damage_numbers") if is_inside_tree() else null
+	if pool != null and pool.has_method("mostrar_texto"):
+		var pj = get_tree().get_first_node_in_group("jugador")
+		if pj == null: pj = get_tree().get_first_node_in_group("player")
+		var pos_msg = (pj.global_position + Vector3(0, 2.4, 0)) if pj != null else Vector3(0, 2.5, 0)
+		if modo_hud_esencial:
+			pool.mostrar_texto(pos_msg, "🌿 MODO HUD ESENCIAL (Solo barras vitales)", Color(0.4, 1.0, 0.7), 1.2)
+		else:
+			pool.mostrar_texto(pos_msg, "🧭 MODO HUD COMPLETO (Indicadores tácticos visibles)", Color(1.0, 0.85, 0.35), 1.2)
+
+func _crear_banner_cadenas_hud() -> void:
+	if _banner_cadenas_hud != null or $Control == null:
+		return
+	_banner_cadenas_hud = PanelContainer.new()
+	_banner_cadenas_hud.name = "BannerCadenasHUD"
+	_banner_cadenas_hud.anchor_left = 0.5
+	_banner_cadenas_hud.anchor_right = 0.5
+	_banner_cadenas_hud.offset_left = -230.0
+	_banner_cadenas_hud.offset_right = 230.0
+	_banner_cadenas_hud.offset_top = 150.0
+	_banner_cadenas_hud.offset_bottom = 182.0
+	_banner_cadenas_hud.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_banner_cadenas_hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_banner_cadenas_hud.visible = false
+	_banner_cadenas_hud.add_to_group("indicadores_tacticos")
+
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.12, 0.03, 0.05, 0.94)
+	sb.border_width_left = 1
+	sb.border_width_top = 1
+	sb.border_width_right = 1
+	sb.border_width_bottom = 1
+	sb.border_color = Color(1.0, 0.25, 0.25, 0.95)
+	sb.corner_radius_top_left = 6
+	sb.corner_radius_top_right = 6
+	sb.corner_radius_bottom_right = 6
+	sb.corner_radius_bottom_left = 6
+	sb.content_margin_left = 10.0
+	sb.content_margin_right = 10.0
+	_banner_cadenas_hud.add_theme_stylebox_override("panel", sb)
+
+	_lbl_cadenas_hud = Label.new()
+	_lbl_cadenas_hud.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_lbl_cadenas_hud.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_lbl_cadenas_hud.add_theme_font_size_override("font_size", 11)
+	_lbl_cadenas_hud.add_theme_color_override("font_color", Color(1.0, 0.75, 0.75))
+	_lbl_cadenas_hud.text = "🔒 NÚCLEO BLOQUEADO · 0/3 PALANCAS"
+	_banner_cadenas_hud.add_child(_lbl_cadenas_hud)
+
+	$Control.add_child(_banner_cadenas_hud)
+
+func _crear_barra_calor_hud() -> void:
+	if _barra_calor_hud != null or $Control == null:
+		return
+	_barra_calor_hud = PanelContainer.new()
+	_barra_calor_hud.name = "BarraCalorHUD"
+	_barra_calor_hud.anchor_left = 0.5
+	_barra_calor_hud.anchor_right = 0.5
+	_barra_calor_hud.offset_left = -140.0
+	_barra_calor_hud.offset_right = 140.0
+	_barra_calor_hud.offset_top = 130.0
+	_barra_calor_hud.offset_bottom = 154.0
+	_barra_calor_hud.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_barra_calor_hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_barra_calor_hud.visible = false
+	_barra_calor_hud.add_to_group("indicadores_tacticos")
+
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.08, 0.04, 0.02, 0.90)
+	sb.border_color = Color(1.0, 0.45, 0.15, 0.9)
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(5)
+	sb.content_margin_left = 8.0
+	sb.content_margin_right = 8.0
+	_barra_calor_hud.add_theme_stylebox_override("panel", sb)
+
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 6)
+	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	_barra_calor_hud.add_child(hbox)
+
+	var ico := Label.new()
+	ico.text = "🌡️"
+	ico.add_theme_font_size_override("font_size", 11)
+	hbox.add_child(ico)
+
+	_progress_calor = ProgressBar.new()
+	_progress_calor.min_value = 0.0
+	_progress_calor.max_value = 100.0
+	_progress_calor.value = 0.0
+	_progress_calor.custom_minimum_size = Vector2(170, 10)
+	_progress_calor.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_progress_calor.show_percentage = false
+
+	var bg_bar := StyleBoxFlat.new()
+	bg_bar.bg_color = Color(0.12, 0.08, 0.06, 0.95)
+	bg_bar.set_corner_radius_all(3)
+	_progress_calor.add_theme_stylebox_override("background", bg_bar)
+
+	var fill_bar := StyleBoxFlat.new()
+	fill_bar.bg_color = Color(0.3, 0.9, 0.4)
+	fill_bar.set_corner_radius_all(3)
+	_progress_calor.add_theme_stylebox_override("fill", fill_bar)
+	hbox.add_child(_progress_calor)
+
+	_lbl_calor_hud = Label.new()
+	_lbl_calor_hud.add_theme_font_size_override("font_size", 10)
+	_lbl_calor_hud.add_theme_color_override("font_color", Color(1.0, 0.7, 0.3))
+	_lbl_calor_hud.text = "0%"
+	hbox.add_child(_lbl_calor_hud)
+
+	$Control.add_child(_barra_calor_hud)
+
+func _on_calor_boton_actualizado(calor_actual: float, calor_maximo: float, sobrecalentado: bool) -> void:
+	if _barra_calor_hud == null:
+		_crear_barra_calor_hud()
+	if _barra_calor_hud == null or _progress_calor == null:
+		return
+
+	var pct := clampf(calor_actual / maxf(calor_maximo, 1.0), 0.0, 1.0)
+	_progress_calor.value = pct * 100.0
+	if _lbl_calor_hud != null:
+		_lbl_calor_hud.text = "¡SOBRECALENTADO!" if sobrecalentado else ("%d%%" % int(pct * 100.0))
+
+	var col: Color
+	if sobrecalentado:
+		col = Color(1.0, 0.15, 0.15)
+	elif pct >= 0.75:
+		col = Color(1.0, 0.35, 0.1)
+	elif pct >= 0.4:
+		col = Color(1.0, 0.70, 0.15)
+	else:
+		col = Color(0.3, 0.9, 0.4)
+
+	var fill_sb := StyleBoxFlat.new()
+	fill_sb.bg_color = col
+	fill_sb.set_corner_radius_all(3)
+	_progress_calor.add_theme_stylebox_override("fill", fill_sb)
+
+	_barra_calor_hud.visible = (pct > 0.20 or sobrecalentado) and not modo_hud_esencial
+	_actualizar_posicion_banners_superiores()
+
+func _crear_panel_favor_hud() -> void:
+	if _panel_favor != null or $Control == null:
+		return
+	_panel_favor = PanelContainer.new()
+	_panel_favor.name = "PanelFavorEmperadorHUD"
+	_panel_favor.anchor_left = 1.0
+	_panel_favor.anchor_right = 1.0
+	_panel_favor.anchor_top = 0.0
+	_panel_favor.anchor_bottom = 0.0
+	_panel_favor.offset_left = -265.0
+	_panel_favor.offset_right = -15.0
+	_panel_favor.offset_top = 92.0
+	_panel_favor.offset_bottom = 126.0
+	_panel_favor.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_panel_favor.visible = false
+	_panel_favor.add_to_group("indicadores_tacticos")
+
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.08, 0.06, 0.02, 0.88)
+	sb.border_color = Color(0.9, 0.75, 0.2, 0.85)
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(5)
+	sb.content_margin_left = 8.0
+	sb.content_margin_right = 8.0
+	sb.content_margin_top = 4.0
+	sb.content_margin_bottom = 4.0
+	_panel_favor.add_theme_stylebox_override("panel", sb)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 2)
+	_panel_favor.add_child(vbox)
+
+	_lbl_favor = Label.new()
+	_lbl_favor.text = "👑 Neutral (0%)"
+	_lbl_favor.add_theme_font_size_override("font_size", 10)
+	_lbl_favor.add_theme_color_override("font_color", Color(1.0, 0.88, 0.35))
+	_lbl_favor.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_lbl_favor.clip_text = false
+	_lbl_favor.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+	vbox.add_child(_lbl_favor)
+
+	_bar_favor = ProgressBar.new()
+	_bar_favor.min_value = 0.0
+	_bar_favor.max_value = 100.0
+	_bar_favor.value = 0.0
+	_bar_favor.custom_minimum_size = Vector2(230, 6)
+	_bar_favor.show_percentage = false
+
+	var bg_f := StyleBoxFlat.new()
+	bg_f.bg_color = Color(0.12, 0.1, 0.04, 0.95)
+	bg_f.set_corner_radius_all(2)
+	_bar_favor.add_theme_stylebox_override("background", bg_f)
+
+	var fill_f := StyleBoxFlat.new()
+	fill_f.bg_color = Color(0.95, 0.78, 0.25)
+	fill_f.set_corner_radius_all(2)
+	_bar_favor.add_theme_stylebox_override("fill", fill_f)
+	vbox.add_child(_bar_favor)
+
+	$Control.add_child(_panel_favor)
+
+func _on_favor_cambiado(valor: float, nivel_txt: String) -> void:
+	if _panel_favor == null:
+		_crear_panel_favor_hud()
+	if _panel_favor == null:
+		return
+
+	if _bar_favor != null:
+		_bar_favor.value = clampf(valor, 0.0, 100.0)
+
+	var umbral_salvacion: bool = valor >= 75.0
+	if _lbl_favor != null:
+		var icono := " 👍" if umbral_salvacion else ""
+		_lbl_favor.text = "👑 %s (%d%%)%s" % [nivel_txt, int(valor), icono]
+
+	var col_borde: Color = Color(0.3, 1.0, 0.45) if umbral_salvacion else Color(0.9, 0.75, 0.2, 0.85)
+	var sb := _panel_favor.get_theme_stylebox("panel") as StyleBoxFlat
+	if sb != null:
+		sb.border_color = col_borde
+
+	_panel_favor.visible = not modo_hud_esencial
+
+func _crear_flecha_palanca() -> Control:
+	var cont := Control.new()
+	cont.custom_minimum_size = Vector2(32, 32)
+	cont.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cont.pivot_offset = Vector2(16, 16)
+
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.12, 0.02, 0.04, 0.88)
+	sb.border_color = Color(1.0, 0.28, 0.2, 0.95)
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(16)
+	var panel := Panel.new()
+	panel.custom_minimum_size = Vector2(32, 32)
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_theme_stylebox_override("panel", sb)
+	cont.add_child(panel)
+
+	var lbl := Label.new()
+	lbl.text = "▶"
+	lbl.add_theme_font_size_override("font_size", 16)
+	lbl.add_theme_color_override("font_color", Color(1.0, 0.35, 0.2))
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.custom_minimum_size = Vector2(32, 32)
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cont.add_child(lbl)
+
+	cont.add_to_group("indicadores_tacticos")
+	$Control.add_child(cont)
+	cont.visible = false
+	return cont
+
+func _actualizar_flechas_palancas(_delta: float) -> void:
+	if modo_hud_esencial or _cadenas_restantes_cache <= 0:
+		for f in _flechas_palancas:
+			if is_instance_valid(f):
+				f.visible = false
+		return
+
+	# Asegurar que _nodos_palancas_activas tiene las palancas activas desde el primer instante
+	if _nodos_palancas_activas.is_empty() and is_inside_tree() and get_tree() != null:
+		var palancas = get_tree().get_nodes_in_group("palancas_boton")
+		for p in palancas:
+			if is_instance_valid(p) and p.get("activada") != true and p.visible:
+				_nodos_palancas_activas.append(p)
+
+	if _nodos_palancas_activas.is_empty():
+		for f in _flechas_palancas:
+			if is_instance_valid(f):
+				f.visible = false
+		return
+
+	var vp := get_viewport()
+	if vp == null:
+		return
+	var cam := vp.get_camera_3d()
+	if cam == null:
+		return
+	var vp_size := vp.get_visible_rect().size
+	var margen: float = 38.0
+
+	while _flechas_palancas.size() < _nodos_palancas_activas.size():
+		_flechas_palancas.append(_crear_flecha_palanca())
+
+	for i in range(_flechas_palancas.size()):
+		var flecha := _flechas_palancas[i]
+		if not is_instance_valid(flecha):
+			continue
+		if i >= _nodos_palancas_activas.size():
+			flecha.visible = false
+			continue
+
+		var palanca = _nodos_palancas_activas[i]
+		if palanca == null or not is_instance_valid(palanca) or not palanca.is_inside_tree():
+			flecha.visible = false
+			continue
+
+		if palanca.get("activada") == true or palanca.get("habilitada") == false:
+			flecha.visible = false
+			continue
+
+		var pos3d: Vector3 = palanca.global_position + Vector3(0, 1.2, 0)
+		var pos2d: Vector2 = cam.unproject_position(pos3d)
+		var en_camara: bool = not cam.is_position_behind(pos3d)
+
+		if en_camara and pos2d.x >= margen and pos2d.x <= (vp_size.x - margen) and pos2d.y >= margen and pos2d.y <= (vp_size.y - margen):
+			flecha.visible = false
+			continue
+
+		var centro := vp_size * 0.5
+		var dir := (pos2d - centro).normalized() if en_camara else -(pos2d - centro).normalized()
+		if dir.length_squared() < 0.001:
+			dir = Vector2.UP
+
+		var angulo := dir.angle()
+		var max_x: float = centro.x - margen
+		var max_y: float = centro.y - margen
+		var scale_factor: float = 1.0
+		if abs(dir.x) * max_y > abs(dir.y) * max_x:
+			scale_factor = max_x / max(abs(dir.x), 0.001)
+		else:
+			scale_factor = max_y / max(abs(dir.y), 0.001)
+
+		var pos_borde := centro + dir * scale_factor
+		flecha.position = Vector2(pos_borde.x - 16.0, pos_borde.y - 16.0)
+		flecha.rotation = angulo
+		flecha.visible = not modo_hud_esencial
+
+func _crear_flecha_grande(icono: String, col_borde: Color, col_fondo: Color) -> Control:
+	var cont := Control.new()
+	cont.custom_minimum_size = Vector2(48, 48)
+	cont.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cont.pivot_offset = Vector2(24, 24)
+
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = col_fondo
+	sb.border_color = col_borde
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(24)
+	sb.shadow_color = Color(0, 0, 0, 0.75)
+	sb.shadow_size = 8
+	var panel := Panel.new()
+	panel.custom_minimum_size = Vector2(48, 48)
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_theme_stylebox_override("panel", sb)
+	cont.add_child(panel)
+
+	var lbl := Label.new()
+	lbl.text = icono
+	lbl.add_theme_font_size_override("font_size", 22)
+	lbl.add_theme_color_override("font_color", col_borde)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.custom_minimum_size = Vector2(48, 48)
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cont.add_child(lbl)
+
+	cont.add_to_group("indicadores_tacticos")
+	$Control.add_child(cont)
+	cont.visible = false
+	return cont
+
+func _actualizar_flecha_nucleo_inicio() -> void:
+	if modo_hud_esencial or clicks_boton > 0:
+		if _flecha_nucleo_inicio != null:
+			_flecha_nucleo_inicio.visible = false
+		return
+
+	var b = get_tree().get_first_node_in_group("boton_movil") as Node3D if (is_inside_tree() and get_tree() != null) else null
+	if b == null or not is_instance_valid(b):
+		if _flecha_nucleo_inicio != null:
+			_flecha_nucleo_inicio.visible = false
+		return
+
+	var vp := get_viewport()
+	if vp == null: return
+	var cam := vp.get_camera_3d()
+	if cam == null: return
+	var vp_size := vp.get_visible_rect().size
+	var margen: float = 46.0
+
+	if _flecha_nucleo_inicio == null:
+		_flecha_nucleo_inicio = _crear_flecha_grande("🎯", Color(0.28, 1.0, 0.65), Color(0.04, 0.12, 0.08, 0.92))
+
+	var pos3d: Vector3 = b.global_position + Vector3(0, 1.0, 0)
+	var pos2d: Vector2 = cam.unproject_position(pos3d)
+	var en_camara: bool = not cam.is_position_behind(pos3d)
+
+	if en_camara and pos2d.x >= margen and pos2d.x <= (vp_size.x - margen) and pos2d.y >= margen and pos2d.y <= (vp_size.y - margen):
+		_flecha_nucleo_inicio.visible = false
+		return
+
+	var centro := vp_size * 0.5
+	var dir := (pos2d - centro).normalized() if en_camara else -(pos2d - centro).normalized()
+	if dir.length_squared() < 0.001: dir = Vector2.UP
+
+	var max_x: float = centro.x - margen
+	var max_y: float = centro.y - margen
+	var scale_factor: float = (max_x / max(abs(dir.x), 0.001)) if abs(dir.x) * max_y > abs(dir.y) * max_x else (max_y / max(abs(dir.y), 0.001))
+
+	var pos_borde := centro + dir * scale_factor
+	_flecha_nucleo_inicio.position = Vector2(pos_borde.x - 24.0, pos_borde.y - 24.0)
+	_flecha_nucleo_inicio.rotation = dir.angle()
+	_flecha_nucleo_inicio.visible = not modo_hud_esencial
+
+func _es_jefe_mayor_canonico(nodo: Node) -> bool:
+	if nodo == null or not is_instance_valid(nodo):
+		return false
+	var scr = nodo.get_script()
+	var scr_path := ""
+	if scr != null and "resource_path" in scr:
+		scr_path = str(scr.resource_path).to_lower()
+	var n_name := str(nodo.name).to_lower()
+	var tipo_id := ""
+	if "tipo_enemigo_id" in nodo:
+		tipo_id = str(nodo.tipo_enemigo_id).to_lower()
+
+	# Exclusivamente los 5 jefes canónicos mayores de la arena
+	var es_centurion: bool = scr_path.contains("centurion_corrupto") or n_name.contains("centurion") or tipo_id == "centurion"
+	var es_espejo: bool = scr_path.contains("espejo_sombrio") or n_name.contains("espejo") or tipo_id == "espejo_sombrio"
+	var es_maestra: bool = scr_path.contains("maestra_sanguinaria") or n_name.contains("maestra") or tipo_id == "maestra"
+	var es_coloso: bool = scr_path.contains("coloso_bronce") or n_name.contains("coloso") or tipo_id == "coloso"
+	var es_parca: bool = scr_path.contains("parca_roja") or n_name.contains("parca") or tipo_id == "parca"
+
+	return es_centurion or es_espejo or es_maestra or es_coloso or es_parca
+
+func _obtener_jefes_mayores_vivos() -> Array:
+	var vivos: Array = []
+	for j in get_tree().get_nodes_in_group("jefes"):
+		if is_instance_valid(j) and (not ("muerto" in j) or not j.muerto) and ("vida" in j and j.vida > 0.0):
+			if _es_jefe_mayor_canonico(j):
+				vivos.append(j)
+	return vivos
+
+func _actualizar_flechas_jefes() -> void:
+	if modo_hud_esencial:
+		for f in _flechas_jefes:
+			if is_instance_valid(f): f.visible = false
+		return
+
+	var vivos := _obtener_jefes_mayores_vivos()
+	if vivos.is_empty():
+		for f in _flechas_jefes:
+			if is_instance_valid(f): f.visible = false
+		return
+
+	var vp := get_viewport()
+	if vp == null: return
+	var cam := vp.get_camera_3d()
+	if cam == null: return
+	var vp_size := vp.get_visible_rect().size
+	var margen: float = 46.0
+
+	while _flechas_jefes.size() < vivos.size():
+		_flechas_jefes.append(_crear_flecha_grande("💀", Color(1.0, 0.22, 0.22), Color(0.16, 0.03, 0.05, 0.92)))
+
+	for i in range(_flechas_jefes.size()):
+		var flecha := _flechas_jefes[i]
+		if not is_instance_valid(flecha): continue
+		if i >= vivos.size():
+			flecha.visible = false
+			continue
+
+		var jefe = vivos[i] as Node3D
+		if jefe == null or not is_instance_valid(jefe):
+			flecha.visible = false
+			continue
+
+		var pos3d: Vector3 = jefe.global_position + Vector3(0, 1.8, 0)
+		var pos2d: Vector2 = cam.unproject_position(pos3d)
+		var en_camara: bool = not cam.is_position_behind(pos3d)
+
+		if en_camara and pos2d.x >= margen and pos2d.x <= (vp_size.x - margen) and pos2d.y >= margen and pos2d.y <= (vp_size.y - margen):
+			flecha.visible = false
+			continue
+
+		var centro := vp_size * 0.5
+		var dir := (pos2d - centro).normalized() if en_camara else -(pos2d - centro).normalized()
+		if dir.length_squared() < 0.001: dir = Vector2.UP
+
+		var max_x: float = centro.x - margen
+		var max_y: float = centro.y - margen
+		var scale_factor: float = (max_x / max(abs(dir.x), 0.001)) if abs(dir.x) * max_y > abs(dir.y) * max_x else (max_y / max(abs(dir.y), 0.001))
+
+		var pos_borde := centro + dir * scale_factor
+		flecha.position = Vector2(pos_borde.x - 24.0, pos_borde.y - 24.0)
+		flecha.rotation = dir.angle()
+		flecha.visible = not modo_hud_esencial
+
+func mostrar_letrero_temporal(id: String, titulo: String, descripcion: String, color_borde: Color = Color(0.92, 0.78, 0.35)) -> void:
+	if _tooltips_mostrados.has(id):
+		return
+	_tooltips_mostrados[id] = true
+
+	if modo_hud_esencial or get_tree() == null:
+		return
+
+	if _banner_letrero_tween != null and _banner_letrero_tween.is_valid():
+		_banner_letrero_tween.kill()
+	if _banner_letrero_panel != null and is_instance_valid(_banner_letrero_panel):
+		_banner_letrero_panel.queue_free()
+
+	var capa := CanvasLayer.new()
+	capa.layer = 22
+	add_child(capa)
+	_banner_letrero_capa = capa
+
+	var marco := PanelContainer.new()
+	marco.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	marco.anchor_left = 0.5
+	marco.anchor_right = 0.5
+	marco.offset_left = -280.0
+	marco.offset_right = 280.0
+	marco.offset_top = 136.0
+	marco.offset_bottom = 206.0
+	marco.grow_horizontal = Control.GROW_DIRECTION_BOTH
+
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.043, 0.051, 0.082, 0.94)
+	sb.border_color = color_borde
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(8)
+	sb.shadow_color = Color(0, 0, 0, 0.75)
+	sb.shadow_size = 12
+	marco.add_theme_stylebox_override("panel", sb)
+	marco.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	capa.add_child(marco)
+	_banner_letrero_panel = marco
+
+	var margin := MarginContainer.new()
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_theme_constant_override("margin_left", 16)
+	margin.add_theme_constant_override("margin_right", 16)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_bottom", 8)
+	marco.add_child(margin)
+
+	var vbox := VBoxContainer.new()
+	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_theme_constant_override("separation", 3)
+	margin.add_child(vbox)
+
+	var lbl_tit := Label.new()
+	lbl_tit.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl_tit.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_tit.text = titulo.to_upper()
+	lbl_tit.add_theme_font_size_override("font_size", 16)
+	lbl_tit.add_theme_color_override("font_color", color_borde)
+	vbox.add_child(lbl_tit)
+
+	var lbl_desc := Label.new()
+	lbl_desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_desc.text = descripcion
+	lbl_desc.add_theme_font_size_override("font_size", 12)
+	lbl_desc.add_theme_color_override("font_color", Color(0.92, 0.94, 0.98))
+	lbl_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vbox.add_child(lbl_desc)
+
+	var tw := capa.create_tween()
+	_banner_letrero_tween = tw
+	tw.tween_property(marco, "modulate:a", 1.0, 0.35)
+	tw.tween_interval(3.2)
+	tw.tween_property(marco, "modulate:a", 0.0, 0.4)
+	tw.finished.connect(func():
+		if is_instance_valid(capa):
+			capa.queue_free()
+	)
+
+func _crear_btn_toggle_hud() -> void:
+	return # Desactivado por glosario y modo único de HUD completo
+	var cont_eco = $Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia
+	if cont_eco == null:
+		return
+	_btn_toggle_hud = Button.new()
+	_btn_toggle_hud.name = "BtnToggleHUDEsencial"
+	_btn_toggle_hud.text = "🧭 HUD [H]"
+	_btn_toggle_hud.custom_minimum_size = Vector2(90, 22)
+	_btn_toggle_hud.focus_mode = Control.FOCUS_NONE
+	_btn_toggle_hud.add_theme_font_size_override("font_size", 10)
+	_btn_toggle_hud.add_theme_color_override("font_color", Color(1.0, 0.88, 0.4))
+	_btn_toggle_hud.tooltip_text = "Alternar HUD Limpio / Completo (Tecla H)"
+
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.08, 0.08, 0.12, 0.85)
+	sb.border_width_left = 1
+	sb.border_width_top = 1
+	sb.border_width_right = 1
+	sb.border_width_bottom = 1
+	sb.border_color = Color(0.55, 0.45, 0.25, 0.8)
+	sb.corner_radius_top_left = 4
+	sb.corner_radius_top_right = 4
+	sb.corner_radius_bottom_right = 4
+	sb.corner_radius_bottom_left = 4
+	_btn_toggle_hud.add_theme_stylebox_override("normal", sb)
+
+	var sb_h := sb.duplicate() as StyleBoxFlat
+	sb_h.bg_color = Color(0.16, 0.16, 0.24, 0.95)
+	sb_h.border_color = Color(1.0, 0.85, 0.35, 1.0)
+	_btn_toggle_hud.add_theme_stylebox_override("hover", sb_h)
+
+	_btn_toggle_hud.pressed.connect(func(): toggle_modo_hud_esencial())
+	cont_eco.add_child(_btn_toggle_hud)
+
+func _on_cadenas_boton_actualizadas(restantes: int, totales: int) -> void:
+	_cadenas_restantes_cache = restantes
+	_cadenas_totales_cache = totales
+	if _banner_cadenas_hud == null:
+		_crear_banner_cadenas_hud()
+	_actualizar_posicion_banners_superiores()
+	if _banner_cadenas_hud != null:
+		if restantes > 0 and not modo_hud_esencial:
+			_banner_cadenas_hud.visible = true
+			if _lbl_cadenas_hud != null:
+				var activadas: int = max(0, totales - restantes)
+				_lbl_cadenas_hud.text = "🔒 NÚCLEO BLOQUEADO · %d/%d PALANCAS" % [activadas, totales]
+		else:
+			_banner_cadenas_hud.visible = false
+
+	_nodos_palancas_activas.clear()
+	if restantes > 0 and is_inside_tree() and get_tree() != null:
+		var palancas = get_tree().get_nodes_in_group("palancas_boton")
+		for p in palancas:
+			if is_instance_valid(p) and p.get("habilitada") == true and p.get("activada") == false:
+				_nodos_palancas_activas.append(p)
+	else:
+		for f in _flechas_palancas:
+			if is_instance_valid(f):
+				f.visible = false
+
 
 func _process(delta: float) -> void:
 	if not get_tree().paused and clicks_boton > 0:
 		tiempo_total += delta
+
+	_actualizar_flechas_palancas(delta)
+	_actualizar_flecha_nucleo_inicio()
+	_actualizar_flechas_jefes()
+	_actualizar_posicion_banners_superiores()
 
 	if modal_mejora != null and modal_mejora.visible:
 		_actualizar_visual_sello_tarot()
@@ -610,6 +1355,53 @@ func _on_stats_actualizadas(vida: float, max_vida: float, xp: int, xp_sig: int, 
 func _on_economia_actualizada(oro_cnt: int, _clics_disp: int, _clics_tot: int) -> void:
 	if label_oro != null:
 		label_oro.text = _formatear_numero(oro_cnt)
+
+func _asegurar_indicador_denarios() -> void:
+	if label_denarios != null:
+		return
+	var cont = get_node_or_null("Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia") as Container
+	if cont == null:
+		return
+	var hbox_den := HBoxContainer.new()
+	hbox_den.name = "HBoxDenarios"
+	hbox_den.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox_den.alignment = BoxContainer.ALIGNMENT_CENTER
+	hbox_den.add_theme_constant_override("separation", 5)
+
+	var ico := TextureRect.new()
+	ico.name = "IconoDenarios"
+	ico.custom_minimum_size = Vector2(16, 16)
+	ico.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	ico.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var ico_oro = get_node_or_null("Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxOro/IconoOro") as TextureRect
+	if ico_oro != null:
+		ico.texture = ico_oro.texture
+	ico.modulate = Color(0.75, 0.88, 1.0)
+	ico.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ico.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	hbox_den.add_child(ico)
+
+	label_denarios = Label.new()
+	label_denarios.name = "LabelDenarios"
+	label_denarios.text = "0"
+	label_denarios.add_theme_font_size_override("font_size", 12)
+	label_denarios.add_theme_color_override("font_color", Color(0.82, 0.92, 1.0))
+	label_denarios.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.95))
+	label_denarios.add_theme_color_override("font_outline_color", Color(0.04, 0.12, 0.24, 1.0))
+	label_denarios.add_theme_constant_override("shadow_offset_x", 1)
+	label_denarios.add_theme_constant_override("shadow_offset_y", 1)
+	label_denarios.add_theme_constant_override("outline_size", 2)
+	label_denarios.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label_denarios.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	hbox_den.add_child(label_denarios)
+
+	cont.add_child(hbox_den)
+
+func _on_denarios_actualizados(total: int) -> void:
+	if label_denarios == null:
+		_asegurar_indicador_denarios()
+	if label_denarios != null:
+		label_denarios.text = _formatear_numero(total)
 
 
 func _on_bendicion_adquirida(_id_bendicion: String, _nivel_actual: int) -> void:
@@ -1862,6 +2654,7 @@ func _recalcular_altura_panel_jefe() -> void:
 	if _contenedor_stagger_jefe != null and _contenedor_stagger_jefe.visible:
 		alto_panel += 22.0
 	panel_jefe.offset_bottom = panel_jefe.offset_top + alto_panel
+	_actualizar_posicion_banners_superiores()
 
 
 func mostrar_barra_stagger(clics_restantes: int, clics_totales: int, tiempo_restante: float) -> void:
@@ -1892,6 +2685,7 @@ func mostrar_barra_jefe(nombre: String, max_hp: float, hp_actual: float) -> void
 		return
 	var estaba_oculto := not panel_jefe.visible
 	panel_jefe.visible = true
+	_actualizar_posicion_banners_superiores()
 	ocultar_barra_stagger()
 	if bar_jefe_shader != null and bar_jefe_shader.material is ShaderMaterial:
 		var mj := bar_jefe_shader.material as ShaderMaterial
@@ -1923,12 +2717,17 @@ func mostrar_barra_jefe(nombre: String, max_hp: float, hp_actual: float) -> void
 		var tw := create_tween()
 		tw.tween_property(panel_jefe, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		tw.parallel().tween_property(panel_jefe, "modulate:a", 1.0, 0.22)
+		var nom_banner := label_nombre_jefe.text if label_nombre_jefe != null else "JEFE DE LA ARENA"
+		mostrar_letrero_temporal("jefe_spawn", "⚔️ ¡" + nom_banner + "!", "Inflige daño con tus armas y esquiva. Si activa defensas o canaliza, ¡pulsa el Núcleo Rúnico!", Color(1.0, 0.35, 0.35))
 
 
 func actualizar_barra_jefe(hp_actual: float, texto_nombre: String = "", estado_tag: String = "") -> void:
 	if panel_jefe == null or bar_vida_jefe == null:
 		return
 	panel_jefe.visible = true
+	_actualizar_posicion_banners_superiores()
+	if hp_actual > bar_vida_jefe.max_value:
+		bar_vida_jefe.max_value = hp_actual
 	var safe_max := maxf(bar_vida_jefe.max_value, 1.0)
 	_jefe_hp_ratio = clampf(hp_actual / safe_max, 0.0, 1.0)
 	if _jefe_hp_previa >= 0.0 and hp_actual < _jefe_hp_previa - 0.5:
@@ -1991,6 +2790,7 @@ func ocultar_barra_jefe() -> void:
 	if panel_jefe != null:
 		panel_jefe.visible = false
 		_jefe_hp_previa = -1.0
+		_actualizar_posicion_banners_superiores()
 
 
 func _obtener_jefes_vivos() -> Array:
@@ -2017,7 +2817,7 @@ func _sincronizar_jefe_prioritario() -> void:
 		var hp := float(j.vida) if "vida" in j else max_hp
 		if not panel_jefe.visible:
 			mostrar_barra_jefe(_formatear_nombre_jefe_nodo(j), max_hp, hp)
-		elif not ("hud" in j) and bar_vida_jefe != null:
+		elif bar_vida_jefe != null:
 			if absf(bar_vida_jefe.max_value - max_hp) > 0.5:
 				bar_vida_jefe.max_value = maxf(max_hp, 1.0)
 			if absf(bar_vida_jefe.value - hp) > 0.1:
@@ -2059,6 +2859,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				return
 		if modal_mercader != null and modal_mercader.visible and event.keycode == KEY_ESCAPE:
 			_cerrar_mercader_vacio()
+			get_viewport().set_input_as_handled()
+			return
+		if event.keycode == KEY_H:
 			get_viewport().set_input_as_handled()
 			return
 		if event.keycode == KEY_F11:
@@ -2187,6 +2990,10 @@ func _bootstrap_domain4_managers() -> void:
 func _conectar_senales_dominio4() -> void:
 	var favor = get_tree().get_first_node_in_group("favor_emperador_manager")
 	if favor != null:
+		if favor.has_signal("favor_cambiado") and not favor.favor_cambiado.is_connected(_on_favor_cambiado):
+			favor.favor_cambiado.connect(_on_favor_cambiado)
+		if "favor" in favor and favor.has_method("_obtener_texto_nivel_favor"):
+			_on_favor_cambiado(float(favor.favor), String(favor._obtener_texto_nivel_favor()))
 		if favor.has_signal("pulgar_emperador_iniciado") and not favor.pulgar_emperador_iniciado.is_connected(_on_pulgar_iniciado):
 			favor.pulgar_emperador_iniciado.connect(_on_pulgar_iniciado)
 		if favor.has_signal("pulgar_emperador_resuelto") and not favor.pulgar_emperador_resuelto.is_connected(_on_pulgar_resuelto):
@@ -2345,19 +3152,19 @@ func _on_mercader_disponible(opciones: Array, _restante: float = 0.0) -> void:
 		var mal_txt: String = str(op.get("maldicion", op.get("desc", "")))
 		var ben_txt: String = str(op.get("bendicion", op.get("descripcion", "")))
 
-		var l_mal := Label.new()
-		l_mal.text = "💀 Maldición:\n" + mal_txt
-		l_mal.autowrap_mode = TextServer.AUTOWRAP_WORD
-		l_mal.add_theme_font_size_override("font_size", 9)
-		l_mal.add_theme_color_override("font_color", Color(1.0, 0.40, 0.40))
-		v.add_child(l_mal)
-
 		var l_ben := Label.new()
-		l_ben.text = "✨ Bendición:\n" + ben_txt
+		l_ben.text = "✨ GANAS:\n" + ben_txt
 		l_ben.autowrap_mode = TextServer.AUTOWRAP_WORD
 		l_ben.add_theme_font_size_override("font_size", 9)
-		l_ben.add_theme_color_override("font_color", Color(1.0, 0.88, 0.40))
+		l_ben.add_theme_color_override("font_color", Color(0.35, 1.0, 0.65))
 		v.add_child(l_ben)
+
+		var l_mal := Label.new()
+		l_mal.text = "💀 SACRIFICAS:\n" + mal_txt
+		l_mal.autowrap_mode = TextServer.AUTOWRAP_WORD
+		l_mal.add_theme_font_size_override("font_size", 9)
+		l_mal.add_theme_color_override("font_color", Color(1.0, 0.35, 0.35))
+		v.add_child(l_mal)
 
 		var spacer := Control.new()
 		spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -2389,7 +3196,7 @@ func _cerrar_mercader_vacio() -> void:
 	if is_inside_tree() and get_tree() != null:
 		get_tree().paused = false
 
-func _on_pulgar_iniciado(_prob: float = 0.5) -> void:
+func _on_pulgar_iniciado(prob_o_favor: float = 0.5) -> void:
 	if overlay_pulgar == null:
 		return
 	overlay_pulgar.modulate.a = 1.0
@@ -2400,7 +3207,11 @@ func _on_pulgar_iniciado(_prob: float = 0.5) -> void:
 		lbl_pulgar_titulo.text = "EL JUICIO DEL EMPERADOR"
 		lbl_pulgar_titulo.add_theme_color_override("font_color", Color(1.0, 0.85, 0.30))
 	if lbl_pulgar_desc != null:
-		lbl_pulgar_desc.text = "El Coliseo contiene el aliento... ¿Misericordia o Muerte?"
+		var pct := int(prob_o_favor)
+		if prob_o_favor >= 75.0:
+			lbl_pulgar_desc.text = "Fervor Popular: %d%% · ¡Misericordia Imperial Asegurada (≥75%%)!\nEl Coliseo ruge exigiendo tu regreso al combate." % pct
+		else:
+			lbl_pulgar_desc.text = "Fervor Popular: %d%% · Probabilidad de Clemencia: %d%%\nEl Coliseo debate tu destino en la balanza..." % [pct, pct]
 
 func _on_pulgar_resuelto(salvado: bool, _prob: float = 0.5) -> void:
 	if overlay_pulgar == null:
@@ -2414,7 +3225,7 @@ func _on_pulgar_resuelto(salvado: bool, _prob: float = 0.5) -> void:
 			lbl_pulgar_titulo.text = "¡EL EMPERADOR TE CONCEDE LA GLORIA!"
 			lbl_pulgar_titulo.add_theme_color_override("font_color", Color(1.0, 0.90, 0.35))
 		if lbl_pulgar_desc != null:
-			lbl_pulgar_desc.text = "El rugido del Coliseo te devuelve al combate con vigor renovado."
+			lbl_pulgar_desc.text = "¡El rugido del Coliseo te devuelve al combate con 60% de Vida! (Fervor consumido)"
 	else:
 		if icono_pulgar != null:
 			icono_pulgar.text = "👎"
@@ -2422,7 +3233,8 @@ func _on_pulgar_resuelto(salvado: bool, _prob: float = 0.5) -> void:
 			lbl_pulgar_titulo.text = "SENTENCIA IMPERIAL"
 			lbl_pulgar_titulo.add_theme_color_override("font_color", Color(1.0, 0.25, 0.25))
 		if lbl_pulgar_desc != null:
-			lbl_pulgar_desc.text = "El pulgar desciende. La Parca reclama tu alma."
+			var pct_txt := (" (Fervor insuficiente: %d%%)" % int(_prob * 100.0)) if _prob < 1.0 else ""
+			lbl_pulgar_desc.text = "El pulgar desciende%s. La Parca reclama tu alma." % pct_txt
 
 	var tw := create_tween()
 	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)

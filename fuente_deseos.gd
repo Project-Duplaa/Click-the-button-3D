@@ -208,6 +208,10 @@ func _process(delta: float) -> void:
 	_orbe_agua.position.y = 1.95 + sin(Time.get_ticks_msec() * 0.0045) * 0.09
 
 func _activar(pj: Node3D) -> bool:
+	var hud = get_tree().get_first_node_in_group("hud")
+	if hud != null and hud.has_method("mostrar_letrero_temporal"):
+		hud.mostrar_letrero_temporal("fuente_deseos", "⛲ FUENTE DE LOS DESEOS", "Lanza Denarios a la fuente. Tu Suerte determinará si obtienes oro, estadísticas o duplicados.", Color(0.35, 0.75, 1.0))
+
 	if _usos_actuales >= MAX_USOS:
 		return false
 	if not _cobrar(pj):

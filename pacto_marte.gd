@@ -22,6 +22,8 @@ var _espada_flotante: MeshInstance3D = null
 var _rotor_alerta: MeshInstance3D = null
 var _badge_layer: CanvasLayer = null
 var _badge_label: Label = null
+var _confirmando_pacto: bool = false
+var _tiempo_confirmacion: float = 0.0
 
 func _configurar_santuario() -> void:
 	nombre_santuario = "Pacto de Marte"
@@ -187,6 +189,18 @@ func _activar(_pj: Node3D) -> bool:
 	if _pacto_activo:
 		return false
 
+	if not _confirmando_pacto:
+		_confirmando_pacto = true
+		_tiempo_confirmacion = 4.5
+		var hud = get_tree().get_first_node_in_group("hud")
+		if hud != null and hud.has_method("mostrar_letrero_temporal"):
+			hud.mostrar_letrero_temporal("pacto_marte", "⚔️ PACTO DE MARTE (DESAFÍO)", "Invoca 3 Gladiadores de Élite al instante. Si sobrevives 60s, ¡recibes un cofre legendario!", Color(1.0, 0.35, 0.35))
+		_spawn_texto_3d("⚠️ ¿DESAFIAR 3 ÉLITES? Pulsa otra vez", Color(1.0, 0.4, 0.4))
+		AudioManager.play("alerta_oleada", 1.25)
+		_actualizar_etiqueta("⚠️ CONFIRMAR: ¡3 ÉLITES!")
+		return false
+
+	_confirmando_pacto = false
 	_pacto_activo = true
 	_consumido = true
 	_tiempo_restante = DURACION_PACTO
@@ -224,6 +238,12 @@ func _activar(_pj: Node3D) -> bool:
 	return false
 
 func _process(delta: float) -> void:
+	if _confirmando_pacto and not _pacto_activo:
+		_tiempo_confirmacion -= delta
+		if _tiempo_confirmacion <= 0.0:
+			_confirmando_pacto = false
+			_actualizar_etiqueta()
+
 	if not _pacto_activo:
 		if not _consumido:
 			if _espada_flotante != null:

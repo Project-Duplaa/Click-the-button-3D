@@ -170,6 +170,10 @@ func _calcular_costo_actual() -> int:
 	return int(c)
 
 func _activar(pj: Node3D) -> bool:
+	var hud = get_tree().get_first_node_in_group("hud")
+	if hud != null and hud.has_method("mostrar_letrero_temporal"):
+		hud.mostrar_letrero_temporal("cofre_gladiador", "🎁 COFRE DEL GLADIADOR", "Gasta Denarios para abrir el cofre. Puede contener de 1 a 5 mejoras legendarias con Jackpot.", Color(1.0, 0.8, 0.25))
+
 	costo_denarios = _calcular_costo_actual()
 	if not _puede_pagar(pj):
 		_spawn_texto_3d("Faltan Denarios (%d)" % costo_denarios, Color(1.0, 0.35, 0.35))

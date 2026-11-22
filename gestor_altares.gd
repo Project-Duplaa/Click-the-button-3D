@@ -86,6 +86,9 @@ func _desencadenar_evento_secreto():
 		var cofre = cofre_dorado_escena.instantiate()
 		get_parent().add_child(cofre)
 		cofre.global_position = ArenaColiseo.clamping_y_ajustar_a_suelo(posicion_recompensa, 1.8, 0.5)
+		var pool_dano = get_tree().get_first_node_in_group("damage_numbers") if get_tree() != null else null
+		if pool_dano != null and pool_dano.has_method("mostrar_texto"):
+			pool_dano.mostrar_texto(cofre.global_position + Vector3(0, 2.5, 0), "👑 ¡PUZZLE RESUELTO! COFRE DORADO ANCESTRAL", Color(1.0, 0.85, 0.25), 2.2)
 
 func _reubicar_altares_aleatorios_run() -> void:
 	if _altares_ordenados.is_empty():

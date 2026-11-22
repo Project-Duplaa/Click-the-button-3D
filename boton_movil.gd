@@ -29,6 +29,7 @@ signal estado_cambiado(nuevo_estado: EstadoBoton)
 signal estabilidad_actualizada(actual: float, maximo: float, en_colapso: bool)
 signal calor_actualizado(calor_actual: float, calor_maximo: float, sobrecalentado: bool)
 signal chasis_cambiado(id_chasis: String)
+signal cadenas_actualizadas(cadenas_restantes: int, cadenas_totales: int)
 
 # Parámetros de Movimiento y Vuelo
 @export var rapidez_base: float = 2.6
@@ -129,6 +130,7 @@ var _anillo_ritmo_visual: MeshInstance3D = null
 var cadenas_activas: int = 0
 var palancas_instancias: Array = []
 var _tiempo_frenesi: float = 0.0
+var _etiqueta_estado_3d: Label3D = null
 
 # Telemetría Visual Industrial (BunkerVisualKit)
 var _anillo_termico_suelo: MeshInstance3D = null
@@ -169,6 +171,8 @@ func _ready():
 
 	_crear_anillo_ritmo_visual()
 	_inicializar_visual_termico_bunker()
+	_crear_etiqueta_estado_3d()
+	_actualizar_etiqueta_estado_3d()
 	
 	MetaprogresoManager.asegurar_inicializado()
 	var chasis_inicial: String = chasis_actual
@@ -441,6 +445,7 @@ func _entrar_sobrecalentamiento():
 	AudioManager.play("escudo_bloqueo", 0.8)
 	BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position, 0.8, 3.6, BunkerVisualKit.COL_CRIMSON_ALERT, 0.42)
 	_spawn_floating_text("🌡️ ¡NÚCLEO SOBRECALENTADO! Déjalo enfriar")
+	_actualizar_etiqueta_estado_3d()
 
 func _salir_sobrecalentamiento():
 	sobrecalentado = false
@@ -453,6 +458,43 @@ func _salir_sobrecalentamiento():
 		col_halo = Color(0.68, 0.20, 0.95)
 	BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position, 0.6, 2.8, col_halo, 0.35)
 	_spawn_floating_text("❄️ ¡NÚCLEO ENFRIADO! Listo")
+	_actualizar_etiqueta_estado_3d()
+
+func _crear_etiqueta_estado_3d() -> void:
+	if _etiqueta_estado_3d != null:
+		return
+	_etiqueta_estado_3d = Label3D.new()
+	_etiqueta_estado_3d.name = "EtiquetaEstadoBoton"
+	_etiqueta_estado_3d.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_etiqueta_estado_3d.no_depth_test = true
+	_etiqueta_estado_3d.font_size = 36
+	_etiqueta_estado_3d.outline_size = 10
+	_etiqueta_estado_3d.outline_modulate = Color(0.05, 0.03, 0.08, 0.95)
+	_etiqueta_estado_3d.position = Vector3(0.0, 1.85, 0.0)
+	add_child(_etiqueta_estado_3d)
+
+func _actualizar_etiqueta_estado_3d() -> void:
+	if _etiqueta_estado_3d == null:
+		return
+	if total_clicks == 0 and estado_actual != EstadoBoton.ENCADENADO:
+		_etiqueta_estado_3d.visible = true
+		_etiqueta_estado_3d.text = "🎯 NÚCLEO RÚNICO\n[¡HAZ CLIC AQUÍ PARA INICIAR!]"
+		_etiqueta_estado_3d.modulate = Color(0.3, 1.0, 0.6)
+	elif estado_actual == EstadoBoton.ENCADENADO:
+		_etiqueta_estado_3d.visible = true
+		var pal_act: int = cadenas_requeridas - cadenas_activas
+		_etiqueta_estado_3d.text = "🔒 NÚCLEO BLOQUEADO\n[PALANCAS: %d/%d ACTIVADAS]" % [pal_act, cadenas_requeridas]
+		_etiqueta_estado_3d.modulate = Color(1.0, 0.25, 0.25)
+	elif sobrecalentado:
+		_etiqueta_estado_3d.visible = true
+		_etiqueta_estado_3d.text = "❄️ SOBRECALENTADO\n[ENFRIANDO...]"
+		_etiqueta_estado_3d.modulate = Color(0.3, 0.8, 1.0)
+	elif estado_actual == EstadoBoton.SOBRECARGA_FRENESI:
+		_etiqueta_estado_3d.visible = true
+		_etiqueta_estado_3d.text = "⚡ ¡FRENESÍ DE SOBRECARGA!\n[CLICS x3]"
+		_etiqueta_estado_3d.modulate = Color(1.0, 0.85, 0.25)
+	else:
+		_etiqueta_estado_3d.visible = false
 
 func _crear_anillo_ritmo_visual():
 	_anillo_ritmo_visual = MeshInstance3D.new()
@@ -782,7 +824,8 @@ func pulsar_boton():
 
 	if estado_actual == EstadoBoton.ENCADENADO:
 		AudioManager.play("escudo_bloqueo", 1.4)
-		_spawn_floating_text("🔒 ¡BLOQUEADO POR CADENAS! (%d/%d palancas)" % [cadenas_activas, cadenas_requeridas])
+		var pal_act: int = cadenas_requeridas - cadenas_activas
+		_spawn_floating_text("🔒 ¡BLOQUEADO POR CADENAS! (%d/%d palancas activadas)" % [pal_act, cadenas_requeridas])
 		var tw_shake = create_tween()
 		tw_shake.tween_property(self, "position:x", position.x + 0.1, 0.04)
 		tw_shake.tween_property(self, "position:x", position.x - 0.1, 0.04)
@@ -814,6 +857,7 @@ func pulsar_boton():
 		rapidez_movimiento = rapidez_base
 		_spawn_floating_text("⚡ ¡NÚCLEO ACTIVADO! [%s]" % chasis_actual.to_upper())
 		AudioManager.play("alerta_oleada", 1.25, 2.0)
+		_actualizar_etiqueta_estado_3d()
 	else:
 		rapidez_movimiento = clampf(rapidez_base + (total_clicks * 0.12 * maxf(0.45, 1.0 - _btn_control_orbita)), rapidez_base, rapidez_maxima)
 
@@ -991,7 +1035,14 @@ func activar_bloqueo_cadenas():
 	emit_signal("estado_cambiado", estado_actual)
 	cadenas_requeridas = 2 if _btn_keystone_rompecadenas else 3
 	cadenas_activas = cadenas_requeridas
+
+	_reubicar_palancas_aleatorias()
+	for p in palancas_instancias:
+		if p != null and is_instance_valid(p):
+			p.armar()
+
 	_sincronizar_telemetria_termica()
+	emit_signal("cadenas_actualizadas", cadenas_activas, cadenas_requeridas)
 
 	if nodo_cadenas != null:
 		nodo_cadenas.visible = true
@@ -1010,10 +1061,7 @@ func activar_bloqueo_cadenas():
 	else:
 		_spawn_floating_text("⚠️ ¡NÚCLEO ENCADENADO! Activa 3 palancas ⚡")
 
-	_reubicar_palancas_aleatorias()
-	for p in palancas_instancias:
-		if p != null and is_instance_valid(p):
-			p.armar()
+	_actualizar_etiqueta_estado_3d()
 
 func _on_palanca_activada(_id: int):
 	if estado_actual != EstadoBoton.ENCADENADO:
@@ -1021,6 +1069,8 @@ func _on_palanca_activada(_id: int):
 
 	cadenas_activas -= 1
 	AudioManager.play("corte_giratorio", 1.6, 2.0)
+	emit_signal("cadenas_actualizadas", cadenas_activas, cadenas_requeridas)
+	_actualizar_etiqueta_estado_3d()
 
 	var rotas: int = cadenas_requeridas - cadenas_activas
 	match cadenas_activas:
@@ -1038,6 +1088,7 @@ func _on_palanca_activada(_id: int):
 
 func _iniciar_frenesi_sobrecarga():
 	estado_actual = EstadoBoton.SOBRECARGA_FRENESI
+	emit_signal("cadenas_actualizadas", 0, cadenas_requeridas)
 	_clics_desde_bloqueo = 0
 	calor_actual = 0.0
 	sobrecalentado = false
@@ -1062,6 +1113,7 @@ func _iniciar_frenesi_sobrecarga():
 	rapidez_movimiento = rapidez_base * 1.35
 	var mult_txt: int = obtener_multiplicador_frenesi()
 	_spawn_floating_text("🔥 ¡SOBRECARGA LIBERADA! (x%d CLICS & ORO - %ds) 🔥" % [mult_txt, int(_tiempo_frenesi)])
+	_actualizar_etiqueta_estado_3d()
 
 func _terminar_frenesi():
 	estado_actual = EstadoBoton.ACTIVO
@@ -1080,6 +1132,7 @@ func _terminar_frenesi():
 		luz_nucleo.light_energy = 2.8
 
 	_spawn_floating_text("Núcleo estabilizado a velocidad normal.")
+	_actualizar_etiqueta_estado_3d()
 
 func _ejecutar_teletransporte_seguro():
 	if _en_teletransporte or estado_actual == EstadoBoton.ENCADENADO:

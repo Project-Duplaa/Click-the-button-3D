@@ -701,7 +701,7 @@ size_flags_stretch_ratio = 0.76
 mouse_filter = 2
 
 [node name="ContenedorEconomia" type="VBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior"]
-custom_minimum_size = Vector2(118, 40)
+custom_minimum_size = Vector2(118, 48)
 layout_mode = 2
 size_flags_horizontal = 8
 size_flags_vertical = 0
@@ -732,7 +732,36 @@ theme_override_colors/font_outline_color = Color(0.24, 0.12, 0.02, 1)
 theme_override_constants/shadow_offset_x = 1
 theme_override_constants/shadow_offset_y = 1
 theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 15
+text = "0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HBoxDenarios" type="HBoxContainer" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 5
+alignment = 1
+
+[node name="IconoDenarios" type="TextureRect" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxDenarios"]
+modulate = Color(0.75, 0.88, 1, 1)
+custom_minimum_size = Vector2(16, 16)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("6_coin")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LabelDenarios" type="Label" parent="Control/BarraSuperior/MarginSuperior/HBoxSuperior/ContenedorEconomia/HBoxDenarios"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.92, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.95)
+theme_override_colors/font_outline_color = Color(0.04, 0.12, 0.24, 1)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 12
 text = "0"
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -744,9 +773,9 @@ anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
 offset_left = -175.0
-offset_top = 56.0
+offset_top = 94.0
 offset_right = 175.0
-offset_bottom = 100.0
+offset_bottom = 138.0
 grow_horizontal = 2
 pivot_offset = Vector2(175, 0)
 mouse_filter = 2

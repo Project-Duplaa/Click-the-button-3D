@@ -164,6 +164,26 @@ func _actualizar_geometria_haz(pos_a: Vector3, pos_b: Vector3):
 	
 	if _luz_haz != null:
 		_luz_haz.global_position = punto_medio
+		_luz_haz.light_energy = lerpf(1.8, 3.4, clampf(dist / 20.0, 0.0, 1.0))
+
+	# Modulación visual táctica por Tensión Espacial (Premia el juego a distancia sin saturar HUD)
+	var factor_tension := clampf((dist - 8.0) / 16.0, 0.0, 1.0)
+	if _material_haz != null:
+		_material_haz.set_shader_parameter("energy", lerpf(3.0, 5.6, factor_tension))
+		if dist >= 10.0:
+			_material_haz.set_shader_parameter("core_color", Color(1.0, 0.96, 0.70))
+			var hud = get_tree().get_first_node_in_group("hud")
+			if hud != null and hud.has_method("mostrar_letrero_temporal"):
+				hud.mostrar_letrero_temporal(
+					"hilo_tension",
+					"TENSIÓN MÁXIMA DEL HILO CONDUCTOR",
+					"¡Distancia óptima! A mayor separación del Núcleo, el rayo inflige hasta +65% de daño adicional.",
+					Color(1.0, 0.85, 0.25)
+				)
+		else:
+			_material_haz.set_shader_parameter("core_color", Color(0.95, 0.99, 1.0))
+	if _material_funda != null:
+		_material_funda.set_shader_parameter("energy", lerpf(1.8, 3.2, factor_tension))
 
 func _actualizar_color_por_fiebre():
 	var nivel_fiebre = 0

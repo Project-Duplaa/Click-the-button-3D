@@ -10,6 +10,13 @@ const ESCENA_MODELO_GOLEM = preload("res://assets/modelos/enemigo_golem_tesoro.g
 var _tiempo_escape: float = 15.0
 var _mat_nucleo_dorado: StandardMaterial3D = null
 var _baliza_superior: MeshInstance3D = null
+var _label_golem: Label3D = null
+var _modo_esencial: bool = false
+
+func actualizar_modo_esencial(activo: bool) -> void:
+	_modo_esencial = activo
+	if _label_golem != null:
+		_label_golem.visible = not _modo_esencial
 
 func _ready() -> void:
 	rapidez = 4.2
@@ -18,8 +25,24 @@ func _ready() -> void:
 	xp_otorgada = 45
 	oro_otorgado = 35
 	add_to_group("golems_tesoro")
+	add_to_group("indicadores_tacticos")
 	_asegurar_componentes()
+	_crear_label_golem()
 	super._ready()
+
+	var hud = get_tree().get_first_node_in_group("hud")
+	if hud != null and hud.has_method("mostrar_letrero_temporal"):
+		hud.mostrar_letrero_temporal("golem_tesoro", "💎 ¡GÓLEM DE TESORO DETECTADO!", "¡Persíguelo y atácalo antes de que escape! Desprende oro por cada impacto.", Color(1.0, 0.85, 0.2))
+
+func _crear_label_golem() -> void:
+	_label_golem = Label3D.new()
+	_label_golem.name = "LabelGolemPinata"
+	_label_golem.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_label_golem.no_depth_test = true
+	_label_golem.font_size = 26
+	_label_golem.modulate = Color(1.0, 0.88, 0.25, 0.95)
+	_label_golem.position = Vector3(0.0, 2.35, 0.0)
+	add_child(_label_golem)
 
 func _asegurar_componentes():
 	if get_node_or_null("CollisionShape3D") == null:
@@ -62,6 +85,8 @@ func _asegurar_componentes():
 func _process(delta: float) -> void:
 	if muerto:
 		return
+	if _label_golem != null and not _modo_esencial:
+		_label_golem.text = "🪙 PIÑATA DORADA\n[¡CLIC O ARMAS!] (%ds)" % int(ceil(_tiempo_escape))
 	if _baliza_superior != null:
 		_baliza_superior.rotate_y(delta * 3.2)
 
@@ -124,6 +149,8 @@ func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false) 
 func morir() -> void:
 	if _muerto:
 		return
+	if _label_golem != null:
+		_label_golem.visible = false
 	var padre = get_parent()
 	var pos_muerte = global_position
 	var arbol = get_tree()

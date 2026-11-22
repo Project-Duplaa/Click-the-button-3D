@@ -20,6 +20,13 @@ var _desbloqueado: bool = false
 var _en_cooldown: bool = false
 var _reloj_cooldown: float = 0.0
 var _posicion_inicial_y: float = 0.5
+var _modo_esencial: bool = false
+var _label_recarga: Label3D = null
+
+func actualizar_modo_esencial(activo: bool) -> void:
+	_modo_esencial = activo
+	if _label_recarga != null:
+		_label_recarga.visible = _en_cooldown and not _modo_esencial
 
 @onready var mesh_inst: MeshInstance3D = get_node_or_null("MeshInstance3D")
 @onready var colision: CollisionShape3D = get_node_or_null("CollisionShape3D")
@@ -27,6 +34,8 @@ var _posicion_inicial_y: float = 0.5
 func _ready():
 	add_to_group("objetivos")
 	add_to_group("suministros_runicos")
+	add_to_group("indicadores_tacticos")
+	_crear_label_recarga()
 	global_position = ArenaColiseo.clamping_y_ajustar_a_suelo(global_position, 1.5, 0.0)
 	_posicion_inicial_y = global_position.y
 	call_deferred("_reubicar_cofre_inicial_run")
@@ -51,6 +60,19 @@ func _ready():
 	body_entered.connect(_al_entrar)
 	input_event.connect(_on_input_event)
 
+func _crear_label_recarga() -> void:
+	if _label_recarga != null:
+		return
+	_label_recarga = Label3D.new()
+	_label_recarga.name = "LabelRecarga"
+	_label_recarga.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_label_recarga.no_depth_test = true
+	_label_recarga.font_size = 28
+	_label_recarga.modulate = Color(1.0, 0.85, 0.35, 0.90)
+	_label_recarga.position = Vector3(0.0, 1.45, 0.0)
+	_label_recarga.visible = false
+	add_child(_label_recarga)
+
 func _process(delta: float):
 	if not _desbloqueado:
 		var spawner = get_tree().get_first_node_in_group("spawner") if get_tree() != null else null
@@ -60,6 +82,12 @@ func _process(delta: float):
 
 	if _en_cooldown:
 		_reloj_cooldown -= delta
+		if _label_recarga != null:
+			if not _modo_esencial:
+				_label_recarga.visible = true
+				_label_recarga.text = "⏳ Recargando (%ds)" % int(ceil(_reloj_cooldown))
+			else:
+				_label_recarga.visible = false
 		if _reloj_cooldown <= 0.0:
 			_reactivar_suministro()
 
@@ -116,6 +144,10 @@ func recolectar(_por_click: bool = false):
 	
 	AudioManager.play("puzzle_completo", 1.1)
 	recogido.emit(oro_ganado)
+
+	var hud = get_tree().get_first_node_in_group("hud")
+	if hud != null and hud.has_method("mostrar_letrero_temporal"):
+		hud.mostrar_letrero_temporal("cofre_suministros", "📦 COFRE DE SUMINISTROS", "Recarga periódicamente. Otorga Oro, Experiencia y restaura Salud al recolectarlo.", Color(1.0, 0.85, 0.25))
 	
 	var pj = get_tree().get_first_node_in_group("player")
 	if pj == null:
@@ -236,6 +268,8 @@ func _recolectar_exclusiones_arena() -> Array[Vector2]:
 
 func _reactivar_suministro():
 	_en_cooldown = false
+	if _label_recarga != null:
+		_label_recarga.visible = false
 	input_ray_pickable = true
 	monitoring = true
 	monitorable = true
