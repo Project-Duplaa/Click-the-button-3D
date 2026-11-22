@@ -9,16 +9,18 @@ signal jefe_derrotado
 const AudioManager = preload("res://audio_manager.gd")
 const ArenaColiseo = preload("res://arena_coliseo.gd")
 const VfxCombate = preload("res://vfx_combate.gd")
+const PROYECTIL_ESCENA = preload("res://proyectil_enemigo.tscn")
+const BRUTO_ESCENA = preload("res://bruto.tscn")
 
-@export var rapidez: float = 3.2
-@export var vida_maxima: float = 22000.0
-@export var dano_pisada: float = 115.0
-@export var radio_pisada: float = 5.8
-@export var tiempo_telegraph: float = 0.70
+@export var rapidez: float = 3.4
+@export var vida_maxima: float = 9100.0
+@export var dano_pisada: float = 140.0
+@export var radio_pisada: float = 6.2
+@export var tiempo_telegraph: float = 0.65
 @export var duracion_vulnerabilidad: float = 3.5
 @export var mult_dano_vulnerable: float = 2.0
 
-var vida: float = 22000.0
+var vida: float = 9100.0
 var muerto: bool = false
 var jugador: Node3D = null
 var hud: Node = null
@@ -312,6 +314,7 @@ func _ejecutar_pisada_telegrafiada():
 	AudioManager.play("danio_jugador", 0.6, 2.5)
 	VfxCombate.spawn_explosion_nova(get_parent(), global_position + Vector3(0, 0.5, 0), radio_pisada, Color(1.0, 0.50, 0.12), Color(1.0, 0.94, 0.58), 0.42, true, true)
 	_sacudir_camara(0.4)
+	_lanzar_rocas_magma()
 
 	if en_area and is_instance_valid(jugador) and jugador is Node3D:
 		if jugador.has_method("recibir_dano"):
@@ -319,6 +322,34 @@ func _ejecutar_pisada_telegrafiada():
 		elif jugador.has_node("Salud"):
 			jugador.get_node("Salud").recibir_golpe(int(dano_pisada))
 		_sacudir_camara(0.5)
+
+func _lanzar_rocas_magma():
+	if PROYECTIL_ESCENA == null or get_parent() == null or not is_inside_tree():
+		return
+	var num_rocas := 6
+	var origen := global_position + Vector3(0.0, 1.5, 0.0)
+	for i in range(num_rocas):
+		var ang := (TAU / float(num_rocas)) * float(i)
+		var dir := Vector3(cos(ang), 0.0, sin(ang)).normalized()
+		var p = PROYECTIL_ESCENA.instantiate()
+		get_parent().add_child(p)
+		if p.has_method("iniciar"):
+			p.iniciar(origen + dir * 1.5, dir, 38.0, 6.8, "fuego")
+
+var _brutos_invocados_coloso: int = 0
+func _invocar_brutos_fundicion(cantidad: int = 2):
+	if BRUTO_ESCENA == null or get_parent() == null or not is_inside_tree():
+		return
+	if _brutos_invocados_coloso >= 4:
+		return
+	for i in range(cantidad):
+		_brutos_invocados_coloso += 1
+		var b = BRUTO_ESCENA.instantiate()
+		var ang = randf() * TAU
+		b.global_position = global_position + Vector3(cos(ang) * 5.0, 0.0, sin(ang) * 5.0)
+		get_parent().add_child(b)
+		VfxCombate.spawn_impacto(get_parent(), b.global_position + Vector3(0, 1.2, 0), Color(1.0, 0.4, 0.1), Color.WHITE, 1.0, true)
+	_crear_texto_flotante("🌋 ¡BRUTOS DE FUNDICIÓN FORJADOS!", true)
 
 func _on_boton_click(_total_clicks: int):
 	if vida <= 0.0 or muerto:
@@ -557,6 +588,7 @@ func _on_fase_cambiada(nueva_fase: int) -> void:
 		_sacudir_camara(0.50)
 		_crear_texto_flotante("⚡ FASE II — ¡SUELO INCANDESCENTE!", true)
 		_luz_color_base = Color(1.0, 0.34, 0.08, 1.0)
+		_invocar_brutos_fundicion(2)
 		_luz_energia_base = 2.8
 		if luz_coloso != null and _reloj_vulnerabilidad <= 0.0:
 			luz_coloso.light_color = _luz_color_base

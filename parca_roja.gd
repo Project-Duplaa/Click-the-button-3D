@@ -11,18 +11,20 @@ const ArenaColiseo = preload("res://arena_coliseo.gd")
 const VfxCombate = preload("res://vfx_combate.gd")
 const PROYECTIL_ENEMIGO_ESCENA = preload("res://proyectil_enemigo.tscn")
 const ESPECTRO_ESCENA = preload("res://espectro.tscn")
+const BERSERKER_ESCENA = preload("res://berserker.tscn")
+const CANALIZADOR_ESCENA = preload("res://canalizador_vacio.tscn")
 const ESCENA_DAMAGE_NUMBER_3D = preload("res://damage_number_3d.tscn")
 
-@export var rapidez: float = 6.5
-@export var vida_maxima: float = 42000.0
-@export var dano_guadana: float = 125.0
-@export var radio_golpe: float = 5.0
-@export var tiempo_telegraph: float = 0.65
+@export var rapidez: float = 6.8
+@export var vida_maxima: float = 14000.0
+@export var dano_guadana: float = 160.0
+@export var radio_golpe: float = 5.4
+@export var tiempo_telegraph: float = 0.60
 
 @export var clics_base_escudo: int = 5
 @export var duracion_vulnerabilidad: float = 8.5
 
-var vida: float = 42000.0
+var vida: float = 14000.0
 var muerto: bool = false
 var jugador: Node3D = null
 var hud: Node = null
@@ -412,6 +414,8 @@ func _ejecutar_corte_guadana():
 		_sacudir_camara(0.4)
 
 	_disparar_ondas_guadana()
+	if _en_enrage or _en_agonia_final:
+		_disparar_calaveras_sombras()
 
 func _disparar_ondas_guadana():
 	if not is_instance_valid(jugador):
@@ -426,7 +430,7 @@ func _disparar_ondas_guadana():
 	if escena_proyectil == null:
 		return
 
-	var angulos = [-24.0, 0.0, 24.0]
+	var angulos = [-40.0, -20.0, 0.0, 20.0, 40.0]
 	for ang in angulos:
 		var dir_rot = dir_base.rotated(Vector3.UP, deg_to_rad(ang))
 		var p = escena_proyectil.instantiate()
@@ -434,7 +438,41 @@ func _disparar_ondas_guadana():
 			p.seguir_terreno = true
 		get_parent().add_child(p)
 		var pos_inicio = global_position + Vector3(0, 1.4, 0) + dir_rot * 1.5
-		p.iniciar(pos_inicio, dir_rot, 22.0, 6.2, "guadana")
+		p.iniciar(pos_inicio, dir_rot, 32.0, 7.2, "guadana")
+
+func _disparar_calaveras_sombras():
+	if PROYECTIL_ENEMIGO_ESCENA == null or get_parent() == null or not is_inside_tree():
+		return
+	var num_calaveras := 8
+	var origen := global_position + Vector3(0.0, 1.6, 0.0)
+	for i in range(num_calaveras):
+		var ang := (TAU / float(num_calaveras)) * float(i)
+		var dir := Vector3(cos(ang), 0.0, sin(ang)).normalized()
+		var p = PROYECTIL_ENEMIGO_ESCENA.instantiate()
+		get_parent().add_child(p)
+		if p.has_method("iniciar"):
+			p.iniciar(origen + dir * 1.2, dir, 36.0, 5.8, "sombra")
+	AudioManager.play("danio_jugador", 0.8, 1.5)
+
+var _corte_invocada_parca: int = 0
+func _invocar_corte_parca():
+	if get_parent() == null or not is_inside_tree() or _corte_invocada_parca >= 4:
+		return
+	if BERSERKER_ESCENA != null:
+		for i in range(2):
+			_corte_invocada_parca += 1
+			var b = BERSERKER_ESCENA.instantiate()
+			var ang = randf() * TAU
+			b.global_position = global_position + Vector3(cos(ang) * 4.5, 0.0, sin(ang) * 4.5)
+			get_parent().add_child(b)
+	if CANALIZADOR_ESCENA != null:
+		for i in range(2):
+			_corte_invocada_parca += 1
+			var c = CANALIZADOR_ESCENA.instantiate()
+			var ang = randf() * TAU
+			c.global_position = global_position + Vector3(cos(ang) * 5.5, 0.0, sin(ang) * 5.5)
+			get_parent().add_child(c)
+	_crear_texto_flotante("💀 ¡CORTE CARMESÍ DESATADA!", true)
 
 func _on_boton_click(_total_clicks: int):
 	if not is_instance_valid(self) or vida <= 0.0 or muerto:
@@ -756,6 +794,7 @@ func _on_fase_cambiada(nueva_fase: int) -> void:
 		if get_parent() != null and is_inside_tree():
 			BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position, 1.5, 13.0, Color(1.0, 0.14, 0.24, 1.0), 0.55)
 		_invocar_cuchillas_fase2(5)
+		_invocar_corte_parca()
 		_actualizar_hud_jefe()
 	elif nueva_fase == int(JefeFaseController.FaseJefe.ENRAGE):
 		_en_enrage = true

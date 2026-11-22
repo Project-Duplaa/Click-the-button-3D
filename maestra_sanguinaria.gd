@@ -11,14 +11,16 @@ const ArenaColiseo = preload("res://arena_coliseo.gd")
 const VfxCombate = preload("res://vfx_combate.gd")
 const PROYECTIL_ENEMIGO_ESCENA = preload("res://proyectil_enemigo.tscn")
 const ESCENA_DAMAGE_NUMBER_3D = preload("res://damage_number_3d.tscn")
+const ARQUERO_ESCENA = preload("res://arquero.tscn")
+const KAMIKAZE_ESCENA = preload("res://kamikaze.tscn")
 
 @export var rapidez: float = 4.85
-@export var vida_maxima: float = 10500.0
-@export var dano_flecha: float = 48.0
-@export var dano_lluvia: float = 85.0
+@export var vida_maxima: float = 6300.0
+@export var dano_flecha: float = 65.0
+@export var dano_lluvia: float = 110.0
 @export var distancia_kiting: float = 7.0
 
-var vida: float = 10500.0
+var vida: float = 6300.0
 var muerto: bool = false
 var jugador: Node3D = null
 var hud: Node = null
@@ -26,9 +28,11 @@ var _boton_movil: Node = null
 
 var _reloj_disparo: float = 1.0
 var _reloj_lluvia: float = 6.0
+var _reloj_latigo: float = 2.0
 var _esta_canalizando: bool = false
 var _pos_lluvia_objetivo: Vector3 = Vector3.ZERO
 var _decal_lluvia: ThreatDecal3D = null
+var _abanico_alterno: bool = false
 
 var _clics_tormenta: int = 0
 var _clics_necesarios_tormenta: int = 3
@@ -191,13 +195,23 @@ func _physics_process(delta):
 		if dist > 0.1:
 			look_at(global_position + hacia_jugador.normalized(), Vector3.UP)
 
+		_reloj_latigo = maxf(_reloj_latigo - delta, 0.0)
+		if dist <= 3.5 and _reloj_latigo <= 0.001:
+			_ejecutar_latigo_sangre()
+			_reloj_latigo = 3.0
+			return
+
 		if _reloj_lluvia <= 0.001 and dist <= 18.0:
 			_iniciar_lluvia_flechas()
 			return
 
 		if _reloj_disparo <= 0.001 and dist <= 16.0:
-			_disparar_rafaga(hacia_jugador.normalized())
-			_reloj_disparo = 1.6
+			if _abanico_alterno:
+				_disparar_abanico_sanguinario(hacia_jugador.normalized())
+			else:
+				_disparar_rafaga(hacia_jugador.normalized())
+			_abanico_alterno = not _abanico_alterno
+			_reloj_disparo = 1.4
 
 		var vel_actual = rapidez * (0.4 if _reloj_fijacion_luz > 0.0 else 1.0)
 
@@ -249,11 +263,63 @@ func _disparar_rafaga(dir_frente: Vector3):
 		var pos_inicio = global_position + Vector3(0, 1.8, 0) + Vector3(dir_rot.x, 0.0, dir_rot.z).normalized() * 1.2
 		f.iniciar(pos_inicio, dir_rot, dano_flecha, 7.5, "sanguinaria")
 
+func _disparar_abanico_sanguinario(dir_frente: Vector3):
+	_anim_ctrl.reproducir_accion("attack-ranged", 2, 0.05, 1.3)
+	AudioManager.play("disparo_arquero", 1.25)
+	if PROYECTIL_ENEMIGO_ESCENA == null or get_parent() == null:
+		return
+	var dir_pitch: Vector3 = dir_frente
+	if is_instance_valid(jugador):
+		var origen_base := global_position + Vector3(0, 1.8, 0)
+		var objetivo_3d := jugador.global_position + Vector3(0, 0.9, 0)
+		if origen_base.distance_squared_to(objetivo_3d) > 0.01:
+			dir_pitch = (objetivo_3d - origen_base).normalized()
+	VfxCombate.spawn_destello_disparo(get_parent(), global_position + Vector3(0, 1.8, 0), dir_pitch, Color(1.0, 0.12, 0.35), 0.95)
+	for ang_deg in [-45.0, -30.0, -15.0, 0.0, 15.0, 30.0, 45.0]:
+		var dir_rot = dir_pitch.rotated(Vector3.UP, deg_to_rad(ang_deg))
+		var f = PROYECTIL_ENEMIGO_ESCENA.instantiate()
+		get_parent().add_child(f)
+		var pos_inicio = global_position + Vector3(0, 1.8, 0) + Vector3(dir_rot.x, 0.0, dir_rot.z).normalized() * 1.3
+		f.iniciar(pos_inicio, dir_rot, dano_flecha * 0.9, 8.2, "sanguinaria")
+
+func _ejecutar_latigo_sangre():
+	_anim_ctrl.reproducir_accion("attack-melee-right", 3, 0.06, 1.4)
+	AudioManager.play("corte_giratorio", 1.25)
+	if get_parent() != null:
+		BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position, 0.4, 4.0, Color(1.0, 0.15, 0.35), 0.32)
+	if is_instance_valid(jugador) and global_position.distance_to(jugador.global_position) <= 4.0:
+		if jugador.has_method("recibir_dano"):
+			jugador.recibir_dano(60.0)
+		var dir_empuje = (jugador.global_position - global_position).normalized()
+		if "empuje" in jugador:
+			jugador.empuje += dir_empuje * 7.5
+
+var _tropas_invocadas_maestra: int = 0
+func _invocar_guardia_sanguinaria():
+	if get_parent() == null or not is_inside_tree() or _tropas_invocadas_maestra >= 6:
+		return
+	if ARQUERO_ESCENA != null:
+		for i in range(2):
+			_tropas_invocadas_maestra += 1
+			var a = ARQUERO_ESCENA.instantiate()
+			var ang = randf() * TAU
+			a.global_position = global_position + Vector3(cos(ang) * 4.5, 0.0, sin(ang) * 4.5)
+			get_parent().add_child(a)
+	if KAMIKAZE_ESCENA != null:
+		for i in range(2):
+			_tropas_invocadas_maestra += 1
+			var k = KAMIKAZE_ESCENA.instantiate()
+			var ang = randf() * TAU
+			k.global_position = global_position + Vector3(cos(ang) * 4.0, 0.0, sin(ang) * 4.0)
+			get_parent().add_child(k)
+	_crear_texto_flotante("🩸 ¡REFUERZOS SANGUINARIOS!", true)
+
 func _iniciar_lluvia_flechas():
 	_esta_canalizando = true
 	_clics_tormenta = 0
 	_reloj_lluvia = 8.5
 	_pos_lluvia_objetivo = ArenaColiseo.clamping_y_ajustar_a_suelo(jugador.global_position, 1.6, 0.05)
+	_invocar_guardia_sanguinaria()
 
 	AudioManager.play("alerta_oleada", 1.5, 2.0)
 	_crear_texto_flotante("⚡ ¡PULSA EL NÚCLEO (0/%d) PARA DISIPAR!" % _clics_necesarios_tormenta, true)

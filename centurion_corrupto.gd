@@ -9,15 +9,17 @@ signal jefe_derrotado
 const AudioManager = preload("res://audio_manager.gd")
 const ArenaColiseo = preload("res://arena_coliseo.gd")
 const VfxCombate = preload("res://vfx_combate.gd")
+const PROYECTIL_ESCENA = preload("res://proyectil_enemigo.tscn")
+const GUARDIA_ESCENA = preload("res://guardia.tscn")
 
 @export var rapidez: float = 3.65
-@export var vida_maxima: float = 1750.0
-@export var dano_golpe: float = 45.0
-@export var dano_sentencia: float = 95.0
-@export var rango_ataque: float = 3.0
-@export var tiempo_telegraph: float = 0.60
+@export var vida_maxima: float = 2800.0
+@export var dano_golpe: float = 55.0
+@export var dano_sentencia: float = 120.0
+@export var rango_ataque: float = 3.2
+@export var tiempo_telegraph: float = 0.55
 
-var vida: float = 1750.0
+var vida: float = 2800.0
 var muerto: bool = false
 var jugador: Node3D = null
 var hud: Node = null
@@ -350,6 +352,7 @@ func _ejecutar_grito_guerra():
 	_sacudir_camara(0.2)
 
 	_crear_texto_flotante("📢 ¡POR EL COLISEO!", true)
+	_invocar_guardias_apoyo(2)
 
 	if _fase_ctrl != null and _fase_ctrl.fase_actual != JefeFaseController.FaseJefe.FASE_1:
 		_invocar_falange_runica()
@@ -393,6 +396,7 @@ func _ejecutar_golpe_telegrafiado():
 
 	AudioManager.play("corte_giratorio", 1.1)
 	VfxCombate.spawn_tajo(get_parent(), global_position + Vector3(0, 1.15, 0), -global_transform.basis.z, rango_ataque + 0.6, Color(1.0, 0.48, 0.12), Color(1.0, 0.94, 0.68), Color(0.85, 0.12, 0.08), false, 0.22, 12.0)
+	_disparar_rafaga_chispas()
 
 	if en_arco and is_instance_valid(jugador) and jugador is Node3D:
 		if jugador.has_method("recibir_dano"):
@@ -401,6 +405,36 @@ func _ejecutar_golpe_telegrafiado():
 			jugador.get_node("Salud").recibir_golpe(int(dano_golpe))
 		VfxCombate.spawn_impacto(get_parent(), jugador.global_position + Vector3(0, 0.95, 0), Color(1.0, 0.45, 0.10), Color.WHITE, 1.15, true)
 		_sacudir_camara(0.3)
+
+func _disparar_rafaga_chispas() -> void:
+	if PROYECTIL_ESCENA == null or get_parent() == null or not is_inside_tree():
+		return
+	var num_proyectiles := 8
+	var origen := global_position + Vector3(0.0, 1.2, 0.0)
+	for i in range(num_proyectiles):
+		var angulo := (TAU / float(num_proyectiles)) * float(i)
+		var dir := Vector3(cos(angulo), 0.0, sin(angulo)).normalized()
+		var proj = PROYECTIL_ESCENA.instantiate()
+		get_parent().add_child(proj)
+		if proj.has_method("iniciar"):
+			proj.iniciar(origen + dir * 0.9, dir, 22.0, 6.2, "chispa_electrica")
+	AudioManager.play("click_perfecto", 1.2)
+
+var _guardias_invocados_total: int = 0
+func _invocar_guardias_apoyo(cantidad: int = 2) -> void:
+	if GUARDIA_ESCENA == null or get_parent() == null or not is_inside_tree():
+		return
+	if _guardias_invocados_total >= 6:
+		return
+	for i in range(cantidad):
+		_guardias_invocados_total += 1
+		var g = GUARDIA_ESCENA.instantiate()
+		var ang := randf() * TAU
+		var offset := Vector3(cos(ang) * 4.2, 0.0, sin(ang) * 4.2)
+		g.global_position = global_position + offset
+		get_parent().add_child(g)
+		VfxCombate.spawn_impacto(get_parent(), g.global_position + Vector3(0, 1.0, 0), Color(1.0, 0.8, 0.2), Color.WHITE, 0.8, true)
+	_crear_texto_flotante("🛡️ ¡GUARDIAS AL FRENTE!", true)
 
 func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 	if muerto:

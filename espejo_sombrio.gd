@@ -3,23 +3,27 @@ extends "res://enemigo_base.gd"
 const BunkerVisualKit = preload("res://bunker_visual_kit.gd")
 const CatalogoBendiciones = preload("res://catalogo_bendiciones.gd")
 const ProyectilEnemigoEscena = preload("res://proyectil_enemigo.tscn")
+const EspectroEscena = preload("res://espectro.tscn")
 
 var _manager: Node = null
-var _reloj_descarga: float = 2.6
-var _reloj_dash: float = 5.2
+var _reloj_descarga: float = 2.4
+var _reloj_dash: float = 4.6
+var _reloj_whirlwind: float = 2.0
 var _dash_vel: Vector3 = Vector3.ZERO
 var _dash_timer: float = 0.0
 var _lbl_hp: Label3D = null
+var _fase1_invocada: bool = false
+var _fase2_invocada: bool = false
 
 func configurar_espejo(mgr: Node) -> void:
 	_manager = mgr
 
 func _ready() -> void:
 	tipo_enemigo_id = "espejo_sombrio"
-	resistencia_knockback = 0.55
-	rango_ataque = 2.0
-	xp_otorgada = 180
-	oro_otorgado = 130
+	resistencia_knockback = 0.60
+	rango_ataque = 2.5
+	xp_otorgada = 320
+	oro_otorgado = 220
 
 	var mult_hp := 1.0
 	var mult_dmg := 1.0
@@ -31,10 +35,10 @@ func _ready() -> void:
 		mult_dmg = float(m.get("dano_enemigos", 1.0))
 		mult_vel = float(m.get("velocidad_enemigos", 1.0))
 
-	vida_maxima = 850.0 * mult_hp
-	dano_ataque = 20.0 * mult_dmg
-	dano_contacto = 18.0 * mult_dmg
-	rapidez = 4.2 * mult_vel
+	vida_maxima = 4550.0 * mult_hp
+	dano_ataque = 52.0 * mult_dmg
+	dano_contacto = 36.0 * mult_dmg
+	rapidez = 4.5 * mult_vel
 
 	_asegurar_componentes()
 	super._ready()
@@ -103,18 +107,24 @@ func _calcular_velocidad_ia(delta: float) -> Vector3:
 
 	_reloj_dash -= delta
 	if _reloj_dash <= 0.0 and dist > 3.5:
-		_reloj_dash = 5.0
+		_reloj_dash = 4.6
 		_dash_timer = 0.28
-		_dash_vel = dir * (rapidez * 3.1)
+		_dash_vel = dir * (rapidez * 3.2)
 		if _anim_ctrl != null and _anim_ctrl.esta_listo():
 			_anim_ctrl.reproducir_accion("attack-melee-right", 2, 0.08, 1.1)
 		AudioManager.play("corte_giratorio", 0.78)
 		if get_parent() != null:
-			BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position, 0.3, 2.8, Color(0.75, 0.20, 0.95), 0.30)
+			BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position, 0.3, 3.2, Color(0.75, 0.20, 0.95), 0.30)
+		_disparar_nova_sombras()
+
+	_reloj_whirlwind -= delta
+	if _reloj_whirlwind <= 0.0 and dist <= 2.8:
+		_reloj_whirlwind = 3.2
+		_ejecutar_remolino_sombras()
 
 	_reloj_descarga -= delta
 	if _reloj_descarga <= 0.0:
-		_reloj_descarga = 2.85
+		_reloj_descarga = 2.4
 		var origen_ref := global_position + Vector3(0.0, 1.35, 0.0)
 		var dir_3d := ((jugador.global_position + Vector3(0.0, 0.9, 0.0)) - origen_ref).normalized()
 		_disparar_rafaga_espejo(dir_3d)
@@ -140,11 +150,51 @@ func _disparar_rafaga_espejo(dir: Vector3) -> void:
 		if proj.has_method("iniciar"):
 			proj.iniciar(origen, dir_rot, dano_ataque * 0.85, 9.5, "sombra")
 
+func _disparar_nova_sombras() -> void:
+	if ProyectilEnemigoEscena == null or get_parent() == null:
+		return
+	var num_dagas := 12
+	var origen := global_position + Vector3(0.0, 1.25, 0.0)
+	for i in range(num_dagas):
+		var angulo := (TAU / float(num_dagas)) * float(i)
+		var dir := Vector3(cos(angulo), 0.0, sin(angulo)).normalized()
+		var proj = ProyectilEnemigoEscena.instantiate()
+		get_parent().add_child(proj)
+		if proj.has_method("iniciar"):
+			proj.iniciar(origen + dir * 0.8, dir, dano_ataque * 0.75, 7.5, "sombra")
+
+func _ejecutar_remolino_sombras() -> void:
+	if _anim_ctrl != null and _anim_ctrl.esta_listo():
+		_anim_ctrl.reproducir_accion("attack-melee-right", 3, 0.06, 1.4)
+	AudioManager.play("corte_giratorio", 1.2)
+	if get_parent() != null:
+		BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position, 0.4, 4.2, Color(0.9, 0.25, 1.0), 0.35)
+	if jugador != null and is_instance_valid(jugador) and global_position.distance_to(jugador.global_position) <= 3.2:
+		if jugador.has_method("recibir_dano"):
+			jugador.recibir_dano(dano_ataque * 1.1)
+
+func _invocar_espectros_espejo(cantidad: int = 2) -> void:
+	if EspectroEscena == null or get_parent() == null or not is_inside_tree():
+		return
+	for i in range(cantidad):
+		var esp = EspectroEscena.instantiate()
+		var ang := randf() * TAU
+		esp.global_position = global_position + Vector3(cos(ang) * 3.5, 0.0, sin(ang) * 3.5)
+		get_parent().add_child(esp)
+		VfxCombate.spawn_impacto(get_parent(), esp.global_position + Vector3(0, 1, 0), Color(0.7, 0.2, 0.9), Color.WHITE, 0.7, true)
+
 func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false) -> void:
 	if not _muerto:
 		_anim_ctrl.disparar_golpe()
 	super.recibir_dano(cantidad, fuente, es_critico)
 	_actualizar_label_hp()
+
+	if not _fase1_invocada and vida <= vida_maxima * 0.66:
+		_fase1_invocada = true
+		_invocar_espectros_espejo(2)
+	elif not _fase2_invocada and vida <= vida_maxima * 0.33:
+		_fase2_invocada = true
+		_invocar_espectros_espejo(2)
 
 func morir() -> void:
 	if _muerto:
