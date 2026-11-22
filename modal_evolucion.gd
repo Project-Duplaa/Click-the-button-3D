@@ -68,6 +68,10 @@ func _ready() -> void:
 	if not _abierto:
 		visible = false
 
+	var vp := get_viewport()
+	if vp != null and not vp.size_changed.is_connected(_ajustar_layout_resolucion):
+		vp.size_changed.connect(_ajustar_layout_resolucion)
+
 func _exit_tree() -> void:
 	if _tween_entrada != null and _tween_entrada.is_valid():
 		_tween_entrada.kill()
@@ -236,10 +240,30 @@ func _animar_entrada() -> void:
 		return
 	if _tween_entrada != null and _tween_entrada.is_valid():
 		_tween_entrada.kill()
+	var escala_obj := _calcular_escala_responsiva()
+	_panel_principal.pivot_offset = _panel_principal.size * 0.5
+	_panel_principal.scale = escala_obj * 0.90
 	_panel_principal.modulate.a = 0.0
-	_tween_entrada = create_tween()
+	_tween_entrada = create_tween().set_parallel(true)
 	_tween_entrada.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	_tween_entrada.tween_property(_panel_principal, "scale", escala_obj, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_tween_entrada.tween_property(_panel_principal, "modulate:a", 1.0, 0.16)
+
+func _calcular_escala_responsiva() -> Vector2:
+	var vp := get_viewport()
+	if vp == null or _panel_principal == null:
+		return Vector2.ONE
+	var vis := vp.get_visible_rect().size
+	if vis.x <= 1.0 or vis.y <= 1.0:
+		return Vector2.ONE
+	var factor := clampf(minf((vis.x - 24.0) / 1000.0, (vis.y - 20.0) / 540.0), 0.65, 1.0)
+	return Vector2(factor, factor)
+
+func _ajustar_layout_resolucion() -> void:
+	if _panel_principal != null:
+		_panel_principal.pivot_offset = _panel_principal.size * 0.5
+		if visible:
+			_panel_principal.scale = _calcular_escala_responsiva()
 
 func _normalizar_clase_base(clase_base: String) -> String:
 	var limpia := clase_base.strip_edges()

@@ -162,7 +162,7 @@ const DATOS_BESTIARIO: Dictionary = {
 		"nombre": "Gólem de Tesoro",
 		"tier": "Presa Rara de Fortuna",
 		"icono": "🪙💎",
-		"lore": "Entidad esquiva invocada por clics continuos. Suelta denarios y orbes dorados al ser impactado.",
+		"lore": "Entidad esquiva invocada por clics continuos. Suelta Oro y orbes al ser impactado.",
 		"escena": "res://golem_tesoro.tscn",
 		"color": Color(1.0, 0.85, 0.0)
 	},
@@ -230,10 +230,24 @@ func abrir(tab_inicial: int = 0) -> void:
 	visible = true
 	if tabs_btn_container == null:
 		_construir_ui_completa()
+	_ajustar_layout_resolucion()
 	if is_inside_tree() and get_tree() != null:
 		get_tree().paused = true
 	AudioManager.play("click", 1.25)
 	_cambiar_tab(tab_inicial)
+
+func _ajustar_layout_resolucion() -> void:
+	if panel_fondo == null:
+		return
+	panel_fondo.pivot_offset = panel_fondo.size * 0.5
+	var vp := get_viewport()
+	if vp == null:
+		return
+	var vis := vp.get_visible_rect().size
+	if vis.x <= 1.0 or vis.y <= 1.0:
+		return
+	var factor := clampf(minf((vis.x - 24.0) / 980.0, (vis.y - 20.0) / 580.0), 0.65, 1.0)
+	panel_fondo.scale = Vector2(factor, factor)
 
 func cerrar() -> void:
 	visible = false
@@ -275,7 +289,13 @@ func _construir_ui_completa() -> void:
 	sb_modal.shadow_color = Color(0, 0, 0, 0.85)
 	sb_modal.shadow_size = 20
 	panel_fondo.add_theme_stylebox_override("panel", sb_modal)
+	panel_fondo.pivot_offset = Vector2(490, 290)
 	root_control.add_child(panel_fondo)
+
+	var vp := get_viewport()
+	if vp != null and not vp.size_changed.is_connected(_ajustar_layout_resolucion):
+		vp.size_changed.connect(_ajustar_layout_resolucion)
+	_ajustar_layout_resolucion()
 	
 	var vbox_modal = VBoxContainer.new()
 	vbox_modal.set_anchors_preset(Control.PRESET_FULL_RECT)

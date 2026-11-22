@@ -393,7 +393,7 @@ func _obtener_info_rama(rama: String) -> Dictionary:
 		"boton":
 			return {"tag": "INGENIERÍA DEL NÚCLEO MÓVIL", "col": Color(1.0, 0.62, 0.25)}
 		"central":
-			return {"tag": "NÚCLEO DEL REACTOR CERO", "col": Color(0.35, 1.0, 0.72)}
+			return {"tag": "MATRIZ DE MEJORAS", "col": Color(0.35, 1.0, 0.72)}
 		_:
 			return {"tag": "SECTOR CINÉTICO · CLICS", "col": Color(0.28, 0.88, 1.0)}
 

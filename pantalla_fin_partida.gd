@@ -113,6 +113,10 @@ func _ready() -> void:
 		marco_tactico_canvas.draw.connect(_on_marco_tactico_draw)
 	if medallon_crest != null:
 		medallon_crest.draw.connect(_on_medallon_crest_draw)
+
+	var vp := get_viewport()
+	if vp != null and not vp.size_changed.is_connected(_ajustar_layout_resolucion):
+		vp.size_changed.connect(_ajustar_layout_resolucion)
 	if divider_top != null:
 		divider_top.draw.connect(_on_divider_top_draw)
 	if barra_ext_oro != null:
@@ -394,7 +398,7 @@ func _aplicar_estetica_resultado(es_victoria: bool, motivo: String) -> void:
 			label_tasa_extraccion.text = "EXTRACCIÓN DE EMERGENCIA: 45% ORO · 50% CLICS"
 			label_tasa_extraccion.add_theme_color_override("font_color", Color(0.98, 0.62, 0.36, 1.0))
 		if btn_reintentar != null:
-			btn_reintentar.text = "⚔️ DESPLEGAR SIGUIENTE RUN [ESPACIO]"
+			btn_reintentar.text = "⚔️ SIGUIENTE RUN [ESPACIO]"
 
 	if divider_top != null:
 		divider_top.queue_redraw()
@@ -537,7 +541,7 @@ func mostrar(es_victoria: bool, motivo: String = "") -> void:
 		label_rango_run.add_theme_color_override("font_color", eval_info["color"])
 
 	if label_clicks != null:
-		label_clicks.text = "+%s clics" % _formatear_num(clicks_cnt)
+		label_clicks.text = "+%s clics" % _formatear_num(clicks_cnt)		
 	if label_oro != null:
 		label_oro.text = "+%s monedas" % _formatear_num(oro_cnt)
 
@@ -621,17 +625,36 @@ func _animar_entrada_expediente() -> void:
 	if barra_ext_clics != null:
 		barra_ext_clics.queue_redraw()
 
+	var escala_obj := _calcular_escala_responsiva()
 	if panel_fondo != null:
 		panel_fondo.pivot_offset = panel_fondo.size * 0.5
-		panel_fondo.scale = Vector2(0.90, 0.90)
+		panel_fondo.scale = escala_obj * 0.90
 		panel_fondo.modulate = Color(1, 1, 1, 0)
 
 	var tw := create_tween().set_parallel(true)
 	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	if panel_fondo != null:
-		tw.tween_property(panel_fondo, "scale", Vector2.ONE, 0.36).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(panel_fondo, "scale", escala_obj, 0.36).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		tw.tween_property(panel_fondo, "modulate", Color.WHITE, 0.24).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.tween_method(_actualizar_anim_extraccion, 0.0, 1.0, 0.55).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+func _calcular_escala_responsiva() -> Vector2:
+	var vp := get_viewport()
+	if vp == null or panel_fondo == null:
+		return Vector2.ONE
+	var vis := vp.get_visible_rect().size
+	if vis.x <= 1.0 or vis.y <= 1.0:
+		return Vector2.ONE
+	var escala_w := (vis.x - 24.0) / 1060.0
+	var escala_h := (vis.y - 20.0) / 648.0
+	var f := clampf(minf(escala_w, escala_h), 0.65, 1.0)
+	return Vector2(f, f)
+
+func _ajustar_layout_resolucion() -> void:
+	if panel_fondo != null:
+		panel_fondo.pivot_offset = panel_fondo.size * 0.5
+		if visible:
+			panel_fondo.scale = _calcular_escala_responsiva()
 
 func _actualizar_anim_extraccion(t: float) -> void:
 	_progreso_barras = clampf(t, 0.0, 1.0)
@@ -699,21 +722,18 @@ func _actualizar_labels_banco() -> void:
 			label_estado_matriz.text = "⚡ %d nodos disponibles para desbloquear/mejorar ahora · Progreso Prestigio: %d/45 Nv." % [comprables, nv_arbol]
 			label_estado_matriz.add_theme_color_override("font_color", Color(0.32, 0.98, 0.72, 1.0))
 		else:
-			label_estado_matriz.text = "✦ Matriz del Reactor: %d/45 Nv. comprados para Prestigio Astral" % nv_arbol
+			label_estado_matriz.text = "✦ Matriz de Mejoras: %d/45 Nv. para Prestigio Astral" % nv_arbol
 			label_estado_matriz.add_theme_color_override("font_color", Color(0.58, 0.76, 0.90, 0.92))
 
 	if btn_arbol_meta != null:
 		if comprables > 0:
-			btn_arbol_meta.text = "MATRIZ DEL REACTOR (%d MEJORAS DISPONIBLES) · %s Oro | %s Clics" % [
+			btn_arbol_meta.text = "MATRIZ DE MEJORAS (%d DISPONIBLES) · %s Oro | %s Clics" % [
 				comprables,
 				_formatear_num(oro_b),
 				_formatear_num(clics_b)
 			]
 		else:
-			btn_arbol_meta.text = "MATRIZ DEL REACTOR (ÁRBOL DE HABILIDADES) · %s Oro | %s Clics" % [
-				_formatear_num(oro_b),
-				_formatear_num(clics_b)
-			]
+			btn_arbol_meta.text = "MATRIZ DE MEJORAS"
 
 # ==============================================================================
 # DIBUJO PROCEDURAL SCI-FI (MEDALLÓN, MARCO TÁCTICO Y BARRAS DE EXTRACCIÓN)

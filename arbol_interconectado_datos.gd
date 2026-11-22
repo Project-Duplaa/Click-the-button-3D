@@ -8,10 +8,18 @@ extends RefCounted
 static var _cache_arbol: Dictionary = {}
 
 static func generar_arbol() -> Dictionary:
+	MetaprogresoManager.asegurar_inicializado()
+	var compradas: Dictionary = MetaprogresoManager.mejoras_arbol
 	if not _cache_arbol.is_empty():
 		for k in _cache_arbol.keys():
 			var nd: SkillNodeData = _cache_arbol[k]
-			nd.nivel_actual = 1 if String(k) == "nodo_origen" else 0
+			var id_k := String(k)
+			if id_k == "nodo_origen":
+				nd.nivel_actual = 1
+			elif compradas.has(id_k):
+				nd.nivel_actual = int(compradas[id_k])
+			else:
+				nd.nivel_actual = 0
 		return _cache_arbol
 	var nodos: Dictionary = {}
 	
@@ -205,8 +213,8 @@ static func generar_arbol() -> Dictionary:
 	)
 
 	registrar.call(
-		"btn_palancas_1", "Enlace Remoto de Disyuntores",
-		"+1.5m alcance para activar palancas y descarga protectora al accionar cada disyuntor",
+		"btn_palancas_1", "Enlace Remoto de Palancas",
+		"+1.5m alcance para accionar palancas y descarga protectora al activarlas",
 		"boton", Vector2(-775, 255), 3, "oro", 2800, 0, 2.10, "btn_alcance_palancas", 1.5,
 		["btn_cadenas_1", "btn_frenesi_duracion_1", "btn_keystone_rompecadenas"], false, "🔌", 3
 	)
@@ -638,6 +646,15 @@ static func generar_arbol() -> Dictionary:
 					vecino.nodos_conectados.append(n_id)
 
 	_cache_arbol = nodos
+	for k in _cache_arbol.keys():
+		var nd: SkillNodeData = _cache_arbol[k]
+		var id_k := String(k)
+		if id_k == "nodo_origen":
+			nd.nivel_actual = 1
+		elif compradas.has(id_k):
+			nd.nivel_actual = int(compradas[id_k])
+		else:
+			nd.nivel_actual = 0
 	return nodos
 
 static func nivel_requerido_vecino(v: SkillNodeData) -> int:

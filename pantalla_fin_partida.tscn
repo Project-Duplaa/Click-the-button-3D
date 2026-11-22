@@ -303,7 +303,7 @@ theme_override_constants/separation = 4
 layout_mode = 2
 theme_override_colors/font_color = Color(0.96, 0.38, 0.48, 0.95)
 theme_override_font_sizes/font_size = 11
-text = "// TELEMETRÍA DE BIOCONTENCIÓN · REPORTE TÁCTICO DE FIN DE RUN //"
+text = "REPORTE DE RUN"
 
 [node name="LabelTitulo" type="Label" parent="Control/Fondo/VBox/HeaderRow/TitleColumn"]
 layout_mode = 2
@@ -391,7 +391,7 @@ theme_override_constants/separation = 9
 layout_mode = 2
 theme_override_colors/font_color = Color(0.45, 0.82, 0.98, 0.95)
 theme_override_font_sizes/font_size = 11
-text = "◈ EXPEDIENTE DEL GLADIADOR & TELEMETRÍA DE ARENA"
+text = "◈ EXPEDIENTE DEL GLADIADOR"
 
 [node name="CardGladiador" type="PanelContainer" parent="Control/Fondo/VBox/BodySplit/ColLeft"]
 layout_mode = 2
@@ -422,7 +422,7 @@ theme_override_constants/separation = 2
 layout_mode = 2
 theme_override_colors/font_color = Color(0.56, 0.72, 0.86, 1)
 theme_override_font_sizes/font_size = 11
-text = "ESPECIALIDAD & NIVEL ALCANZADO"
+text = "CLASE Y NIVEL"
 
 [node name="LabelValNivel" type="Label" parent="Control/Fondo/VBox/BodySplit/ColLeft/CardGladiador/VBoxGlad/TopRow/InfoCol"]
 layout_mode = 2
@@ -500,7 +500,7 @@ text = "00:00 min"
 layout_mode = 2
 theme_override_colors/font_color = Color(0.5, 0.65, 0.78, 0.9)
 theme_override_font_sizes/font_size = 11
-text = "Cronómetro de supervivencia"
+text = "Supervivencia"
 
 [node name="CardBajas" type="PanelContainer" parent="Control/Fondo/VBox/BodySplit/ColLeft/Grid"]
 layout_mode = 2
@@ -568,7 +568,7 @@ stretch_mode = 5
 layout_mode = 2
 theme_override_colors/font_color = Color(0.56, 0.72, 0.86, 1)
 theme_override_font_sizes/font_size = 11
-text = "AMENAZA & SECTOR"
+text = "SECTOR Y OLEADA"
 
 [node name="LabelValOleada" type="Label" parent="Control/Fondo/VBox/BodySplit/ColLeft/Grid/CardOleada/VBox"]
 layout_mode = 2
@@ -608,7 +608,7 @@ stretch_mode = 5
 layout_mode = 2
 theme_override_colors/font_color = Color(0.56, 0.72, 0.86, 1)
 theme_override_font_sizes/font_size = 11
-text = "HISTORIAL IMPERIAL"
+text = "HISTORIAL"
 
 [node name="LabelValHistorial" type="Label" parent="Control/Fondo/VBox/BodySplit/ColLeft/Grid/CardHistorial/VBox"]
 layout_mode = 2
@@ -636,7 +636,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.98, 0.82, 0.25, 0.96)
 theme_override_font_sizes/font_size = 11
-text = "◈ EXTRACCIÓN & BÓVEDA PERMANENTE"
+text = "◈ BÓVEDA"
 
 [node name="LabelTasaExtraccion" type="Label" parent="Control/Fondo/VBox/BodySplit/ColRight/HBoxSecRight"]
 layout_mode = 2
@@ -667,7 +667,7 @@ stretch_mode = 5
 layout_mode = 2
 theme_override_colors/font_color = Color(0.92, 0.82, 0.55, 1)
 theme_override_font_sizes/font_size = 12
-text = "ORO EXTRAÍDO AL BANCO:"
+text = "ORO A BÓVEDA:"
 
 [node name="LabelValOro" type="Label" parent="Control/Fondo/VBox/BodySplit/ColRight/CardOro/VBox/HBox"]
 layout_mode = 2
@@ -710,7 +710,7 @@ stretch_mode = 5
 layout_mode = 2
 theme_override_colors/font_color = Color(0.62, 0.86, 0.98, 1)
 theme_override_font_sizes/font_size = 12
-text = "CLICS AL NÚCLEO EXTRAÍDOS:"
+text = "CLICS A BÓVEDA:"
 
 [node name="LabelValClicks" type="Label" parent="Control/Fondo/VBox/BodySplit/ColRight/CardClicks/VBox/HBox"]
 layout_mode = 2
@@ -755,7 +755,7 @@ stretch_mode = 5
 layout_mode = 2
 theme_override_colors/font_color = Color(0.99, 0.86, 0.3, 1)
 theme_override_font_sizes/font_size = 12
-text = "RESERVA TOTAL EN BÓVEDA PERMANENTE"
+text = "BÓVEDA"
 
 [node name="LabelValBanco" type="Label" parent="Control/Fondo/VBox/BodySplit/ColRight/CardBanco/VBoxBanco/HBox"]
 visible = false
@@ -866,7 +866,7 @@ theme_override_colors/font_color = Color(0.96, 1, 0.98, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_meta_normal")
-text = "⚡ MATRIZ DEL REACTOR (ÁRBOL DE HABILIDADES)"
+text = "⚡ MATRIZ DE MEJORAS"
 
 [node name="HBoxBotones" type="HBoxContainer" parent="Control/Fondo/VBox"]
 layout_mode = 2
@@ -881,7 +881,7 @@ focus_mode = 0
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 14
-text = "⚔️ DESPLEGAR SIGUIENTE RUN [ESPACIO]"
+text = "⚔️ SIGUIENTE RUN [ESPACIO]"
 
 [node name="BtnSalir" type="Button" parent="Control/Fondo/VBox/HBoxBotones"]
 custom_minimum_size = Vector2(0, 44)
@@ -892,4 +892,4 @@ focus_mode = 0
 theme_override_colors/font_color = Color(0.78, 0.84, 0.92, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 13
-text = "SALIR AL ESCRITORIO"
+text = "SALIR"
