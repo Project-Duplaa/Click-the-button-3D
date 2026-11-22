@@ -247,6 +247,7 @@ var _modelo_pos_base: Vector3 = Vector3.ZERO
 var _modelo_rot_base: Vector3 = Vector3.ZERO
 var _modelo_escala_base: Vector3 = Vector3(-2.8, 2.8, -2.8)
 var _tween_modelo_ataque: Tween = null
+var _cooldown_inmunidad_jefe: float = 0.0
 var _inclinacion_giro: float = 0.0
 var _turno_ataque_novato: bool = false
 var _arma_der_ref: Node3D = null
@@ -421,6 +422,9 @@ func _physics_process(delta):
 	else:
 		empuje = Vector3.ZERO
 
+	if _cooldown_inmunidad_jefe > 0.0:
+		_cooldown_inmunidad_jefe = maxf(0.0, _cooldown_inmunidad_jefe - delta)
+
 	if _dash_cooldown > 0.0:
 		_dash_cooldown = maxf(0.0, _dash_cooldown - delta)
 
@@ -539,6 +543,21 @@ func _procesar_fiebre_y_bendiciones(delta: float):
 			_temporizador_paso_coloso = 0.0
 			_repeler_enemigos_alrededor(2.8, 5.5, dano * 0.55)
 			BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position, 0.3, 2.7, Color(0.95, 0.55, 0.15), 0.26)
+
+	# Detección continua de aproximación a jefes con auras de empuje o rebote activo
+	var tiene_aura_repulsion: bool = (
+		bendiciones_corruptas.has("corrupta_coloso_inamovible")
+		or bendiciones_run.has("global_estela_fuego")
+		or sinergias_activas.has("sinergia_juggernaut")
+		or bendiciones_run.has("global_dash_frenetico")
+	)
+	if tiene_aura_repulsion and _cooldown_inmunidad_jefe <= 0.0 and is_inside_tree() and get_tree() != null:
+		var jefes = get_tree().get_nodes_in_group("jefes")
+		for j in jefes:
+			if is_instance_valid(j) and not ("muerto" in j and j.muerto) and ("vida" in j and j.vida > 0.0):
+				if global_position.distance_to(j.global_position) <= 3.2:
+					_reaccionar_inmunidad_empuje_jefe(j)
+					break
 
 	if bendiciones_corruptas.has("corrupta_avaricia_sangrienta") and vida > 1.0 and not _muerto_definitivo:
 		vida = maxf(1.0, vida - 1.0 * delta)
@@ -2641,12 +2660,32 @@ func _repeler_enemigos_alrededor(radio: float, fuerza: float, dano_extra: float 
 			if dist <= radio:
 				if dano_extra > 0.0 and e.has_method("recibir_dano"):
 					e.recibir_dano(dano_extra, false)
+
+				var es_jefe: bool = e.is_in_group("jefes") or e.is_in_group("bosses") or ("es_jefe" in e and e.es_jefe)
+				if es_jefe:
+					_reaccionar_inmunidad_empuje_jefe(e)
+					continue
+
 				var dir = (e.global_position - global_position).normalized()
 				dir.y = 0.0
 				if e.has_method("aplicar_knockback"):
 					e.aplicar_knockback(dir * fuerza)
 				elif "velocity" in e:
 					e.velocity += dir * fuerza
+
+func _reaccionar_inmunidad_empuje_jefe(jefe: Node3D) -> void:
+	if _cooldown_inmunidad_jefe > 0.0 or not is_inside_tree() or get_parent() == null:
+		return
+	_cooldown_inmunidad_jefe = 0.45
+	var pos_mid := (global_position + jefe.global_position) * 0.5
+	pos_mid.y = global_position.y + 0.12
+	BunkerVisualKit.spawn_shockwave_ring(get_parent(), pos_mid, 0.35, 3.2, Color(1.0, 0.28, 0.35), 0.35)
+	VfxCombate.spawn_impacto(get_parent(), pos_mid + Vector3(0.0, 0.45, 0.0), Color(1.0, 0.45, 0.35), Color.WHITE, 0.95, true)
+	AudioManager.play("escudo_bloqueo", 0.85, 1.0)
+	var dir_rebote := (global_position - jefe.global_position).normalized()
+	dir_rebote.y = 0.0
+	empuje += dir_rebote * 4.2
+	_spawn_texto_3d("⛔ ¡JEFE INAMOVIBLE!", Color(1.0, 0.35, 0.35))
 
 func _ejecutar_corte_giratorio_guerrero(es_click: bool = false, es_crit: bool = false, dano_custom: float = -1.0):
 	accion = "whirlwind"
@@ -2674,6 +2713,11 @@ func _ejecutar_corte_giratorio_guerrero(es_click: bool = false, es_crit: bool = 
 			if dist <= rango_ataque + 0.6:
 				if e.has_method("recibir_dano"):
 					e.recibir_dano(dano_aplicar, es_crit or es_click)
+
+				var es_jefe: bool = e.is_in_group("jefes") or e.is_in_group("bosses") or ("es_jefe" in e and e.es_jefe)
+				if es_jefe:
+					_reaccionar_inmunidad_empuje_jefe(e)
+					continue
 
 				var dir_empuje = (e.global_position - global_position).normalized()
 				dir_empuje.y = 0.0

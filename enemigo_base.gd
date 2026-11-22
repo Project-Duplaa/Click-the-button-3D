@@ -193,24 +193,15 @@ func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false) 
 func _reaccionar_inmunidad_arma() -> void:
 	if _escudo_fase_mesh != null and is_instance_valid(_escudo_fase_mesh):
 		var esc_tw = create_tween()
-		esc_tw.tween_property(_escudo_fase_mesh, "scale", Vector3.ONE * 1.12, 0.04)
-		esc_tw.tween_property(_escudo_fase_mesh, "scale", Vector3.ONE, 0.08)
+		esc_tw.tween_property(_escudo_fase_mesh, "scale", Vector3.ONE * 1.22, 0.05).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		esc_tw.tween_property(_escudo_fase_mesh, "scale", Vector3.ONE, 0.08).set_trans(Tween.TRANS_CUBIC)
 	if _cooldown_feedback_inmune > 0.0:
 		return
-	_cooldown_feedback_inmune = 0.42
-	AudioManager.play("escudo_bloqueo", randf_range(1.25, 1.50), -4.0)
-	VfxCombate.spawn_impacto(get_parent(), global_position + Vector3(0.0, 1.0, 0.0), Color(0.25, 0.95, 1.0), Color.WHITE, 0.85, false)
-	var dmg_pool = get_tree().get_first_node_in_group("damage_numbers") if is_inside_tree() else null
-	if dmg_pool != null and dmg_pool.has_method("mostrar_texto"):
-		dmg_pool.mostrar_texto(global_position + Vector3(0, 1.8, 0), "⚡ SOLO BOTÓN", Color(0.25, 0.95, 1.0), 0.95)
-	else:
-		var escena = load("res://damage_number_3d.tscn")
-		if escena != null and is_inside_tree() and get_parent() != null:
-			var num = escena.instantiate()
-			get_parent().add_child(num)
-			num.global_position = global_position + Vector3(0, 1.8, 0)
-			if num.has_method("iniciar"):
-				num.iniciar(0.0, false, false, "⚡ SOLO BOTÓN")
+	_cooldown_feedback_inmune = 0.22
+	AudioManager.play("escudo_bloqueo", randf_range(1.35, 1.65), -2.0)
+	if is_inside_tree() and get_parent() != null:
+		BunkerVisualKit.spawn_shockwave_ring(get_parent(), global_position + Vector3(0.0, 1.35, 0.0), 0.25, 1.55, Color(0.35, 0.92, 1.0), 0.22)
+		VfxCombate.spawn_impacto(get_parent(), global_position + Vector3(0.0, 1.25, 0.0), Color(0.35, 0.95, 1.0), Color.WHITE, 0.90, true)
 
 func _notificar_dano(cantidad: float, es_critico: bool, fuente: String) -> void:
 	var dmg_pool = get_tree().get_first_node_in_group("damage_numbers")
@@ -232,6 +223,13 @@ func morir() -> void:
 	_muerto = true
 
 	set_physics_process(false)
+
+	var col = get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if col != null:
+		col.set_deferred("disabled", true)
+
+	remove_from_group("enemigos")
+	remove_from_group("enemies")
 
 	# 1. Registro de baja en Bestiario y Telemetría
 	MetaprogresoManager.registrar_baja_bestiario(tipo_enemigo_id)
@@ -278,6 +276,12 @@ func morir() -> void:
 		_ejecutar_recompensa_nemesis()
 
 	tw.chain().tween_callback(queue_free)
+
+	if is_inside_tree() and get_tree() != null:
+		get_tree().create_timer(0.35).timeout.connect(func():
+			if is_instance_valid(self):
+				queue_free()
+		)
 
 func _ejecutar_recompensa_nemesis() -> void:
 	AudioManager.play("victoria", 1.45)
