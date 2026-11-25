@@ -24,6 +24,9 @@ var resistencia_knockback: float = 0.60
 var _stun_timer: float = 0.0
 var marca_conductiva_timer: float = 0.0
 var _nav_estado: Dictionary = {}
+var _boton_movil_ref: Node = null
+var _dmg_pool: Node = null
+var _tw_hit: Tween = null
 
 @onready var anim = $Modelo/AnimationPlayer if has_node("Modelo/AnimationPlayer") else null
 @onready var modelo = $Modelo if has_node("Modelo") else null
@@ -98,8 +101,9 @@ func ir_a(destino: Vector3, delta: float = 0.016):
 	var dir = ArenaColiseo.calcular_direccion_persecucion(self, destino, _nav_estado, delta)
 	if dir.length_squared() > 0.0025:
 		var mult_colapso = 1.0
-		var b_movil = get_tree().get_first_node_in_group("boton_movil")
-		if b_movil != null and "en_colapso" in b_movil and b_movil.en_colapso:
+		if _boton_movil_ref == null or not is_instance_valid(_boton_movil_ref):
+			_boton_movil_ref = get_tree().get_first_node_in_group("boton_movil")
+		if _boton_movil_ref != null and "en_colapso" in _boton_movil_ref and _boton_movil_ref.en_colapso:
 			mult_colapso = 1.30
 		var mult_stun = 0.15 if _stun_timer > 0.0 else 1.0
 		velocity.x = dir.x * rapidez * mult_colapso * mult_stun
@@ -153,9 +157,11 @@ func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 	_anim_ctrl.disparar_golpe()
 	
 	if modelo != null:
-		var tw = create_tween()
-		tw.tween_property(modelo, "scale", _escala_base * 1.1, 0.05)
-		tw.tween_property(modelo, "scale", _escala_base, 0.08)
+		if _tw_hit != null and _tw_hit.is_valid():
+			_tw_hit.kill()
+		_tw_hit = create_tween()
+		_tw_hit.tween_property(modelo, "scale", _escala_base * 1.1, 0.05)
+		_tw_hit.tween_property(modelo, "scale", _escala_base, 0.08)
 
 	_notificar_dano(cantidad_final, es_critico, str(fuente))
 
@@ -163,9 +169,10 @@ func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 		morir()
 
 func _notificar_dano(cantidad: float, es_critico: bool, fuente: String):
-	var dmg_pool = get_tree().get_first_node_in_group("damage_numbers")
-	if dmg_pool != null and dmg_pool.has_method("mostrar_dano"):
-		dmg_pool.mostrar_dano(global_position + Vector3(0, 2.8, 0), int(round(cantidad)), es_critico, fuente)
+	if _dmg_pool == null or not is_instance_valid(_dmg_pool):
+		_dmg_pool = get_tree().get_first_node_in_group("damage_numbers")
+	if _dmg_pool != null and _dmg_pool.has_method("mostrar_dano"):
+		_dmg_pool.mostrar_dano(global_position + Vector3(0, 2.8, 0), int(round(cantidad)), es_critico, fuente)
 	else:
 		_spawn_damage_number(cantidad, es_critico)
 
@@ -183,6 +190,15 @@ func morir():
 	if _muerto:
 		return
 	_muerto = true
+	set_physics_process(false)
+	var col = get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if col != null:
+		col.set_deferred("disabled", true)
+	remove_from_group("enemigos")
+	remove_from_group("enemies")
+	if _tw_hit != null and _tw_hit.is_valid():
+		_tw_hit.kill()
+		_tw_hit = null
 
 	FortunaManager.soltar_drops(get_parent(), global_position, "bruto")
 	MetaprogresoManager.procesar_baja_completa(self, jugador, "bruto", false)

@@ -106,14 +106,15 @@ func _on_body_entered(body):
 
 func _buscar_objetivo_rebote(ignorar: Node3D) -> Node3D:
 	var mejor: Node3D = null
-	var menor_dist: float = 12.0
+	var menor_dist_sq: float = 144.0
 	var candidatos = get_tree().get_nodes_in_group("enemigos")
+	var mi_pos := global_position
 	for e in candidatos:
 		if e is Node3D and is_instance_valid(e) and e != ignorar and not _enemigos_golpeados.has(e):
 			if "muerto" in e and e.muerto:
 				continue
-			var d = global_position.distance_to(e.global_position)
-			if d < menor_dist:
-				menor_dist = d
+			var d_sq = mi_pos.distance_squared_to(e.global_position)
+			if d_sq < menor_dist_sq:
+				menor_dist_sq = d_sq
 				mejor = e
 	return mejor

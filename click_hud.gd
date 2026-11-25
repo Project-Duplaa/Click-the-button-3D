@@ -252,6 +252,12 @@ var _avatar_reloj_redraw: float = 0.06
 var _reloj_jefe_sync: float = 0.0
 var _ultimo_escudo_txt: String = ""
 var _ultimo_escudo_vis: int = -1
+var _ult_y_banner_sup: float = -1.0
+var _ult_hp_shader_val: float = -1.0
+var _ult_hp_trail_shader_val: float = -1.0
+var _ult_shield_shader_val: float = -1.0
+var _ult_jefe_hp_shader_val: float = -1.0
+var _ult_jefe_trail_shader_val: float = -1.0
 
 var _modal_apertura_msec: int = 0
 var _modal_bloqueado_hasta_msec: int = 0
@@ -514,10 +520,16 @@ func _actualizar_posicion_banners_superiores() -> void:
 			fondo_jefe = panel_jefe.offset_top + 46.0
 		y_cursor = maxf(y_cursor, fondo_jefe + 12.0)
 
+	var cadenas_vis: bool = _banner_cadenas_hud != null and is_instance_valid(_banner_cadenas_hud) and _banner_cadenas_hud.visible
+	var y_key: float = y_cursor + (1000.0 if cadenas_vis else 0.0)
+	if absf(y_key - _ult_y_banner_sup) < 0.1:
+		return
+	_ult_y_banner_sup = y_key
+
 	if _banner_cadenas_hud != null and is_instance_valid(_banner_cadenas_hud):
 		_banner_cadenas_hud.offset_top = y_cursor
 		_banner_cadenas_hud.offset_bottom = y_cursor + 32.0
-		if _banner_cadenas_hud.visible:
+		if cadenas_vis:
 			y_cursor += 38.0
 
 	if _barra_calor_hud != null and is_instance_valid(_barra_calor_hud):
@@ -969,6 +981,8 @@ func _actualizar_flecha_nucleo_inicio() -> void:
 func _es_jefe_mayor_canonico(nodo: Node) -> bool:
 	if nodo == null or not is_instance_valid(nodo):
 		return false
+	if nodo.has_meta(&"_es_jefe_canonico"):
+		return bool(nodo.get_meta(&"_es_jefe_canonico"))
 	var scr = nodo.get_script()
 	var scr_path := ""
 	if scr != null and "resource_path" in scr:
@@ -985,10 +999,14 @@ func _es_jefe_mayor_canonico(nodo: Node) -> bool:
 	var es_coloso: bool = scr_path.contains("coloso_bronce") or n_name.contains("coloso") or tipo_id == "coloso"
 	var es_parca: bool = scr_path.contains("parca_roja") or n_name.contains("parca") or tipo_id == "parca"
 
-	return es_centurion or es_espejo or es_maestra or es_coloso or es_parca
+	var res := es_centurion or es_espejo or es_maestra or es_coloso or es_parca
+	nodo.set_meta(&"_es_jefe_canonico", res)
+	return res
 
 func _obtener_jefes_mayores_vivos() -> Array:
 	var vivos: Array = []
+	if get_tree().get_node_count_in_group("jefes") == 0:
+		return vivos
 	for j in get_tree().get_nodes_in_group("jefes"):
 		if is_instance_valid(j) and (not ("muerto" in j) or not j.muerto) and ("vida" in j and j.vida > 0.0):
 			if _es_jefe_mayor_canonico(j):
@@ -1230,7 +1248,7 @@ func _actualizar_overlays_shader(delta: float) -> void:
 		if est_en_colapso:
 			var alpha_colapso := 0.13 + sin(Time.get_ticks_msec() * 0.008) * 0.09
 			overlay_colapso.color = Color(0.85, 0.05, 0.10, alpha_colapso)
-		else:
+		elif overlay_colapso.color.a > 0.0:
 			overlay_colapso.color.a = move_toward(overlay_colapso.color.a, 0.0, delta * 3.0)
 
 	# Player HP Trail catch-up
@@ -1241,24 +1259,33 @@ func _actualizar_overlays_shader(delta: float) -> void:
 	else:
 		_hp_trail_ratio = _hp_ratio_actual
 
-	if bar_vida_shader != null and bar_vida_shader.material is ShaderMaterial:
-		var m := bar_vida_shader.material as ShaderMaterial
-		m.set_shader_parameter("hp_ratio", _hp_ratio_actual)
-		m.set_shader_parameter("trail_ratio", _hp_trail_ratio)
-		m.set_shader_parameter("shield_ratio", 0.0 if badge_escudo_hp != null else _shield_ratio_actual)
+	var shield_param := 0.0 if badge_escudo_hp != null else _shield_ratio_actual
+	if absf(_hp_ratio_actual - _ult_hp_shader_val) > 0.0005 or absf(_hp_trail_ratio - _ult_hp_trail_shader_val) > 0.0005 or absf(shield_param - _ult_shield_shader_val) > 0.0005:
+		_ult_hp_shader_val = _hp_ratio_actual
+		_ult_hp_trail_shader_val = _hp_trail_ratio
+		_ult_shield_shader_val = shield_param
+		if bar_vida_shader != null and bar_vida_shader.material is ShaderMaterial:
+			var m := bar_vida_shader.material as ShaderMaterial
+			m.set_shader_parameter("hp_ratio", _hp_ratio_actual)
+			m.set_shader_parameter("trail_ratio", _hp_trail_ratio)
+			m.set_shader_parameter("shield_ratio", shield_param)
 
 	# Boss HP Trail catch-up
-	if _jefe_trail_hold > 0.0:
-		_jefe_trail_hold = maxf(0.0, _jefe_trail_hold - delta)
-	elif _jefe_trail_ratio > _jefe_hp_ratio:
-		_jefe_trail_ratio = maxf(_jefe_hp_ratio, _jefe_trail_ratio - delta * 0.48)
-	else:
-		_jefe_trail_ratio = _jefe_hp_ratio
+	if panel_jefe != null and panel_jefe.visible:
+		if _jefe_trail_hold > 0.0:
+			_jefe_trail_hold = maxf(0.0, _jefe_trail_hold - delta)
+		elif _jefe_trail_ratio > _jefe_hp_ratio:
+			_jefe_trail_ratio = maxf(_jefe_hp_ratio, _jefe_trail_ratio - delta * 0.48)
+		else:
+			_jefe_trail_ratio = _jefe_hp_ratio
 
-	if bar_jefe_shader != null and bar_jefe_shader.material is ShaderMaterial:
-		var mj := bar_jefe_shader.material as ShaderMaterial
-		mj.set_shader_parameter("hp_ratio", _jefe_hp_ratio)
-		mj.set_shader_parameter("trail_ratio", _jefe_trail_ratio)
+		if absf(_jefe_hp_ratio - _ult_jefe_hp_shader_val) > 0.0005 or absf(_jefe_trail_ratio - _ult_jefe_trail_shader_val) > 0.0005:
+			_ult_jefe_hp_shader_val = _jefe_hp_ratio
+			_ult_jefe_trail_shader_val = _jefe_trail_ratio
+			if bar_jefe_shader != null and bar_jefe_shader.material is ShaderMaterial:
+				var mj := bar_jefe_shader.material as ShaderMaterial
+				mj.set_shader_parameter("hp_ratio", _jefe_hp_ratio)
+				mj.set_shader_parameter("trail_ratio", _jefe_trail_ratio)
 
 
 func _sincronizar_escudo_live() -> void:

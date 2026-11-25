@@ -11,10 +11,14 @@ enum TipoDrop { ORO, EXP, CORAZON, TREBOL, IMAN, BOMBA, DENARIO }
 
 var jugador: Node3D = null
 var recogido: bool = false
+var _radio_extra_cache: float = 0.0
+var _reloj_radio_cache: float = 0.0
 
 func _ready():
 	add_to_group("drops")
 	add_to_group("orbes_drop")
+	monitorable = false
+	_reloj_radio_cache = float(get_instance_id() & 15) * 0.016
 	body_entered.connect(_on_body_entered)
 	jugador = get_tree().get_first_node_in_group("jugador")
 	if jugador == null:
@@ -104,13 +108,16 @@ func _process(delta):
 		if jugador == null:
 			return
 
-	var bonus_radio = 0.0
-	if jugador.has_method("obtener_radio_atraccion_extra"):
-		bonus_radio = jugador.obtener_radio_atraccion_extra()
-	var d = global_position.distance_to(jugador.global_position)
-	if d < (radio_atraccion + bonus_radio):
-		var dir = (jugador.global_position + Vector3(0, 0.8, 0) - global_position).normalized()
-		var vel_actual = velocidad_iman + (bonus_radio * 0.85)
+	_reloj_radio_cache -= delta
+	if _reloj_radio_cache <= 0.0:
+		_reloj_radio_cache = 0.25
+		if jugador.has_method("obtener_radio_atraccion_extra"):
+			_radio_extra_cache = jugador.obtener_radio_atraccion_extra()
+	var radio_total := radio_atraccion + _radio_extra_cache
+	var pos_pj := jugador.global_position
+	if global_position.distance_squared_to(pos_pj) < radio_total * radio_total:
+		var dir = (pos_pj + Vector3(0, 0.8, 0) - global_position).normalized()
+		var vel_actual = velocidad_iman + (_radio_extra_cache * 0.85)
 		global_position += dir * vel_actual * delta
 
 func _on_body_entered(body):

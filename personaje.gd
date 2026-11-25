@@ -253,6 +253,8 @@ var _turno_ataque_novato: bool = false
 var _arma_der_ref: Node3D = null
 var _arma_izq_ref: Node3D = null
 var _luz_orbe_ref: OmniLight3D = null
+var _modelo_ref: Node3D = null
+var _boton_movil_ref: Node3D = null
 var _procesando_recibir_dano: bool = false
 
 func obtener_vidas_maximas() -> int:
@@ -266,6 +268,7 @@ func _ready():
 		camara = get_viewport().get_camera_3d()
 
 	var mod_inicial = get_node_or_null("Modelo") as Node3D
+	_modelo_ref = mod_inicial
 	if mod_inicial != null:
 		_modelo_pos_base = mod_inicial.position
 		_modelo_rot_base = mod_inicial.rotation
@@ -294,6 +297,7 @@ func _ready():
 func _on_malla_cambiada(nuevo_modelo: Node3D) -> void:
 	if nuevo_modelo == null:
 		return
+	_modelo_ref = nuevo_modelo
 	if _tween_modelo_ataque != null and _tween_modelo_ataque.is_valid():
 		_tween_modelo_ataque.kill()
 		_tween_modelo_ataque = null
@@ -431,11 +435,10 @@ func _physics_process(delta):
 	# Control de invulnerabilidad temporal (i-frames con parpadeo de modelo)
 	if _reloj_invulnerable > 0.0:
 		_reloj_invulnerable = maxf(_reloj_invulnerable - delta, 0.0)
-		var modelo_nodo = get_node_or_null("Modelo")
-		if modelo_nodo != null:
-			modelo_nodo.visible = fmod(_reloj_invulnerable, 0.20) < 0.10
+		if _modelo_ref != null and is_instance_valid(_modelo_ref):
+			_modelo_ref.visible = fmod(_reloj_invulnerable, 0.20) < 0.10
 			if _reloj_invulnerable <= 0.0:
-				modelo_nodo.visible = true
+				_modelo_ref.visible = true
 
 	if not is_on_floor():
 		velocity += get_gravity() * delta
@@ -484,9 +487,8 @@ func _physics_process(delta):
 	var factor_vel := clampf(rapidez_horiz / maxf(1.0, speed_correr), 0.0, 1.0)
 	var banco_obj := clampf(-tasa_giro_visual * 0.018 * factor_vel, -0.14, 0.14)
 	_inclinacion_giro = lerpf(_inclinacion_giro, banco_obj, minf(1.0, delta * 12.0))
-	var modelo_nodo_giro := get_node_or_null("Modelo") as Node3D
-	if modelo_nodo_giro != null and (_tween_modelo_ataque == null or not _tween_modelo_ataque.is_valid()):
-		modelo_nodo_giro.rotation.z = _modelo_rot_base.z + _inclinacion_giro
+	if _modelo_ref != null and is_instance_valid(_modelo_ref) and (_tween_modelo_ataque == null or not _tween_modelo_ataque.is_valid()):
+		_modelo_ref.rotation.z = _modelo_rot_base.z + _inclinacion_giro
 
 	move_and_slide()
 
@@ -498,7 +500,6 @@ func _physics_process(delta):
 
 	if _anim_ctrl != null:
 		_anim_ctrl.actualizar(delta)
-		anim = _anim_ctrl.obtener_animation_player()
 
 	# Manejo de animación de ataque / acción
 	if _reloj_anim_accion > 0.0:
@@ -552,12 +553,13 @@ func _procesar_fiebre_y_bendiciones(delta: float):
 		or bendiciones_run.has("global_dash_frenetico")
 	)
 	if tiene_aura_repulsion and _cooldown_inmunidad_jefe <= 0.0 and is_inside_tree() and get_tree() != null:
-		var jefes = get_tree().get_nodes_in_group("jefes")
-		for j in jefes:
-			if is_instance_valid(j) and not ("muerto" in j and j.muerto) and ("vida" in j and j.vida > 0.0):
-				if global_position.distance_to(j.global_position) <= 3.2:
-					_reaccionar_inmunidad_empuje_jefe(j)
-					break
+		if get_tree().get_node_count_in_group("jefes") > 0:
+			var jefes = get_tree().get_nodes_in_group("jefes")
+			for j in jefes:
+				if is_instance_valid(j) and not ("muerto" in j and j.muerto) and ("vida" in j and j.vida > 0.0):
+					if global_position.distance_squared_to(j.global_position) <= 10.24:
+						_reaccionar_inmunidad_empuje_jefe(j)
+						break
 
 	if bendiciones_corruptas.has("corrupta_avaricia_sangrienta") and vida > 1.0 and not _muerto_definitivo:
 		vida = maxf(1.0, vida - 1.0 * delta)
@@ -609,8 +611,8 @@ func _procesar_autobattler(delta: float):
 	if _reloj_ataque <= 0.001:
 		var objetivo = _obtener_enemigo_cercano()
 		if objetivo != null:
-			var d = global_position.distance_to(objetivo.global_position)
-			if d <= rango_ataque:
+			var d_sq = global_position.distance_squared_to(objetivo.global_position)
+			if d_sq <= rango_ataque * rango_ataque:
 				_ejecutar_ataque(objetivo)
 				_reloj_ataque = cadencia_ataque
 			else:
@@ -623,23 +625,24 @@ func _obtener_enemigo_cercano() -> Node3D:
 		return null
 	var enemigos = _obtener_todos_los_enemigos()
 	var mas_cercano_normal: Node3D = null
-	var menor_dist_normal: float = 9999.0
+	var menor_dist_sq_normal: float = 99999999.0
 	var mas_cercano_respaldo: Node3D = null
-	var menor_dist_respaldo: float = 9999.0
+	var menor_dist_sq_respaldo: float = 99999999.0
+	var mi_pos := global_position
 	for e in enemigos:
 		if is_instance_valid(e) and e is Node3D:
 			if "muerto" in e and e.muerto:
 				continue
-			var dist: float = global_position.distance_to(e.global_position)
+			var dist_sq: float = mi_pos.distance_squared_to(e.global_position)
 			var es_inmune_arma: bool = ("solo_dano_boton" in e and bool(e.solo_dano_boton))
 			if not es_inmune_arma:
-				if dist < menor_dist_normal:
-					menor_dist_normal = dist
+				if dist_sq < menor_dist_sq_normal:
+					menor_dist_sq_normal = dist_sq
 					mas_cercano_normal = e
-			elif dist < menor_dist_respaldo:
-				menor_dist_respaldo = dist
+			elif dist_sq < menor_dist_sq_respaldo:
+				menor_dist_sq_respaldo = dist_sq
 				mas_cercano_respaldo = e
-	if mas_cercano_normal != null and menor_dist_normal <= rango_ataque:
+	if mas_cercano_normal != null and menor_dist_sq_normal <= rango_ataque * rango_ataque:
 		return mas_cercano_normal
 	return mas_cercano_normal if mas_cercano_normal != null else mas_cercano_respaldo
 
@@ -2363,9 +2366,10 @@ func _procesar_incremental_pasivo(delta: float):
 			if keystone_bucle and escudo_almas < max_escudo_almas + 30.0:
 				escudo_almas = minf(max_escudo_almas + 30.0, escudo_almas + float(clk_ent) * 1.5)
 			if keystone_fabrica and is_inside_tree() and get_tree() != null:
-				var boton = get_tree().get_first_node_in_group("boton_movil")
-				if boton != null and boton.has_method("_detonar_onda_choque"):
-					boton._detonar_onda_choque(false)
+				if _boton_movil_ref == null or not is_instance_valid(_boton_movil_ref):
+					_boton_movil_ref = get_tree().get_first_node_in_group("boton_movil") as Node3D
+				if _boton_movil_ref != null and _boton_movil_ref.has_method("_detonar_onda_choque"):
+					_boton_movil_ref._detonar_onda_choque(false)
 
 	# 4. Sincronización periódica por segundo
 	_reloj_incremental_pasivo += delta
@@ -2652,12 +2656,14 @@ func _mostrar_feedback_bloqueo(mitigado: float, _recibido: float):
 
 func _repeler_enemigos_alrededor(radio: float, fuerza: float, dano_extra: float = 0.0):
 	var enemigos = _obtener_todos_los_enemigos()
+	var radio_sq := radio * radio
+	var mi_pos := global_position
 	for e in enemigos:
 		if is_instance_valid(e) and e is Node3D:
 			if "muerto" in e and e.muerto:
 				continue
-			var dist = global_position.distance_to(e.global_position)
-			if dist <= radio:
+			var dist_sq = mi_pos.distance_squared_to(e.global_position)
+			if dist_sq <= radio_sq:
 				if dano_extra > 0.0 and e.has_method("recibir_dano"):
 					e.recibir_dano(dano_extra, false)
 
@@ -2705,12 +2711,13 @@ func _ejecutar_corte_giratorio_guerrero(es_click: bool = false, es_crit: bool = 
 	var dano_base_calc = dano if dano_custom <= 0.0 else dano_custom
 	var dano_aplicar = dano_base_calc * (1.25 if es_click else 1.0)
 
+	var r_corte_sq := (rango_ataque + 0.6) * (rango_ataque + 0.6)
+	var mi_pos := global_position
 	for e in enemigos:
 		if is_instance_valid(e) and e is Node3D:
 			if "muerto" in e and e.muerto:
 				continue
-			var dist = global_position.distance_to(e.global_position)
-			if dist <= rango_ataque + 0.6:
+			if mi_pos.distance_squared_to(e.global_position) <= r_corte_sq:
 				if e.has_method("recibir_dano"):
 					e.recibir_dano(dano_aplicar, es_crit or es_click)
 

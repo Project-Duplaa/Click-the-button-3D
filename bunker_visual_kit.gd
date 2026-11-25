@@ -33,6 +33,9 @@ const COL_CRYO_BLUE := Color(0.302, 0.933, 0.918, 1.0)       # #4DEEEA
 static var _cache_pbr: Dictionary = {}
 static var _ultimo_bullet_clear_ms: int = -100000
 const COOLDOWN_BULLET_CLEAR_MS: int = 1500
+const MAX_POOL_SHOCKWAVES: int = 24
+static var _mesh_plane_unit: PlaneMesh = null
+static var _pool_shockwaves: Array[MeshInstance3D] = []
 
 # ==============================================================================
 # FÁBRICAS CACHEADAS DE MATERIALES PBR INDUSTRIALES
@@ -188,6 +191,56 @@ static func create_hazard_ground_ring(
 	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return ring
 
+static func _obtener_plane_unit() -> PlaneMesh:
+	if _mesh_plane_unit == null:
+		_mesh_plane_unit = PlaneMesh.new()
+		_mesh_plane_unit.size = Vector2(2.0, 2.0)
+	return _mesh_plane_unit
+
+static func _obtener_shockwave_pool(parent: Node) -> MeshInstance3D:
+	while not _pool_shockwaves.is_empty():
+		var raw_cand = _pool_shockwaves.pop_back()
+		if is_instance_valid(raw_cand) and raw_cand is MeshInstance3D:
+			var cand := raw_cand as MeshInstance3D
+			if not cand.is_queued_for_deletion():
+				if cand.get_parent() == parent:
+					return cand
+				cand.queue_free()
+	var mat := ShaderMaterial.new()
+	mat.shader = SHADER_HAZARD_RING
+	mat.set_shader_parameter("inner_radius", 0.72)
+	mat.set_shader_parameter("outer_radius", 0.94)
+	mat.set_shader_parameter("edge_softness", 0.06)
+	mat.set_shader_parameter("progress", 1.0)
+	mat.set_shader_parameter("active_state", 1.0)
+	mat.set_shader_parameter("segment_duty_cycle", 1.0)
+	mat.set_shader_parameter("rotation_speed", 0.0)
+	mat.set_shader_parameter("pulse_intensity", 0.0)
+	mat.set_shader_parameter("track_alpha", 0.85)
+	mat.set_shader_parameter("emission_strength", 2.4)
+
+	var ring := MeshInstance3D.new()
+	ring.name = "ShockwaveRing"
+	ring.mesh = _obtener_plane_unit()
+	ring.material_override = mat
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	parent.add_child(ring, true)
+	return ring
+
+static func _liberar_shockwave_pool(ring: MeshInstance3D) -> void:
+	if not is_instance_valid(ring):
+		return
+	ring.visible = false
+	if ring.has_meta(&"_tw_ring"):
+		var old_tw = ring.get_meta(&"_tw_ring")
+		if old_tw is Tween and old_tw.is_valid():
+			old_tw.kill()
+		ring.remove_meta(&"_tw_ring")
+	if ring.is_inside_tree() and _pool_shockwaves.size() < MAX_POOL_SHOCKWAVES:
+		_pool_shockwaves.append(ring)
+	else:
+		ring.queue_free()
+
 static func spawn_shockwave_ring(
 	parent: Node,
 	pos: Vector3,
@@ -199,32 +252,18 @@ static func spawn_shockwave_ring(
 	if parent == null or not is_instance_valid(parent) or not parent.is_inside_tree():
 		return null
 
-	var plane := PlaneMesh.new()
-	plane.size = Vector2(2.0, 2.0)
+	var ring := _obtener_shockwave_pool(parent)
+	if ring.has_meta(&"_tw_ring"):
+		var old_tw = ring.get_meta(&"_tw_ring")
+		if old_tw is Tween and old_tw.is_valid():
+			old_tw.kill()
 
-	var mat := ShaderMaterial.new()
-	mat.shader = SHADER_HAZARD_RING
-	mat.set_shader_parameter("inner_radius", 0.72)
-	mat.set_shader_parameter("outer_radius", 0.94)
-	mat.set_shader_parameter("edge_softness", 0.06)
-	mat.set_shader_parameter("progress", 1.0)
-	mat.set_shader_parameter("active_state", 1.0)
-	mat.set_shader_parameter("segment_duty_cycle", 1.0)
-	mat.set_shader_parameter("rotation_speed", 0.0)
-	mat.set_shader_parameter("pulse_intensity", 0.0)
+	var mat := ring.material_override as ShaderMaterial
 	mat.set_shader_parameter("base_color", color)
 	mat.set_shader_parameter("active_color", color)
-	mat.set_shader_parameter("track_alpha", 0.85)
-	mat.set_shader_parameter("emission_strength", 2.4)
 	mat.set_shader_parameter("overall_alpha", 0.92)
+	ring.visible = true
 
-	var ring := MeshInstance3D.new()
-	ring.name = "ShockwaveRing"
-	ring.mesh = plane
-	ring.material_override = mat
-	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-
-	parent.add_child(ring, true)
 	var floor_y := pos.y + 0.035 if absf(pos.y) < 0.02 else pos.y
 	if parent.is_inside_tree() and parent.get_tree() != null:
 		var arena := parent.get_tree().get_first_node_in_group("arena_coliseo")
@@ -237,6 +276,7 @@ static func spawn_shockwave_ring(
 
 	var safe_dur := maxf(duracion, 0.05)
 	var tw := ring.create_tween().set_parallel(true)
+	ring.set_meta(&"_tw_ring", tw)
 	tw.tween_property(ring, "scale", Vector3(end_r, 1.0, end_r), safe_dur).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.tween_method(
 		func(a: float):
@@ -246,10 +286,7 @@ static func spawn_shockwave_ring(
 		0.0,
 		safe_dur
 	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tw.finished.connect(func():
-		if is_instance_valid(ring):
-			ring.queue_free()
-	)
+	tw.chain().tween_callback(_liberar_shockwave_pool.bind(ring))
 	return ring
 
 static func reset_cooldown_bullet_clear() -> void:

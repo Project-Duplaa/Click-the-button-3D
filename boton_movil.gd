@@ -357,6 +357,8 @@ var _ult_sobrecalentado_emitido: bool = false
 var _ult_colapso_emitido: bool = false
 var _visual_termico_en_reposo: bool = false
 var _ult_chasis_visual_termico: String = ""
+var _ultimo_estado_ritmo_vis: String = ""
+var _favor_mgr_ref: Node = null
 
 func _sincronizar_telemetria_termica():
 	tiempo_estabilidad_max = calor_maximo
@@ -370,10 +372,10 @@ func _sincronizar_telemetria_termica():
 		emit_signal("calor_actualizado", calor_actual, calor_maximo, sobrecalentado)
 		emit_signal("estabilidad_actualizada", tiempo_estabilidad_actual, tiempo_estabilidad_max, en_colapso)
 
-func _actualizar_visual_termico(delta: float):
+func _actualizar_visual_termico(delta: float, suelo_anillo_in: float = -9999.0):
 	_reloj_pulso_termico += delta
 	if _anillo_termico_suelo != null:
-		var suelo_anillo := ArenaColiseo.obtener_altura_suelo(global_position.x, global_position.z)
+		var suelo_anillo := suelo_anillo_in if suelo_anillo_in > -9000.0 else ArenaColiseo.obtener_altura_suelo(global_position.x, global_position.z)
 		_anillo_termico_suelo.global_position.y = suelo_anillo + 0.03
 
 	var en_reposo_actual: bool = (calor_actual <= 0.001 and not sobrecalentado and estado_actual == EstadoBoton.ACTIVO)
@@ -651,8 +653,9 @@ func _physics_process(delta: float):
 		if sobrecalentado and calor_actual <= 0.0:
 			_salir_sobrecalentamiento()
 
+	var suelo_btn := ArenaColiseo.obtener_altura_suelo(global_position.x, global_position.z)
 	_sincronizar_telemetria_termica()
-	_actualizar_visual_termico(delta)
+	_actualizar_visual_termico(delta, suelo_btn)
 
 	_fase_ritmo = fmod(_fase_ritmo + delta * _velocidad_ritmo, 1.0)
 	if _anillo_ritmo_visual != null:
@@ -660,17 +663,20 @@ func _physics_process(delta: float):
 		_anillo_ritmo_visual.scale = Vector3(esc_anillo, 1.0, esc_anillo)
 		var mat = _anillo_ritmo_visual.material_override as StandardMaterial3D
 		if mat != null:
-			if sobrecalentado:
-				mat.albedo_color = Color(1.0, 0.18, 0.25, 0.35)
-			elif _es_ventana_ritmo_perfecta():
-				mat.albedo_color = Color(1.0, 0.88, 0.18, 0.88)
-			else:
-				var col_ring := Color(0.2, 0.95, 1.0, 0.42)
-				if chasis_actual == "gravitatorio":
-					col_ring = Color(0.72, 0.35, 1.0, 0.45)
-				elif chasis_actual == "cometa":
-					col_ring = Color(0.2, 1.0, 0.95, 0.55)
-				mat.albedo_color = col_ring
+			var estado_ritmo_vis: String = "over" if sobrecalentado else ("perf" if _es_ventana_ritmo_perfecta() else chasis_actual)
+			if estado_ritmo_vis != _ultimo_estado_ritmo_vis:
+				_ultimo_estado_ritmo_vis = estado_ritmo_vis
+				if sobrecalentado:
+					mat.albedo_color = Color(1.0, 0.18, 0.25, 0.35)
+				elif estado_ritmo_vis == "perf":
+					mat.albedo_color = Color(1.0, 0.88, 0.18, 0.88)
+				else:
+					var col_ring := Color(0.2, 0.95, 1.0, 0.42)
+					if chasis_actual == "gravitatorio":
+						col_ring = Color(0.72, 0.35, 1.0, 0.45)
+					elif chasis_actual == "cometa":
+						col_ring = Color(0.2, 1.0, 0.95, 0.55)
+					mat.albedo_color = col_ring
 
 	if estado_actual == EstadoBoton.SOBRECARGA_FRENESI:
 		_tiempo_frenesi -= delta
@@ -762,8 +768,8 @@ func _physics_process(delta: float):
 
 	_reloj_flotacion += delta * (4.8 if estado_actual == EstadoBoton.SOBRECARGA_FRENESI else 3.0)
 	if not _esta_presionado:
-		var suelo_btn := ArenaColiseo.obtener_altura_suelo(global_position.x, global_position.z)
-		var y_obj := suelo_btn + _altura_base + sin(_reloj_flotacion) * 0.14
+		var suelo_btn_fin := suelo_btn if estado_actual == EstadoBoton.ENCADENADO and _impulso_evasion.length_squared() < 0.0001 else ArenaColiseo.obtener_altura_suelo(global_position.x, global_position.z)
+		var y_obj := suelo_btn_fin + _altura_base + sin(_reloj_flotacion) * 0.14
 		global_position.y = lerpf(global_position.y, y_obj, minf(1.0, delta * 9.0))
 
 	if anillo_runico != null:
@@ -1193,11 +1199,13 @@ func _detonar_onda_choque(es_supernova: bool, es_perfecto: bool = false, es_sobr
 	for r in get_tree().get_nodes_in_group("rompibles"):
 		if not enemigos.has(r):
 			enemigos.append(r)
+	var radio_sq: float = radio_efectivo * radio_efectivo
+	var mi_pos := global_position
 	var alcanzados_onda: int = 0
 	for e in enemigos:
 		if e is Node3D and is_instance_valid(e):
-			var dist = global_position.distance_to(e.global_position)
-			if dist <= radio_efectivo:
+			var dist_sq = mi_pos.distance_squared_to(e.global_position)
+			if dist_sq <= radio_sq:
 				if e.has_method("desactivar_escudo_runico"):
 					e.desactivar_escudo_runico(8.0)
 				if "solo_dano_boton" in e and e.solo_dano_boton and get_parent() != null:

@@ -93,11 +93,19 @@ func _aplicar_suelo_industrial_pbr(arena: Node) -> void:
 	tile_plane.size = Vector2(13.5, 13.5)
 	tile_plane.subdivide_width = 0
 	tile_plane.subdivide_depth = 0
+	var tile_half: float = 6.75
+	var foso_vis_limit: float = ArenaColiseo.APOTEMA_FOSO + 1.0
 
 	for ix: int in range(8):
 		var cx: float = -47.25 + float(ix) * 13.5
 		for iz: int in range(8):
 			var cz: float = -47.25 + float(iz) * 13.5
+			# Omitir tiles completamente ocultos bajo la pasarela o fuera del anfiteatro dodecagonal
+			if ArenaColiseo.apotema_en_pos(cx - tile_half, cz - tile_half) >= foso_vis_limit \
+			and ArenaColiseo.apotema_en_pos(cx + tile_half, cz - tile_half) >= foso_vis_limit \
+			and ArenaColiseo.apotema_en_pos(cx - tile_half, cz + tile_half) >= foso_vis_limit \
+			and ArenaColiseo.apotema_en_pos(cx + tile_half, cz + tile_half) >= foso_vis_limit:
+				continue
 			var tile := MeshInstance3D.new()
 			tile.name = "Tile_%d_%d" % [ix, iz]
 			tile.mesh = tile_plane
@@ -651,7 +659,7 @@ func _get_pbr_mat(
 		return _mats_cache[key] as StandardMaterial3D
 	var mat := StandardMaterial3D.new()
 	var scale_uv: float = maxf(0.20, tri_scale)
-	var es_triplanar: bool = key.begins_with("anf_") or key.begins_with("wall_")
+	var es_triplanar: bool = key.begins_with("wall_")
 	mat.albedo_color = col_a.lerp(col_b, 0.28)
 	match family:
 		0: # Acero oscuro / grafito estructural

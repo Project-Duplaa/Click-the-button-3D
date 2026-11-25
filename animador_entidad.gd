@@ -27,6 +27,21 @@ const FALLBACKS := {
 	"idle": ["idle", "static"],
 }
 
+const LOOP_CLIPS := {
+	"idle": true,
+	"walk": true,
+	"run": true,
+	"sprint": true,
+	"block-walk": true,
+	"crouch": true,
+	"holding-both": true,
+	"holding-right-shoot": true,
+	"telegraph": true,
+	"stunned": true,
+	"fall": true,
+	"static": true,
+}
+
 var _ap: AnimationPlayer = null
 var _clips_disponibles: Dictionary = {}
 var _clip_actual: String = ""
@@ -104,20 +119,26 @@ func reproducir_bucle(nombre: String, blend: float = 0.14, velocidad: float = 1.
 	if _tiempo_bloqueo > 0.0 and prioridad < _prioridad_bloqueo:
 		return false
 
+	var vel := clampf(velocidad, 0.25, 2.5)
+	if _en_bucle and _clip_actual == nombre and _ap.current_animation == _clip_actual and _ap.is_playing():
+		_ap.speed_scale = vel
+		return true
+
 	var clip := _resolver_clip(nombre)
 	if clip.is_empty():
 		return false
 
-	var vel := clampf(velocidad, 0.25, 2.5)
+	if _en_bucle and _ap.current_animation == clip and _ap.is_playing():
+		_clip_actual = clip
+		_ap.speed_scale = vel
+		return true
+
 	var anim_res := _ap.get_animation(clip)
 	if anim_res == null or anim_res.length <= 0.001:
 		return false
-	if clip in ["idle", "walk", "run", "sprint", "block-walk", "crouch", "holding-both", "holding-right-shoot", "telegraph", "stunned", "fall", "static"]:
+	if LOOP_CLIPS.has(clip):
 		if anim_res.loop_mode == Animation.LOOP_NONE:
 			anim_res.loop_mode = Animation.LOOP_LINEAR
-	if _ap.current_animation == clip and _ap.is_playing():
-		_ap.speed_scale = vel
-		return true
 
 	_ap.speed_scale = vel
 	_ap.play(clip, blend)

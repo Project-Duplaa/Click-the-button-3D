@@ -40,12 +40,12 @@ float fbm(vec2 p) {
 	float v = 0.0;
 	float a = 0.5;
 	mat2 rot = mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8));
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < 2; i++) {
 		v += a * vnoise(p);
 		p = rot * p * 2.03 + vec2(17.1, 31.7);
 		a *= 0.5;
 	}
-	return v;
+	return v * 1.333333;
 }
 
 float sd_seg(vec2 p, vec2 a, vec2 b) {
@@ -230,13 +230,15 @@ void fragment() {
 	}
 
 	// Esténcil "A-01" + ///// en zona visible inferior derecha junto al jugador
-	float stencil_mask = stencil_label_A01(p, vec2(9.6, 3.3), 0.58);
-	if (stencil_mask > 0.01) {
-		float scuff = smoothstep(0.18, 0.45, h_grime) * (1.0 - seam_groove);
-		float s_amt = stencil_mask * scuff;
-		albedo = mix(albedo, col_stencil_paint.rgb, s_amt * 0.86);
-		rough = mix(rough, 0.62, s_amt * 0.75);
-		metal = mix(metal, 0.16, s_amt * 0.75);
+	if (abs(p.x - 9.6) < 1.35 && abs(p.y - 3.3) < 0.95) {
+		float stencil_mask = stencil_label_A01(p, vec2(9.6, 3.3), 0.58);
+		if (stencil_mask > 0.01) {
+			float scuff = smoothstep(0.18, 0.45, h_grime) * (1.0 - seam_groove);
+			float s_amt = stencil_mask * scuff;
+			albedo = mix(albedo, col_stencil_paint.rgb, s_amt * 0.86);
+			rough = mix(rough, 0.62, s_amt * 0.75);
+			metal = mix(metal, 0.16, s_amt * 0.75);
+		}
 	}
 
 	// 2 barras LED cian cortas empotradas con marco oscuro biselado

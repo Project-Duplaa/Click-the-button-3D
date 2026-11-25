@@ -81,6 +81,11 @@ static var _tangentes_caras: PackedVector2Array = PackedVector2Array()
 static var _vertices_ext: PackedVector2Array = PackedVector2Array()
 static var _vertices_foso: PackedVector2Array = PackedVector2Array()
 static var _rampas_info: Array[Dictionary] = []
+static var _nav_obj_frame: int = -1
+static var _nav_obj_pos: Vector3 = Vector3(1e9, 1e9, 1e9)
+static var _nav_obj_h: float = 0.0
+static var _nav_obj_en_pasarela: bool = false
+static var _nav_obj_apotema: float = 0.0
 
 var _mat_piso_foso: StandardMaterial3D = null
 var _mat_bastion: StandardMaterial3D = null
@@ -153,12 +158,14 @@ static func _asegurar_cache() -> void:
 		var t := _tangentes_caras[idx_face]
 		_rampas_info.append({
 			"tipo": "cardinal",
+			"es_cardinal": true,
 			"theta": float(idx_face) * (TAU / float(NUM_LADOS)),
 			"normal": n,
 			"tangente": t,
 			"r_inicio": RAMPA_CARDINAL_INICIO,
 			"r_fin": RAMPA_CARDINAL_FIN,
 			"semi_ancho": RAMPA_CARDINAL_SEMI_ANCHO,
+			"semi_ancho_deck": RAMPA_CARDINAL_SEMI_ANCHO,
 			"boca": Vector3(n.x * (RAMPA_CARDINAL_INICIO - 1.4), 0.0, n.y * (RAMPA_CARDINAL_INICIO - 1.4)),
 			"cresta": Vector3(n.x * (RAMPA_CARDINAL_FIN + 1.4), ALTURA_PASARELA, n.y * (RAMPA_CARDINAL_FIN + 1.4)),
 		})
@@ -170,6 +177,7 @@ static func _asegurar_cache() -> void:
 		var td := Vector2(cos(phi_d), sin(phi_d))
 		_rampas_info.append({
 			"tipo": "diagonal",
+			"es_cardinal": false,
 			"theta": phi_d,
 			"normal": nd,
 			"tangente": td,
@@ -188,9 +196,11 @@ static func _asegurar_cache() -> void:
 
 static func apotema_en_pos(x: float, z: float) -> float:
 	_asegurar_cache()
+	# Simetría central del dodecágono regular: |x*n.x + z*n.y| sobre las primeras 6 caras equivale al máximo de las 12
 	var max_proj: float = 0.0
-	for n in _normales_caras:
-		var p: float = x * n.x + z * n.y
+	for k in range(6):
+		var n := _normales_caras[k]
+		var p: float = absf(x * n.x + z * n.y)
 		if p > max_proj:
 			max_proj = p
 	return max_proj
@@ -211,13 +221,18 @@ static func obtener_altura_suelo(x: float, z: float) -> float:
 	var m := apotema_en_pos(x, z)
 	if m >= APOTEMA_FOSO:
 		return ALTURA_PASARELA
+	# Salida temprana O(1): dentro del foso central (< 26.6 * cos(15°)) no existen rampas ni bastiones
+	if m < BASTION_RAMPA_INF_INICIO * COS_15:
+		return 0.0
 
 	for r in _rampas_info:
 		var n: Vector2 = r["normal"]
-		var t: Vector2 = r["tangente"]
 		var along: float = x * n.x + z * n.y
+		if along < BASTION_RAMPA_INF_INICIO:
+			continue
+		var t: Vector2 = r["tangente"]
 		var perp: float = absf(x * t.x + z * t.y)
-		if String(r["tipo"]) == "cardinal":
+		if r["es_cardinal"]:
 			if perp <= RAMPA_CARDINAL_SEMI_ANCHO and along >= RAMPA_CARDINAL_INICIO and along <= RAMPA_CARDINAL_FIN:
 				var frac: float = clampf((along - RAMPA_CARDINAL_INICIO) / (RAMPA_CARDINAL_FIN - RAMPA_CARDINAL_INICIO), 0.0, 1.0)
 				return frac * ALTURA_PASARELA
@@ -274,12 +289,16 @@ static func _obtener_rng_run(ctx: Node = null, rng_ext: RandomNumberGenerator = 
 
 static func esta_en_pendiente(x: float, z: float, margen: float = 0.6) -> bool:
 	_asegurar_cache()
+	if apotema_en_pos(x, z) < (BASTION_RAMPA_INF_INICIO - margen) * COS_15:
+		return false
 	for r in _rampas_info:
 		var n: Vector2 = r["normal"]
-		var t: Vector2 = r["tangente"]
 		var along: float = x * n.x + z * n.y
+		if along < BASTION_RAMPA_INF_INICIO - margen:
+			continue
+		var t: Vector2 = r["tangente"]
 		var perp: float = absf(x * t.x + z * t.y)
-		if String(r["tipo"]) == "cardinal":
+		if r["es_cardinal"]:
 			if perp <= (RAMPA_CARDINAL_SEMI_ANCHO + margen) and along >= (RAMPA_CARDINAL_INICIO - margen) and along <= (RAMPA_CARDINAL_FIN + margen):
 				return true
 		else:
@@ -422,16 +441,20 @@ static func configurar_cuerpo_terreno(body: CharacterBody3D, es_rapido: bool = f
 
 static func _detectar_corredor_rampa(x: float, z: float, margen_r: float = 1.35, margen_lat: float = 0.30) -> int:
 	_asegurar_cache()
+	if apotema_en_pos(x, z) < (BASTION_RAMPA_INF_INICIO - margen_r) * COS_15:
+		return -1
 	for i in range(_rampas_info.size()):
 		var r_info: Dictionary = _rampas_info[i]
 		var rn: Vector2 = r_info["normal"]
-		var rt: Vector2 = r_info["tangente"]
 		var along: float = x * rn.x + z * rn.y
-		var perp: float = absf(x * rt.x + z * rt.y)
 		var r_min_i: float = float(r_info["r_inicio"]) - margen_r
 		var r_max_i: float = float(r_info["r_fin"]) + margen_r
-		var semi_max: float = float(r_info.get("semi_ancho_deck", r_info["semi_ancho"])) + margen_lat
-		if along >= r_min_i and along <= r_max_i and perp <= semi_max:
+		if along < r_min_i or along > r_max_i:
+			continue
+		var rt: Vector2 = r_info["tangente"]
+		var perp: float = absf(x * rt.x + z * rt.y)
+		var semi_max: float = float(r_info["semi_ancho_deck"]) + margen_lat
+		if perp <= semi_max:
 			return i
 	return -1
 
@@ -446,8 +469,27 @@ static func calcular_direccion_persecucion(
 		return Vector3.ZERO
 
 	var orig := cuerpo.global_position
+	var apot_actual := apotema_en_pos(orig.x, orig.z)
 	var h_suelo_actual := obtener_altura_suelo(orig.x, orig.z)
-	var h_suelo_obj := obtener_altura_suelo(objetivo_pos.x, objetivo_pos.z)
+
+	var frame_actual := Engine.get_physics_frames()
+	var h_suelo_obj: float
+	var en_pasarela_obj: bool
+	var apot_obj: float
+	if frame_actual == _nav_obj_frame and _nav_obj_pos.is_equal_approx(objetivo_pos):
+		h_suelo_obj = _nav_obj_h
+		en_pasarela_obj = _nav_obj_en_pasarela
+		apot_obj = _nav_obj_apotema
+	else:
+		apot_obj = apotema_en_pos(objetivo_pos.x, objetivo_pos.z)
+		h_suelo_obj = obtener_altura_suelo(objetivo_pos.x, objetivo_pos.z)
+		en_pasarela_obj = apot_obj >= (APOTEMA_FOSO - 0.15) and objetivo_pos.y >= 0.45
+		_nav_obj_frame = frame_actual
+		_nav_obj_pos = objetivo_pos
+		_nav_obj_h = h_suelo_obj
+		_nav_obj_en_pasarela = en_pasarela_obj
+		_nav_obj_apotema = apot_obj
+
 	var y_ref_orig := maxf(orig.y, h_suelo_actual)
 	var y_ref_obj := maxf(objetivo_pos.y, h_suelo_obj)
 
@@ -478,9 +520,9 @@ static func calcular_direccion_persecucion(
 
 	var dir_deseada := dir_directa
 	var rampa_guardada_idx := int(estado_nav.get("rampa_idx", -1))
-	var buscando_bastion := (h_suelo_obj >= 0.35 and h_suelo_obj < 0.60) and not esta_en_pasarela(objetivo_pos)
-	var en_pasarela_plana := h_suelo_actual >= ALTURA_PASARELA - 0.02 and orig.y >= ALTURA_PASARELA - 0.06 and apotema_en_pos(orig.x, orig.z) >= (APOTEMA_FOSO + 0.70)
-	if corredor_actual_idx >= 0 and String(_rampas_info[corredor_actual_idx]["tipo"]) == "diagonal":
+	var buscando_bastion := (h_suelo_obj >= 0.35 and h_suelo_obj < 0.60) and not en_pasarela_obj
+	var en_pasarela_plana := h_suelo_actual >= ALTURA_PASARELA - 0.02 and orig.y >= ALTURA_PASARELA - 0.06 and apot_actual >= (APOTEMA_FOSO + 0.70)
+	if corredor_actual_idx >= 0 and not _rampas_info[corredor_actual_idx]["es_cardinal"]:
 		var rn_corr: Vector2 = _rampas_info[corredor_actual_idx]["normal"]
 		var along_corr: float = orig.x * rn_corr.x + orig.z * rn_corr.y
 		if along_corr < (BASTION_RAMPA_SUP_FIN_APRON + 0.15):
@@ -495,18 +537,18 @@ static func calcular_direccion_persecucion(
 		or (h_suelo_obj >= ALTURA_PASARELA - 0.05 and not coronada_pasarela)
 		or (buscando_bastion and not coronado_bastion)
 		or (rampa_guardada_idx >= 0 and h_suelo_obj >= ALTURA_BASTION - 0.05 and orig.y < h_suelo_obj - 0.06)
-		or (corredor_actual_idx >= 0 and y_ref_obj >= orig.y - 0.06 and not coronada_pasarela and apotema_en_pos(objetivo_pos.x, objetivo_pos.z) >= RAMPA_CARDINAL_INICIO - 1.0)
+		or (corredor_actual_idx >= 0 and y_ref_obj >= orig.y - 0.06 and not coronada_pasarela and apot_obj >= RAMPA_CARDINAL_INICIO - 1.0)
 	)
 
 	if necesita_subir_rampa:
 		var mejor_idx := rampa_guardada_idx
-		if corredor_actual_idx >= 0 and ( not buscando_bastion or String(_rampas_info[corredor_actual_idx]["tipo"]) == "diagonal" ):
+		if corredor_actual_idx >= 0 and ( not buscando_bastion or not _rampas_info[corredor_actual_idx]["es_cardinal"] ):
 			mejor_idx = corredor_actual_idx
 		else:
 			var mejor_costo: float = 999999.0
 			for i in range(_rampas_info.size()):
 				var r := _rampas_info[i]
-				if buscando_bastion and String(r["tipo"]) != "diagonal":
+				if buscando_bastion and r["es_cardinal"]:
 					continue
 				var boca: Vector3 = r["boca"]
 				var cresta: Vector3 = r["cresta_inf"] if buscando_bastion else r["cresta"]
@@ -522,7 +564,7 @@ static func calcular_direccion_persecucion(
 			mejor_idx = 0
 		estado_nav["rampa_idx"] = mejor_idx
 		var rampa_elegida: Dictionary = _rampas_info[mejor_idx]
-		var tipo_r := String(rampa_elegida["tipo"])
+		var es_cardinal_r: bool = rampa_elegida["es_cardinal"]
 		var rn: Vector2 = rampa_elegida["normal"]
 		var rt: Vector2 = rampa_elegida["tangente"]
 		var along: float = orig.x * rn.x + orig.z * rn.y
@@ -530,7 +572,7 @@ static func calcular_direccion_persecucion(
 		var r_ini: float = float(rampa_elegida["r_inicio"])
 		var r_fin_r: float = float(rampa_elegida["r_fin"])
 		var semi_a: float = float(rampa_elegida["semi_ancho"])
-		if tipo_r == "diagonal" and along < float(rampa_elegida.get("r_sup_ini", BASTION_RAMPA_SUP_INICIO)) - 1.0:
+		if not es_cardinal_r and along < float(rampa_elegida.get("r_sup_ini", BASTION_RAMPA_SUP_INICIO)) - 1.0:
 			semi_a = float(rampa_elegida.get("semi_ancho_inf", BASTION_RAMPA_INF_SEMI_ANCHO))
 		var semi_seguro := maxf(0.9, semi_a - 0.72)
 		var wp: Vector3
@@ -541,8 +583,7 @@ static func calcular_direccion_persecucion(
 			wp = Vector3(p_esc.x, 0.0, p_esc.y)
 		elif along < (r_ini - 0.4) or (absf(perp) > semi_seguro and orig.y < 0.28):
 			# Si está en el foso pegado al escalón de 0.80m lejos de la boca, bordear hacia la boca sin chocar contra el escalón
-			var apot_o := apotema_en_pos(orig.x, orig.z)
-			if orig.y < 0.36 and apot_o >= (APOTEMA_FOSO - 2.2) and absf(perp) > semi_seguro + 0.5:
+			if orig.y < 0.36 and apot_actual >= (APOTEMA_FOSO - 2.2) and absf(perp) > semi_seguro + 0.5:
 				var s_hacia := -signf(perp) if absf(perp) > 0.01 else 1.0
 				var p_borde := Vector2(orig.x, orig.z) + rt * (s_hacia * 2.8) - rn * 1.15
 				wp = Vector3(p_borde.x, 0.0, p_borde.y)
@@ -551,7 +592,7 @@ static func calcular_direccion_persecucion(
 				var p_boca_wp := clampf(perp * 0.25, -semi_seguro * 0.45, semi_seguro * 0.45)
 				var pt_b := rn * r_boca_wp + rt * p_boca_wp
 				wp = Vector3(pt_b.x, 0.0, pt_b.y)
-		elif tipo_r == "diagonal" and along >= (BASTION_RAMPA_SUP_FIN_PENDIENTE - 0.15) and orig.y >= (ALTURA_PASARELA - 0.06):
+		elif not es_cardinal_r and along >= (BASTION_RAMPA_SUP_FIN_PENDIENTE - 0.15) and orig.y >= (ALTURA_PASARELA - 0.06):
 			# Ya en el puente horizontal del bastión (Apron, y = 0.80m): avanzar hacia el carril de la pasarela en dirección al jugador
 			var dot_obj_t := (objetivo_pos.x * rt.x + objetivo_pos.z * rt.y) - perp
 			var s_lat := signf(dot_obj_t) if absf(dot_obj_t) > 0.2 else 0.0
@@ -559,9 +600,9 @@ static func calcular_direccion_persecucion(
 			wp = Vector3(pt_apron.x, ALTURA_PASARELA, pt_apron.y)
 		else:
 			# Ya dentro del corredor de la rampa: avanzar centrado por el eje longitudinal hasta superar r_fin + 1.4m
-			if buscando_bastion and tipo_r == "diagonal":
+			if buscando_bastion and not es_cardinal_r:
 				wp = rampa_elegida["cresta_inf"]
-			elif tipo_r == "diagonal" and along >= float(rampa_elegida.get("r_deck_ini", BASTION_DECK_INICIO)) - 0.5 and absf(perp) > 1.15 and along < float(rampa_elegida.get("r_sup_ini", BASTION_RAMPA_SUP_INICIO)) + 1.2:
+			elif not es_cardinal_r and along >= float(rampa_elegida.get("r_deck_ini", BASTION_DECK_INICIO)) - 0.5 and absf(perp) > 1.15 and along < float(rampa_elegida.get("r_sup_ini", BASTION_RAMPA_SUP_INICIO)) + 1.2:
 				# Si está en la plataforma intermedia del bastión (semi_ancho 3.1m) desplazado lateralmente,
 				# primero embocar la boca de la rampa superior (semi_ancho 2.3m) antes de avanzar contra el muro de 0.80m
 				var r_emb := clampf(along + 0.8, BASTION_DECK_INICIO + 1.2, BASTION_RAMPA_SUP_INICIO - 0.3)
@@ -570,7 +611,7 @@ static func calcular_direccion_persecucion(
 			else:
 				var r_avance := minf(r_fin_r + 1.45, along + 3.4)
 				var factor_c := 0.20
-				if tipo_r == "diagonal" and along >= float(rampa_elegida.get("r_deck_ini", BASTION_DECK_INICIO)) - 0.5:
+				if not es_cardinal_r and along >= float(rampa_elegida.get("r_deck_ini", BASTION_DECK_INICIO)) - 0.5:
 					# Embocar el tramo superior del bastión (semi_ancho = 2.30m) bien centrado
 					factor_c = 0.08
 					semi_seguro = BASTION_RAMPA_SUP_SEMI_ANCHO - 0.95
@@ -607,7 +648,6 @@ static func calcular_direccion_persecucion(
 			estado_nav["stuck_rampa_t"] = 0.0
 
 	# CASO A2: Enemigo en el Foso (0.0m) cerca del muro vertical de la Pasarela (+0.80m) fuera de rampa
-	var apot_actual := apotema_en_pos(orig.x, orig.z)
 	if orig.y < 0.38 and apot_actual >= (APOTEMA_FOSO - 1.65) and corredor_actual_idx < 0:
 		var n_inward := obtener_normal_pared_cercana(orig)
 		if dir_directa.dot(-n_inward) > 0.12 or cuerpo.is_on_wall():

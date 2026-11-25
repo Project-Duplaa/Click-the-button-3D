@@ -36,6 +36,8 @@ var resistencia_knockback: float = 0.35
 var _stun_timer: float = 0.0
 var marca_conductiva_timer: float = 0.0
 var _nav_estado: Dictionary = {}
+var _dmg_pool: Node = null
+var _tw_hit: Tween = null
 
 @onready var anim = $Modelo/AnimationPlayer if has_node("Modelo/AnimationPlayer") else null
 @onready var vision = $Vision if has_node("Vision") else null
@@ -213,9 +215,11 @@ func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 	_anim_ctrl.disparar_golpe()
 	
 	if has_node("Modelo"):
-		var tw = create_tween()
-		tw.tween_property($Modelo, "scale", _escala_base * 1.15, 0.05)
-		tw.tween_property($Modelo, "scale", _escala_base, 0.08)
+		if _tw_hit != null and _tw_hit.is_valid():
+			_tw_hit.kill()
+		_tw_hit = create_tween()
+		_tw_hit.tween_property($Modelo, "scale", _escala_base * 1.15, 0.05)
+		_tw_hit.tween_property($Modelo, "scale", _escala_base, 0.08)
 
 	_notificar_dano(cantidad_final, es_critico, str(fuente))
 
@@ -223,9 +227,10 @@ func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false):
 		morir()
 
 func _notificar_dano(cantidad: float, es_critico: bool, fuente: String):
-	var dmg_pool = get_tree().get_first_node_in_group("damage_numbers")
-	if dmg_pool != null and dmg_pool.has_method("mostrar_dano"):
-		dmg_pool.mostrar_dano(global_position + Vector3(0, 1.8, 0), int(round(cantidad)), es_critico, fuente)
+	if _dmg_pool == null or not is_instance_valid(_dmg_pool):
+		_dmg_pool = get_tree().get_first_node_in_group("damage_numbers")
+	if _dmg_pool != null and _dmg_pool.has_method("mostrar_dano"):
+		_dmg_pool.mostrar_dano(global_position + Vector3(0, 1.8, 0), int(round(cantidad)), es_critico, fuente)
 	else:
 		var escena = load("res://damage_number_3d.tscn")
 		if escena != null and is_inside_tree() and get_parent() != null:
@@ -240,6 +245,15 @@ func morir():
 	if _muerto:
 		return
 	_muerto = true
+	set_physics_process(false)
+	var col = get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if col != null:
+		col.set_deferred("disabled", true)
+	remove_from_group("enemigos")
+	remove_from_group("enemies")
+	if _tw_hit != null and _tw_hit.is_valid():
+		_tw_hit.kill()
+		_tw_hit = null
 
 	FortunaManager.soltar_drops(get_parent(), global_position, "guardia")
 	MetaprogresoManager.procesar_baja_completa(self, jugador, "guardia", false)

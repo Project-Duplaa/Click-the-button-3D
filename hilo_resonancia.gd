@@ -24,6 +24,10 @@ var _mult_dano_hilo: float = 1.0
 var _jaula_faraday_activa: bool = false
 var _color_haz_actual: Color = Color(0.2, 0.85, 1.0, 0.85)
 var _ultimo_nivel_fiebre: int = -1
+var _last_energy_haz: float = -1.0
+var _last_core_hot: int = -1
+var _letrero_tension_mostrado: bool = false
+var _favor_mgr_ref: Node = null
 
 # Elementos visuales 3D del rayo
 var _mesh_haz: MeshInstance3D = null
@@ -155,12 +159,12 @@ func _actualizar_geometria_haz(pos_a: Vector3, pos_b: Vector3):
 	var fwd = right.cross(dir).normalized()
 	var b := Basis(right, dir, fwd)
 	_mesh_haz.global_transform.basis = b
-	_cilindro.height = dist
+	_mesh_haz.scale = Vector3(1.0, dist, 1.0)
 
 	if _mesh_funda != null and _cilindro_funda != null:
 		_mesh_funda.global_position = punto_medio
 		_mesh_funda.global_transform.basis = b
-		_cilindro_funda.height = dist
+		_mesh_funda.scale = Vector3(1.0, dist, 1.0)
 	
 	if _luz_haz != null:
 		_luz_haz.global_position = punto_medio
@@ -168,10 +172,21 @@ func _actualizar_geometria_haz(pos_a: Vector3, pos_b: Vector3):
 
 	# Modulación visual táctica por Tensión Espacial (Premia el juego a distancia sin saturar HUD)
 	var factor_tension := clampf((dist - 8.0) / 16.0, 0.0, 1.0)
-	if _material_haz != null:
-		_material_haz.set_shader_parameter("energy", lerpf(3.0, 5.6, factor_tension))
-		if dist >= 10.0:
-			_material_haz.set_shader_parameter("core_color", Color(1.0, 0.96, 0.70))
+	var energy_haz := lerpf(3.0, 5.6, factor_tension)
+	if absf(energy_haz - _last_energy_haz) > 0.04:
+		_last_energy_haz = energy_haz
+		if _material_haz != null:
+			_material_haz.set_shader_parameter("energy", energy_haz)
+		if _material_funda != null:
+			_material_funda.set_shader_parameter("energy", lerpf(1.8, 3.2, factor_tension))
+
+	var hot_state: int = 1 if dist >= 10.0 else 0
+	if hot_state != _last_core_hot:
+		_last_core_hot = hot_state
+		if _material_haz != null:
+			_material_haz.set_shader_parameter("core_color", Color(1.0, 0.96, 0.70) if hot_state == 1 else Color(0.95, 0.99, 1.0))
+		if hot_state == 1 and not _letrero_tension_mostrado:
+			_letrero_tension_mostrado = true
 			var hud = get_tree().get_first_node_in_group("hud")
 			if hud != null and hud.has_method("mostrar_letrero_temporal"):
 				hud.mostrar_letrero_temporal(
@@ -180,10 +195,6 @@ func _actualizar_geometria_haz(pos_a: Vector3, pos_b: Vector3):
 					"¡Distancia óptima! A mayor separación del Núcleo, el rayo inflige hasta +65% de daño adicional.",
 					Color(1.0, 0.85, 0.25)
 				)
-		else:
-			_material_haz.set_shader_parameter("core_color", Color(0.95, 0.99, 1.0))
-	if _material_funda != null:
-		_material_funda.set_shader_parameter("energy", lerpf(1.8, 3.2, factor_tension))
 
 func _actualizar_color_por_fiebre():
 	var nivel_fiebre = 0
@@ -214,26 +225,29 @@ func _actualizar_color_por_fiebre():
 	if _luz_haz != null:
 		_luz_haz.light_color = _color_haz_actual
 
-func _distancia_a_segmento_xz(p: Vector3, a: Vector3, b: Vector3) -> float:
-	var p2 = Vector2(p.x, p.z)
-	var a2 = Vector2(a.x, a.z)
-	var b2 = Vector2(b.x, b.z)
-	var v = b2 - a2
-	var w = p2 - a2
-	var c1 = w.dot(v)
+func _dist_sq_a_segmento_xz(p: Vector3, a: Vector3, b: Vector3) -> float:
+	var p2 := Vector2(p.x, p.z)
+	var a2 := Vector2(a.x, a.z)
+	var b2 := Vector2(b.x, b.z)
+	var v := b2 - a2
+	var w := p2 - a2
+	var c1 := w.dot(v)
 	if c1 <= 0.0:
-		return w.length()
-	var c2 = v.dot(v)
+		return w.length_squared()
+	var c2 := v.dot(v)
 	if c2 <= c1:
-		return (p2 - b2).length()
-	var b_factor = c1 / c2
-	var proy = a2 + b_factor * v
-	return (p2 - proy).length()
+		return (p2 - b2).length_squared()
+	var b_factor := c1 / c2
+	var proy := a2 + b_factor * v
+	return (p2 - proy).length_squared()
+
+func _distancia_a_segmento_xz(p: Vector3, a: Vector3, b: Vector3) -> float:
+	return sqrt(_dist_sq_a_segmento_xz(p, a, b))
 
 func _procesar_contacto_hilo():
 	var pos_a = jugador.global_position + Vector3(0.0, 0.9, 0.0)
 	var pos_b = boton.global_position + Vector3(0.0, 0.5, 0.0)
-	var ancho_efectivo = ancho_hilo_actual
+	var ancho_sq := ancho_hilo_actual * ancho_hilo_actual
 	
 	var enemigos = get_tree().get_nodes_in_group("enemies")
 	if enemigos.is_empty():
@@ -241,8 +255,7 @@ func _procesar_contacto_hilo():
 		
 	for e in enemigos:
 		if is_instance_valid(e) and e is Node3D:
-			var dist = _distancia_a_segmento_xz(e.global_position, pos_a, pos_b)
-			if dist <= ancho_efectivo:
+			if _dist_sq_a_segmento_xz(e.global_position, pos_a, pos_b) <= ancho_sq:
 				if e.has_method("aplicar_marca_conductiva"):
 					e.aplicar_marca_conductiva(2.5)
 					
@@ -252,13 +265,14 @@ func _procesar_contacto_hilo():
 					if jugador != null and is_instance_valid(jugador) and jugador.has_method("registrar_dano_telemetria"):
 						jugador.registrar_dano_telemetria("hilo", float(dmg))
 	
-	var drops = get_tree().get_nodes_in_group("drops")
-	for d in drops:
-		if is_instance_valid(d) and d is Node3D:
-			var dist_drop = _distancia_a_segmento_xz(d.global_position, pos_a, pos_b)
-			if dist_drop <= ancho_efectivo + 0.6:
-				if d.has_method("activar_iman_forzado"):
-					d.activar_iman_forzado()
+	if get_tree().get_node_count_in_group("drops") > 0:
+		var ancho_drop_sq := (ancho_hilo_actual + 0.6) * (ancho_hilo_actual + 0.6)
+		var drops = get_tree().get_nodes_in_group("drops")
+		for d in drops:
+			if is_instance_valid(d) and d is Node3D:
+				if _dist_sq_a_segmento_xz(d.global_position, pos_a, pos_b) <= ancho_drop_sq:
+					if d.has_method("activar_iman_forzado"):
+						d.activar_iman_forzado()
 
 func disparar_descarga_clic(dano_base: int, es_critico_perfecto: bool = false, nivel_fiebre: int = 0) -> int:
 	if jugador == null or boton == null:
@@ -330,6 +344,7 @@ func disparar_descarga_clic(dano_base: int, es_critico_perfecto: bool = false, n
 		enemigos = get_tree().get_nodes_in_group("enemigos")
 		
 	var radio_impacto = 1.65 * (ancho_hilo_actual / ancho_hilo_base)
+	var radio_impacto_sq = radio_impacto * radio_impacto
 	var punto_medio = (pos_a + pos_b) * 0.5
 	var dir_segmento = (pos_b - pos_a).normalized()
 	var dir_perpendicular = Vector3(-dir_segmento.z, 0.0, dir_segmento.x)
@@ -339,8 +354,7 @@ func disparar_descarga_clic(dano_base: int, es_critico_perfecto: bool = false, n
 	
 	for e in enemigos:
 		if is_instance_valid(e) and e is Node3D:
-			var dist = _distancia_a_segmento_xz(e.global_position, pos_a, pos_b)
-			if dist <= radio_impacto:
+			if _dist_sq_a_segmento_xz(e.global_position, pos_a, pos_b) <= radio_impacto_sq:
 				total_alcanzados += 1
 				dano_acumulado += dano_descarga
 				

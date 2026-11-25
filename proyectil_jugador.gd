@@ -121,11 +121,12 @@ func _buscar_siguiente_enemigo(ignorar: Node) -> Node3D:
 	if enemigos.is_empty():
 		enemigos = get_tree().get_nodes_in_group("enemigos")
 	var mas_cercano: Node3D = null
-	var menor_dist: float = 14.0
+	var menor_dist_sq: float = 196.0
+	var mi_pos := global_position
 	for e in enemigos:
 		if is_instance_valid(e) and e is Node3D and e != ignorar and not (e in _enemigos_golpeados):
-			var d = global_position.distance_to(e.global_position)
-			if d < menor_dist:
-				menor_dist = d
+			var d_sq = mi_pos.distance_squared_to(e.global_position)
+			if d_sq < menor_dist_sq:
+				menor_dist_sq = d_sq
 				mas_cercano = e
 	return mas_cercano

@@ -49,6 +49,8 @@ var _escudo_fase_mesh: MeshInstance3D = null
 var marca_conductiva_timer: float = 0.0
 var _nav_estado: Dictionary = {}
 var _anim_ctrl: AnimadorEntidad = AnimadorEntidad.new()
+var _dmg_pool: Node = null
+var _tw_hit: Tween = null
 
 func _ready() -> void:
 	add_to_group("enemies")
@@ -107,7 +109,8 @@ func _physics_process(delta: float) -> void:
 
 	if dano_contacto > 0.0 and jugador != null and is_instance_valid(jugador):
 		_reloj_ataque = maxf(_reloj_ataque - delta, 0.0)
-		if _reloj_ataque <= 0.0 and global_position.distance_to(jugador.global_position) <= maxf(rango_ataque, 1.35):
+		var r_atq := maxf(rango_ataque, 1.35)
+		if _reloj_ataque <= 0.0 and global_position.distance_squared_to(jugador.global_position) <= r_atq * r_atq:
 			_reloj_ataque = cadencia_ataque
 			_anim_ctrl.reproducir_accion("attack-melee-right", 2, 0.07, 1.1)
 			if jugador.has_method("recibir_dano"):
@@ -178,9 +181,11 @@ func recibir_dano(cantidad: float, fuente = "normal", es_critico: bool = false) 
 	if vida > 0.0 and _anim_ctrl.esta_listo():
 		_anim_ctrl.disparar_golpe()
 
-	var tw = create_tween()
-	tw.tween_property(self, "scale", _escala_base * 1.15, 0.05)
-	tw.tween_property(self, "scale", _escala_base, 0.08)
+	if _tw_hit != null and _tw_hit.is_valid():
+		_tw_hit.kill()
+	_tw_hit = create_tween()
+	_tw_hit.tween_property(self, "scale", _escala_base * 1.15, 0.05)
+	_tw_hit.tween_property(self, "scale", _escala_base, 0.08)
 
 	var fuente_visual: String = "clic" if solo_dano_boton else fuente_str
 	var col_hit := Color(0.22, 0.92, 1.0) if es_fuente_boton(fuente_str) else (Color(1.0, 0.84, 0.16) if es_critico else Color(1.0, 0.45, 0.14))
@@ -204,9 +209,10 @@ func _reaccionar_inmunidad_arma() -> void:
 		VfxCombate.spawn_impacto(get_parent(), global_position + Vector3(0.0, 1.25, 0.0), Color(0.35, 0.95, 1.0), Color.WHITE, 0.90, true)
 
 func _notificar_dano(cantidad: float, es_critico: bool, fuente: String) -> void:
-	var dmg_pool = get_tree().get_first_node_in_group("damage_numbers")
-	if dmg_pool != null and dmg_pool.has_method("mostrar_dano"):
-		dmg_pool.mostrar_dano(global_position + Vector3(0, 1.4, 0), int(round(cantidad)), es_critico, fuente)
+	if _dmg_pool == null or not is_instance_valid(_dmg_pool):
+		_dmg_pool = get_tree().get_first_node_in_group("damage_numbers")
+	if _dmg_pool != null and _dmg_pool.has_method("mostrar_dano"):
+		_dmg_pool.mostrar_dano(global_position + Vector3(0, 1.4, 0), int(round(cantidad)), es_critico, fuente)
 	else:
 		var escena = load("res://damage_number_3d.tscn")
 		if escena != null and is_inside_tree() and get_parent() != null:
@@ -255,6 +261,9 @@ func morir() -> void:
 			if global_position.distance_to(boton.global_position) <= 6.5:
 				mult_xp_chasis = 1.25
 
+	if _tw_hit != null and _tw_hit.is_valid():
+		_tw_hit.kill()
+		_tw_hit = null
 	var tw = create_tween().set_parallel(true)
 	tw.tween_property(self, "scale", _escala_base * 1.35, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_property(self, "position:y", position.y + 0.4, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
@@ -276,12 +285,6 @@ func morir() -> void:
 		_ejecutar_recompensa_nemesis()
 
 	tw.chain().tween_callback(queue_free)
-
-	if is_inside_tree() and get_tree() != null:
-		get_tree().create_timer(0.35).timeout.connect(func():
-			if is_instance_valid(self):
-				queue_free()
-		)
 
 func _ejecutar_recompensa_nemesis() -> void:
 	AudioManager.play("victoria", 1.45)

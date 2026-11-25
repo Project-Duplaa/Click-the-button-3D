@@ -16,9 +16,15 @@ const SHADER_PROJECTILE_PLASMA := preload("res://shaders/vfx_projectile_plasma.g
 
 const MAX_VFX_CONCURRENTES: int = 56
 const UMBRAL_VFX_SECUNDARIOS: int = 42
+const MAX_POOL_IMPACTOS: int = 32
 
 static var _vfx_activos: int = 0
 static var _mallas_init: bool = false
+static var _pool_impactos: Array[MeshInstance3D] = []
+static var _cache_proj_sheath: Dictionary = {}
+static var _cache_proj_tail: Dictionary = {}
+static var _cache_proj_core: Dictionary = {}
+static var _cache_proj_arc: Dictionary = {}
 
 static var _mesh_slash_arc: ArrayMesh = null
 static var _mesh_whirlwind_ring: ArrayMesh = null
@@ -218,7 +224,13 @@ static func _puede_spawnear_principal() -> bool:
 
 static func _registrar_vfx(nodo: Node) -> void:
 	_vfx_activos += 1
-	nodo.tree_exited.connect(_al_salir_vfx)
+	if not nodo.tree_exited.is_connected(_al_salir_vfx):
+		nodo.tree_exited.connect(_al_salir_vfx)
+
+static func _desregistrar_vfx(nodo: Node) -> void:
+	if nodo != null and is_instance_valid(nodo) and nodo.tree_exited.is_connected(_al_salir_vfx):
+		nodo.tree_exited.disconnect(_al_salir_vfx)
+		_vfx_activos = maxi(0, _vfx_activos - 1)
 
 static func _al_salir_vfx() -> void:
 	_vfx_activos = maxi(0, _vfx_activos - 1)
@@ -747,6 +759,41 @@ static func spawn_rayo_celestial(
 # IMPACTOS RÁPIDOS, DESTELLOS DE DISPARO, COLUMNAS Y LLUVIA DE FLECHAS
 # ==============================================================================
 
+static func _obtener_impacto_pool(parent: Node) -> MeshInstance3D:
+	while not _pool_impactos.is_empty():
+		var raw_cand = _pool_impactos.pop_back()
+		if is_instance_valid(raw_cand) and raw_cand is MeshInstance3D:
+			var cand := raw_cand as MeshInstance3D
+			if not cand.is_queued_for_deletion():
+				if cand.get_parent() == parent:
+					return cand
+				cand.queue_free()
+	var holder := MeshInstance3D.new()
+	holder.name = "VfxImpacto"
+	holder.mesh = _mesh_spark_burst
+	holder.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var mat := ShaderMaterial.new()
+	mat.shader = SHADER_PROJECTILE_PLASMA
+	mat.set_shader_parameter("is_tail", 0.0)
+	holder.material_override = mat
+	parent.add_child(holder)
+	return holder
+
+static func _liberar_impacto_pool(holder: MeshInstance3D) -> void:
+	if not is_instance_valid(holder):
+		return
+	_desregistrar_vfx(holder)
+	holder.visible = false
+	if holder.has_meta(&"_tw_vfx"):
+		var prev_tw = holder.get_meta(&"_tw_vfx")
+		if prev_tw is Tween and prev_tw.is_valid():
+			prev_tw.kill()
+		holder.remove_meta(&"_tw_vfx")
+	if holder.is_inside_tree() and _pool_impactos.size() < MAX_POOL_IMPACTOS:
+		_pool_impactos.append(holder)
+	else:
+		holder.queue_free()
+
 static func spawn_impacto(
 	parent: Node,
 	pos: Vector3,
@@ -764,21 +811,19 @@ static func spawn_impacto(
 		return null
 	_asegurar_mallas()
 
-	var holder := MeshInstance3D.new()
-	holder.name = "VfxImpacto"
-	holder.mesh = _mesh_spark_burst
-	holder.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var holder := _obtener_impacto_pool(parent)
+	if holder.has_meta(&"_tw_vfx"):
+		var old_tw = holder.get_meta(&"_tw_vfx")
+		if old_tw is Tween and old_tw.is_valid():
+			old_tw.kill()
 
-	var mat := ShaderMaterial.new()
-	mat.shader = SHADER_PROJECTILE_PLASMA
+	var mat := holder.material_override as ShaderMaterial
 	mat.set_shader_parameter("main_color", color_main)
 	mat.set_shader_parameter("core_color", color_core)
 	mat.set_shader_parameter("energy", 3.6 if es_critico else 2.8)
 	mat.set_shader_parameter("alpha_mult", 1.0)
-	mat.set_shader_parameter("is_tail", 0.0)
-	holder.material_override = mat
 
-	parent.add_child(holder)
+	holder.visible = true
 	_registrar_vfx(holder)
 	holder.global_position = pos
 	holder.rotation = Vector3(randf_range(-0.35, 0.35), randf() * TAU, randf_range(-0.35, 0.35))
@@ -787,6 +832,7 @@ static func spawn_impacto(
 
 	var dur := 0.20 if es_critico else 0.14
 	var tw := holder.create_tween().set_parallel(true)
+	holder.set_meta(&"_tw_vfx", tw)
 	tw.tween_property(holder, "scale", Vector3.ONE * s_fin, dur).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.tween_method(
 		func(a: float):
@@ -796,10 +842,7 @@ static func spawn_impacto(
 		0.0,
 		dur
 	)
-	tw.chain().tween_callback(func():
-		if is_instance_valid(holder):
-			holder.queue_free()
-	)
+	tw.chain().tween_callback(_liberar_impacto_pool.bind(holder))
 
 	if es_critico and _puede_spawnear_secundario():
 		BunkerVisualKit.spawn_shockwave_ring(parent, pos, 0.15, 1.35 * escala, color_main, 0.20)
@@ -1115,27 +1158,37 @@ static func construir_visual_proyectil(root: Node3D, estilo: String, es_critico:
 	holder.name = "VfxProyectilVisual"
 	root.add_child(holder)
 
-	var mat_sheath := ShaderMaterial.new()
-	mat_sheath.shader = SHADER_PROJECTILE_PLASMA
-	mat_sheath.set_shader_parameter("main_color", col_main)
-	mat_sheath.set_shader_parameter("core_color", col_core)
-	mat_sheath.set_shader_parameter("energy", 3.4 if es_critico else 2.8)
-	mat_sheath.set_shader_parameter("alpha_mult", 0.94)
-	mat_sheath.set_shader_parameter("is_tail", 0.0)
+	var cache_key := "%s_%d" % [estilo, int(es_critico)]
+	var mat_sheath := _cache_proj_sheath.get(cache_key, null) as ShaderMaterial
+	if mat_sheath == null:
+		mat_sheath = ShaderMaterial.new()
+		mat_sheath.shader = SHADER_PROJECTILE_PLASMA
+		mat_sheath.set_shader_parameter("main_color", col_main)
+		mat_sheath.set_shader_parameter("core_color", col_core)
+		mat_sheath.set_shader_parameter("energy", 3.4 if es_critico else 2.8)
+		mat_sheath.set_shader_parameter("alpha_mult", 0.94)
+		mat_sheath.set_shader_parameter("is_tail", 0.0)
+		_cache_proj_sheath[cache_key] = mat_sheath
 
-	var mat_tail := ShaderMaterial.new()
-	mat_tail.shader = SHADER_PROJECTILE_PLASMA
-	mat_tail.set_shader_parameter("main_color", col_main)
-	mat_tail.set_shader_parameter("core_color", col_core)
-	mat_tail.set_shader_parameter("energy", 3.0 if es_critico else 2.4)
-	mat_tail.set_shader_parameter("alpha_mult", 0.86)
-	mat_tail.set_shader_parameter("flow_speed", 8.5)
-	mat_tail.set_shader_parameter("is_tail", 1.0)
+	var mat_tail := _cache_proj_tail.get(cache_key, null) as ShaderMaterial
+	if mat_tail == null:
+		mat_tail = ShaderMaterial.new()
+		mat_tail.shader = SHADER_PROJECTILE_PLASMA
+		mat_tail.set_shader_parameter("main_color", col_main)
+		mat_tail.set_shader_parameter("core_color", col_core)
+		mat_tail.set_shader_parameter("energy", 3.0 if es_critico else 2.4)
+		mat_tail.set_shader_parameter("alpha_mult", 0.86)
+		mat_tail.set_shader_parameter("flow_speed", 8.5)
+		mat_tail.set_shader_parameter("is_tail", 1.0)
+		_cache_proj_tail[cache_key] = mat_tail
 
 	if estilo.begins_with("orbe"):
-		var mat_core := StandardMaterial3D.new()
-		mat_core.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		mat_core.albedo_color = col_core if estilo != "orbe_vacio" else Color(0.04, 0.01, 0.10)
+		var mat_core := _cache_proj_core.get(cache_key, null) as StandardMaterial3D
+		if mat_core == null:
+			mat_core = StandardMaterial3D.new()
+			mat_core.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			mat_core.albedo_color = col_core if estilo != "orbe_vacio" else Color(0.04, 0.01, 0.10)
+			_cache_proj_core[cache_key] = mat_core
 		var m_core := MeshInstance3D.new()
 		m_core.name = "NucleoOrbe"
 		m_core.mesh = _mesh_orb_core
@@ -1178,15 +1231,18 @@ static func construir_visual_proyectil(root: Node3D, estilo: String, es_critico:
 		return holder
 
 	if estilo == "guadana":
-		var mat_arc := ShaderMaterial.new()
-		mat_arc.shader = SHADER_SLASH_ARC
-		mat_arc.set_shader_parameter("main_color", col_main)
-		mat_arc.set_shader_parameter("core_color", col_core)
-		mat_arc.set_shader_parameter("edge_color", Color(0.45, 0.02, 0.35))
-		mat_arc.set_shader_parameter("progress", 0.32)
-		mat_arc.set_shader_parameter("energy", 3.6)
-		mat_arc.set_shader_parameter("sweep_mode", 1.0)
-		mat_arc.set_shader_parameter("streaks", 12.0)
+		var mat_arc := _cache_proj_arc.get(cache_key, null) as ShaderMaterial
+		if mat_arc == null:
+			mat_arc = ShaderMaterial.new()
+			mat_arc.shader = SHADER_SLASH_ARC
+			mat_arc.set_shader_parameter("main_color", col_main)
+			mat_arc.set_shader_parameter("core_color", col_core)
+			mat_arc.set_shader_parameter("edge_color", Color(0.45, 0.02, 0.35))
+			mat_arc.set_shader_parameter("progress", 0.32)
+			mat_arc.set_shader_parameter("energy", 3.6)
+			mat_arc.set_shader_parameter("sweep_mode", 1.0)
+			mat_arc.set_shader_parameter("streaks", 12.0)
+			_cache_proj_arc[cache_key] = mat_arc
 
 		var m_arc := MeshInstance3D.new()
 		m_arc.name = "HojaGuadana"
@@ -1207,9 +1263,12 @@ static func construir_visual_proyectil(root: Node3D, estilo: String, es_critico:
 
 	# Proyectiles lineales: flechas, dardos sanguinarios, dagas de sombra / clic
 	var usar_hoja := (estilo == "sombra" or estilo == "clic_daga")
-	var mat_core_p := StandardMaterial3D.new()
-	mat_core_p.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat_core_p.albedo_color = col_core
+	var mat_core_p := _cache_proj_core.get(cache_key, null) as StandardMaterial3D
+	if mat_core_p == null:
+		mat_core_p = StandardMaterial3D.new()
+		mat_core_p.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat_core_p.albedo_color = col_core
+		_cache_proj_core[cache_key] = mat_core_p
 
 	var m_centro := MeshInstance3D.new()
 	m_centro.name = "NucleoProyectil"
